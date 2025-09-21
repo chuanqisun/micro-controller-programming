@@ -1,3 +1,10 @@
+---
+applyTo: "**/*screen.ino"
+---
+
+Use the following .h file for OLED display functionality.
+
+```cpp
 /\*!
 
 - @file Adafruit_SSD1306.h
@@ -206,3 +213,4 @@ SPISettings spiSettings;
 };
 
 #endif // _Adafruit_SSD1306_H_
+```

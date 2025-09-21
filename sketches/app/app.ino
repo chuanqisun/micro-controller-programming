@@ -19,10 +19,12 @@ int PIN_RED = 17;
 int PIN_GREEN = 16;
 int PIN_BLUE = 25;
 
+// declare functions
 void update_touch();
 void print_touch();
 void init_screen();
-void render_screen();
+void render_screen(long counter);
+void handle_touch(long &counter);
 
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1, 1700000UL, 1700000UL);
@@ -31,8 +33,6 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1, 1700000UL, 1700
 // counter controlled by A/B touch pads
 long counter = 0;
 
-// forward-declare touch processing (implemented in lib-01-touch.ino)
-void handle_touch(long &counter);
 
 void setup() {
   Serial.begin(115200);
@@ -46,5 +46,5 @@ void loop() {
   detect_touch();
   handle_touch(counter);
   print_touch();
-  render_screen();
+  render_screen(counter);
 }
