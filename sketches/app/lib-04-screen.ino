@@ -12,10 +12,6 @@ void init_screen() {
   display.setTextColor(SSD1306_WHITE);
 }
 
-// 3D cube rendering (wireframe)
-// - Uses simple rotation (XYZ), perspective projection, and line drawing
-// - Keeps math light for MCU: floats are acceptable on RP2040 for a small scene
-
 // Edge list for a cube with 8 vertices [0..7]
 static const uint8_t CUBE_EDGE_COUNT = 12;
 static const uint8_t CUBE_EDGES[CUBE_EDGE_COUNT][2] = {
