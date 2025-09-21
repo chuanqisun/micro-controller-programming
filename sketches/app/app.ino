@@ -23,15 +23,17 @@ int PIN_BLUE = 25;
 void update_touch();
 void print_touch();
 void init_screen();
-void render_screen(long counter);
-void handle_touch(long &counter);
+void render_screen(long zoom, long pitch, long yaw);
+void handle_touch(long &zoom, long &pitch, long &yaw);
 
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1, 1700000UL, 1700000UL);
 
 
-// counter controlled by A/B touch pads
-long counter = 0;
+// zoom controlled by A/B touch pads
+long zoom = 0;
+long pitch = 0; // not wired to input yet
+long yaw = 0;   // not wired to input yet
 
 
 void setup() {
@@ -44,7 +46,7 @@ void setup() {
 
 void loop() {
   detect_touch();
-  handle_touch(counter);
+  handle_touch(zoom, pitch, yaw);
   print_touch();
-  render_screen(counter);
+  render_screen(zoom, pitch, yaw);
 }
