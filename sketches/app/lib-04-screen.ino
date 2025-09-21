@@ -53,7 +53,7 @@ void render_screen(long zoom, long pitch, long yaw) {
   }
 
   // Rotation angles: only use manual pitch/yaw, no auto-rotation
-  const float pitchScale = -0.04f; // radians per unit
+  const float pitchScale = 0.04f; // radians per unit
   const float yawScale   = -0.04f; // radians per unit
   const float a = pitch * pitchScale; // X (pitch)
   const float b = yaw * yawScale;     // Y (yaw)
