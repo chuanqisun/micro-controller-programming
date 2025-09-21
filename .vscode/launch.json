@@ -1,0 +1,16 @@
+{
+  // Launch configuration to run deploy.sh with CURRENT_FILE_PATH set to the active file's folder
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "command": "./debug.sh",
+      "name": "deploy to device",
+      "request": "launch",
+      "type": "node-terminal",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "CURRENT_FILE_PATH": "${fileDirname}"
+      }
+    }
+  ]
+}
