@@ -1,5 +1,5 @@
 ---
-applyTo: "**"
+applyTo: "**/cube-viewer/**"
 ---
 
 You are editing an Arduino sketch, .ino file.

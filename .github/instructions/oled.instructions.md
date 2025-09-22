@@ -1,5 +1,5 @@
 ---
-applyTo: "**/*screen.ino"
+applyTo: "**/cube-viewer/*screen.ino"
 ---
 
 Use the following .h file for OLED display functionality.

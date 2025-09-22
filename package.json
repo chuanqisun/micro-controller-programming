@@ -4,7 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build:rp2040": "arduino-cli compile -b rp2040:rp2040:seeed_xiao_rp2040 ./sketches/app"
+    "dev": "npm run build:esp32 && npm run upload:esp32 && npm run monitor",
+    "rp2040:build": "arduino-cli compile -b rp2040:rp2040:seeed_xiao_rp2040 ./sketches/app",
+    "build:esp32": "arduino-cli compile -b arduino:esp32:nano_nora ./sketches/esp32",
+    "upload:esp32": "arduino-cli upload -p /dev/ttyACM0 -b arduino:esp32:nano_nora ./sketches/esp32",
+    "monitor": "arduino-cli monitor -p /dev/ttyACM0 -c baudrate=115200"
   },
   "repository": {
     "type": "git",
@@ -17,5 +21,8 @@
   "bugs": {
     "url": "https://github.com/chuanqisun/micro-controller-programming/issues"
   },
-  "homepage": "https://github.com/chuanqisun/micro-controller-programming#readme"
+  "homepage": "https://github.com/chuanqisun/micro-controller-programming#readme",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
 }
