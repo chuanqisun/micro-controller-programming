@@ -1,0 +1,21 @@
+{
+  "name": "sketch_sep20a",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build:rp2040": "arduino-cli compile -b rp2040:rp2040:seeed_xiao_rp2040 ./sketches/app"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chuanqisun/micro-controller-programming.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/chuanqisun/micro-controller-programming/issues"
+  },
+  "homepage": "https://github.com/chuanqisun/micro-controller-programming#readme"
+}
