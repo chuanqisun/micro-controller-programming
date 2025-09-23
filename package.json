@@ -26,5 +26,8 @@
   "homepage": "https://github.com/chuanqisun/micro-controller-programming#readme",
   "devDependencies": {
     "concurrently": "^9.2.1"
-  }
+  },
+  "workspaces": [
+    "apps/*"
+  ]
 }
