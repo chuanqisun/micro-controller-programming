@@ -24,6 +24,7 @@ void print_touch();
 void init_screen();
 void render_screen(long zoom, long pitch, long yaw);
 void handle_touch(long &zoom, long &pitch, long &yaw);
+void send_serial_data(long zoom, long pitch, long yaw);
 
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1, 1700000UL, 1700000UL);
@@ -45,4 +46,5 @@ void loop() {
   detect_touch();
   handle_touch(zoom, pitch, yaw);
   render_screen(zoom, pitch, yaw);
+  send_serial_data(zoom, pitch, yaw);
 }
