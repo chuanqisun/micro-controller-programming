@@ -44,6 +44,5 @@ void setup() {
 void loop() {
   detect_touch();
   handle_touch(zoom, pitch, yaw);
-  print_touch();
   render_screen(zoom, pitch, yaw);
 }
