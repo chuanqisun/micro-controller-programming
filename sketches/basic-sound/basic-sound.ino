@@ -6,7 +6,7 @@
 #define I2S_DIN  D9
 
 const int frequency = 440;    // frequency of square wave in Hz
-const int amplitude = 100;    // amplitude of square wave
+const int amplitude = 200;    // amplitude of square wave
 const int sampleRate = 8000;  // sample rate in Hz
 
 i2s_data_bit_width_t bps = I2S_DATA_BIT_WIDTH_16BIT;

@@ -18,7 +18,7 @@ void setup(void) {
   AudioToolsLogger.begin(Serial, AudioToolsLogLevel::Info);
 
   // connect to WIFI
-  WiFi.begin("MLDEV", "{{replace with your wifi password}}");
+  WiFi.begin("MLDEV", "{{replace with your wifi}}");
   while (WiFi.status() != WL_CONNECTED){
     Serial.print(".");
     delay(500); 
@@ -44,8 +44,9 @@ void loop() {
   if (len){
       Serial.print(".");
   } else {
-      // No data available right now, just wait a bit and continue
-      // Don't stop the stream - it's a live continuous stream
-      delay(10);
+      delay(5000);
+      i2s.end();
+      Serial.println("\nCopy ended");
+      stop();
   }
 }
