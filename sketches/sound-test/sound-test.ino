@@ -26,7 +26,7 @@ void setup(void) {
  
   // open music stream
   // music.begin("https://pschatzmann.github.io/Resources/audio/audio-8000.raw");
-  music.begin("http://192.168.41.71:3000/audio.raw");
+  music.begin("http://192.168.41.71:3000/audio.raw"); // replace this with your computer's url
 
 
   // start I2S with external DAC
