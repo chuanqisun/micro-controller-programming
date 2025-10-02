@@ -1,76 +1,37 @@
 /**
- * @file example-serial-receive.ino
+ * @file streams-generator-i2s.ino
  * @author Phil Schatzmann
- * @brief Receiving audio via IP and writing to I2S
- * @version 0.1
- * @date 2022-03-09
- * 
- * @copyright Copyright (c) 2022
+ * @brief see https://github.com/pschatzmann/arduino-audio-tools/blob/main/examples/examples-stream/streams-generator-i2s/README.md 
+ * @copyright GPLv3
  */
-
+ 
 #include "AudioTools.h"
-#include <WiFi.h>
 
-const char *ssid = "MLDEV";
-const char *password = "{{replace with your password}}";
-
-AudioInfo info(16000, 1, 16);
-uint16_t port = 8000;
-WiFiServer server(port);
-WiFiClient client; 
+AudioInfo info(44100, 2, 16);
+SineWaveGenerator<int16_t> sineWave(3200);                // subclass of SoundGenerator with max amplitude of 32000
+GeneratedSoundStream<int16_t> sound(sineWave);             // Stream generated from sine wave
 I2SStream out; 
-MeasuringStream outTimed(out);
-StreamCopy copier(outTimed, client);     
+StreamCopy copier(out, sound);                             // copies sound into i2s
 
-void connectWifi(){
-  // connect to WIFI
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-      delay(500);
-      Serial.print(".");
-  }
-  Serial.println();
-  Serial.println(WiFi. localIP());
-
-  // Performance Hack              
-  WiFi.setSleep(false);
-}
-
-void setup() {
+// Arduino Setup
+void setup(void) {  
+  // Open Serial 
   Serial.begin(115200);
+  while(!Serial);
   AudioToolsLogger.begin(Serial, AudioToolsLogLevel::Info);
-
-  Serial.print("Will sleep");
-  // sleep for 5 seconds first
-  delay(5000);
-
-  connectWifi();
-
-  // start server
-  server.begin();
 
   // start I2S
   Serial.println("starting I2S...");
   auto config = out.defaultConfig(TX_MODE);
   config.copyFrom(info); 
-  config.buffer_size = 512;
-  config.buffer_count = 6;
   out.begin(config);
 
+  // Setup sine wave
+  sineWave.begin(info, N_B4);
   Serial.println("started...");
 }
 
-void loop() { 
-  // get a new connection if necessary
-  if (!client){
-    client = server.available();  
-  }
-  
-  // copy data if we are connected
-  if (client.connected()){
-    copier.copy();
-  } else {
-    // feed the dog
-    delay(100);
-  }
+// Arduino loop - copy sound to out 
+void loop() {
+  copier.copy();
 }
