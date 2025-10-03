@@ -35,14 +35,14 @@ I2SClass squareWaveI2s;
 // Timing variables
 unsigned long startTime;
 bool useSquareWave = true;
-const unsigned long squareWaveDuration = 0; // 10 seconds in milliseconds
+const unsigned long squareWaveDuration = 10; // 10 seconds in milliseconds
 
 
 const char *urls[] = {
   "http://stream.srg-ssr.ch/m/rsj/mp3_128",
 };
 const char *wifi = "MLDEV";
-const char *password = "{{replace with real password}}";
+const char *password = "{{ replace with real password }}";
 
 URLStream urlStream(wifi, password);
 AudioSourceURL source(urlStream, urls, "audio/mp3");
@@ -101,6 +101,22 @@ void loop() {
   }
   
   if (useSquareWave) {
+    // Square wave generation code
+    if (count % halfWavelength == 0) {
+      // invert the sample every half wavelength count multiple to generate square wave
+      sample = -1 * sample;
+    }
+
+    // Left channel, the low 8 bits then high 8 bits
+    squareWaveI2s.write(sample);
+    squareWaveI2s.write(sample >> 8);
+
+    // Right channel, the low 8 bits then high 8 bits
+    squareWaveI2s.write(sample);
+    squareWaveI2s.write(sample >> 8);
+
+    // increment the counter for the next sample
+    count++;
   } else {
     // Internet radio streaming
     player.copy();
