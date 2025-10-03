@@ -17,32 +17,24 @@
 #define I2S_LRC  D8
 #define I2S_DIN  D9
 
-const int frequency = 440;    // frequency of square wave in Hz
-const int amplitude = 200;    // amplitude of square wave
 const int sampleRate = 8000;  // sample rate in Hz
 
 i2s_data_bit_width_t bps = I2S_DATA_BIT_WIDTH_16BIT;
 i2s_mode_t mode = I2S_MODE_STD;
 i2s_slot_mode_t slot = I2S_SLOT_MODE_STEREO;
 
-const unsigned int halfWavelength = sampleRate / frequency / 2;  // half wavelength of square wave
 
-int32_t sample = amplitude;  // current sample value
-unsigned int count = 0;
-
-I2SClass squareWaveI2s;
-
-// Timing variables
-unsigned long startTime;
-bool useSquareWave = true;
-const unsigned long squareWaveDuration = 0; // 10 seconds in milliseconds
-
+I2SClass i2sInstance;
 
 const char *urls[] = {
   "http://stream.srg-ssr.ch/m/rsj/mp3_128",
+  "http://stream.srg-ssr.ch/m/drs3/mp3_128",
+  "http://stream.srg-ssr.ch/m/rr/mp3_128",
+  "http://streaming.swisstxt.ch/m/drsvirus/mp3_128"
 };
 const char *wifi = "MLDEV";
 const char *password = "{{replace with real password}}";
+
 
 URLStream urlStream(wifi, password);
 AudioSourceURL source(urlStream, urls, "audio/mp3");
@@ -50,59 +42,53 @@ I2SStream i2s;
 MP3DecoderHelix decoder;
 AudioPlayer player(source, i2s, decoder);
 
-// additional controls
-const int volumePin = A0;
-Debouncer nextButtonDebouncer(2000);
-const int nextButtonPin = D5;
-
 void setup() {
   Serial.begin(115200);
   AudioToolsLogger.begin(Serial, AudioToolsLogLevel::Info);
 
-  // Record start time
-  startTime = millis();
-
-  Serial.println("Starting with 10 seconds of square wave...");
-
   // Setup square wave I2S first
-  squareWaveI2s.setPins(I2S_BCLK, I2S_LRC, I2S_DIN);
+  i2sInstance.setPins(I2S_BCLK, I2S_LRC, I2S_DIN);
 
   // start I2S at the sample rate with 16-bits per sample
-  if (!squareWaveI2s.begin(mode, sampleRate, bps, slot)) {
+  if (!i2sInstance.begin(mode, sampleRate, bps, slot)) {
     Serial.println("Failed to initialize I2S for square wave!");
     while (1);  // do nothing
   }
+  // Stop the ESP_I2S
+  i2sInstance.end();
 
-  // Note: AudioTools I2S setup will happen later when switching from square wave
+  // Start AudioTools I2S for internet radio
+  auto cfg = i2s.defaultConfig(TX_MODE);
+  i2s.begin(cfg);
+  
+  // Setup player
+  player.begin();
+
+
+  // randomly call player.next(); 0 to k times, where k is the number of available streams - 1
+  int numStreams = sizeof(urls) / sizeof(urls[0]);
+  if (numStreams > 0) {
+    // Seed RNG with an analog read (or millis() as fallback)
+    unsigned long seed = 0;
+  #ifdef ARDUINO_ARCH_ESP8266
+    seed = analogRead(A0);
+  #else
+    seed = millis();
+  #endif
+    randomSeed(seed);
+
+    // Choose 0..(numStreams-1) times to advance
+    int times = random(0, numStreams);
+    for (int i = 0; i < times; ++i) {
+      player.next();
+    }
+  }
+    
 }
 
 
 
 void loop() {
-  unsigned long currentTime = millis();
-  
-  // Check if we should switch from square wave to internet radio
-  if (useSquareWave && (currentTime - startTime >= squareWaveDuration)) {
-    Serial.println("Switching to internet radio...");
-    
-    // Stop the ESP_I2S
-    squareWaveI2s.end();
-    
-    // Start AudioTools I2S for internet radio
-    auto cfg = i2s.defaultConfig(TX_MODE);
-    i2s.begin(cfg);
-    
-    // Setup player
-    player.begin();
-    
-    useSquareWave = false;
-    Serial.println("Internet radio started...");
-    return;
-  }
-  
-  if (useSquareWave) {
-  } else {
     // Internet radio streaming
     player.copy();
-  }
 }
