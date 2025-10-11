@@ -338,29 +338,31 @@
 			)
 			(embedded_fonts no)
 		)
-		(symbol "fab:Module_XIAO_Generic_SocketSMD"
+		(symbol "Connector:Conn_01x07_Socket"
+			(pin_names
+				(offset 1.016)
+				(hide yes)
+			)
 			(exclude_from_sim no)
 			(in_bom yes)
 			(on_board yes)
-			(property "Reference" "M"
-				(at -10.16 16.51 0)
+			(property "Reference" "J"
+				(at 0 10.16 0)
 				(effects
 					(font
 						(size 1.27 1.27)
 					)
-					(justify left)
 				)
 			)
-			(property "Value" "Module_XIAO_Generic_SocketSMD"
-				(at 1.27 16.51 0)
+			(property "Value" "Conn_01x07_Socket"
+				(at 0 -10.16 0)
 				(effects
 					(font
 						(size 1.27 1.27)
 					)
-					(justify left)
 				)
 			)
-			(property "Footprint" "fab:Module_XIAO_Generic_SocketSMD"
+			(property "Footprint" ""
 				(at 0 0 0)
 				(effects
 					(font
@@ -369,7 +371,7 @@
 					(hide yes)
 				)
 			)
-			(property "Datasheet" "https://wiki.seeedstudio.com/xiao_topic_page/"
+			(property "Datasheet" "~"
 				(at 0 0 0)
 				(effects
 					(font
@@ -378,7 +380,7 @@
 					(hide yes)
 				)
 			)
-			(property "Description" "The Seeed Studio XIAO series, named after the Chinese word for \"small,\" comprises tiny development boards based on various hardware platforms of ESP32, SAMD21, RP2040, nRF52840, RP2350 and RA4M1, MG24"
+			(property "Description" "Generic connector, single row, 01x07, script generated"
 				(at 0 0 0)
 				(effects
 					(font
@@ -387,7 +389,15 @@
 					(hide yes)
 				)
 			)
-			(property "ki_keywords" "SEEED STUDIO XIAO ESP32 SAMD21 RP2040 nRF52840 RP2350 RA4M1 MG24"
+			(property "ki_locked" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "connector"
 				(at 0 0 0)
 				(effects
 					(font
@@ -396,7 +406,7 @@
 					(hide yes)
 				)
 			)
-			(property "ki_fp_filters" "*SeeedStudio?XIAO?SocketSMD*"
+			(property "ki_fp_filters" "Connector*:*_1x??_*"
 				(at 0 0 0)
 				(effects
 					(font
@@ -405,22 +415,179 @@
 					(hide yes)
 				)
 			)
-			(symbol "Module_XIAO_Generic_SocketSMD_1_1"
-				(rectangle
-					(start -10.16 15.24)
-					(end 10.16 -15.24)
+			(symbol "Conn_01x07_Socket_1_1"
+				(polyline
+					(pts
+						(xy -1.27 7.62) (xy -0.508 7.62)
+					)
 					(stroke
-						(width 0.254)
+						(width 0.1524)
 						(type default)
 					)
 					(fill
-						(type background)
+						(type none)
 					)
 				)
-				(pin bidirectional line
-					(at -12.7 12.7 0)
-					(length 2.54)
-					(name "D0"
+				(polyline
+					(pts
+						(xy -1.27 5.08) (xy -0.508 5.08)
+					)
+					(stroke
+						(width 0.1524)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -1.27 2.54) (xy -0.508 2.54)
+					)
+					(stroke
+						(width 0.1524)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -1.27 0) (xy -0.508 0)
+					)
+					(stroke
+						(width 0.1524)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -1.27 -2.54) (xy -0.508 -2.54)
+					)
+					(stroke
+						(width 0.1524)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -1.27 -5.08) (xy -0.508 -5.08)
+					)
+					(stroke
+						(width 0.1524)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -1.27 -7.62) (xy -0.508 -7.62)
+					)
+					(stroke
+						(width 0.1524)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(arc
+					(start 0 7.112)
+					(mid -0.5058 7.62)
+					(end 0 8.128)
+					(stroke
+						(width 0.1524)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(arc
+					(start 0 4.572)
+					(mid -0.5058 5.08)
+					(end 0 5.588)
+					(stroke
+						(width 0.1524)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(arc
+					(start 0 2.032)
+					(mid -0.5058 2.54)
+					(end 0 3.048)
+					(stroke
+						(width 0.1524)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(arc
+					(start 0 -0.508)
+					(mid -0.5058 0)
+					(end 0 0.508)
+					(stroke
+						(width 0.1524)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(arc
+					(start 0 -3.048)
+					(mid -0.5058 -2.54)
+					(end 0 -2.032)
+					(stroke
+						(width 0.1524)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(arc
+					(start 0 -5.588)
+					(mid -0.5058 -5.08)
+					(end 0 -4.572)
+					(stroke
+						(width 0.1524)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(arc
+					(start 0 -8.128)
+					(mid -0.5058 -7.62)
+					(end 0 -7.112)
+					(stroke
+						(width 0.1524)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(pin passive line
+					(at -5.08 7.62 0)
+					(length 3.81)
+					(name "Pin_1"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -435,10 +602,10 @@
 						)
 					)
 				)
-				(pin bidirectional line
-					(at -12.7 10.16 0)
-					(length 2.54)
-					(name "D1"
+				(pin passive line
+					(at -5.08 5.08 0)
+					(length 3.81)
+					(name "Pin_2"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -453,10 +620,10 @@
 						)
 					)
 				)
-				(pin bidirectional line
-					(at -12.7 7.62 0)
-					(length 2.54)
-					(name "D2"
+				(pin passive line
+					(at -5.08 2.54 0)
+					(length 3.81)
+					(name "Pin_3"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -471,10 +638,10 @@
 						)
 					)
 				)
-				(pin bidirectional line
-					(at -12.7 5.08 0)
-					(length 2.54)
-					(name "D3"
+				(pin passive line
+					(at -5.08 0 0)
+					(length 3.81)
+					(name "Pin_4"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -489,10 +656,10 @@
 						)
 					)
 				)
-				(pin bidirectional line
-					(at -12.7 2.54 0)
-					(length 2.54)
-					(name "D4"
+				(pin passive line
+					(at -5.08 -2.54 0)
+					(length 3.81)
+					(name "Pin_5"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -507,10 +674,10 @@
 						)
 					)
 				)
-				(pin bidirectional line
-					(at -12.7 0 0)
-					(length 2.54)
-					(name "D5"
+				(pin passive line
+					(at -5.08 -5.08 0)
+					(length 3.81)
+					(name "Pin_6"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -525,10 +692,10 @@
 						)
 					)
 				)
-				(pin bidirectional line
-					(at -12.7 -2.54 0)
-					(length 2.54)
-					(name "D6"
+				(pin passive line
+					(at -5.08 -7.62 0)
+					(length 3.81)
+					(name "Pin_7"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -536,132 +703,6 @@
 						)
 					)
 					(number "7"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin bidirectional line
-					(at -12.7 -5.08 0)
-					(length 2.54)
-					(name "D7"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "8"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin bidirectional line
-					(at -12.7 -7.62 0)
-					(length 2.54)
-					(name "D8"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "9"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin bidirectional line
-					(at -12.7 -10.16 0)
-					(length 2.54)
-					(name "D9"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "10"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin bidirectional line
-					(at -12.7 -12.7 0)
-					(length 2.54)
-					(name "D10"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "11"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin power_in line
-					(at -2.54 17.78 270)
-					(length 2.54)
-					(name "3V3"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "12"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin power_in line
-					(at 0 17.78 270)
-					(length 2.54)
-					(name "5V"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "14"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin power_in line
-					(at 0 -17.78 90)
-					(length 2.54)
-					(name "GND"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "13"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -796,16 +837,6 @@
 			)
 			(embedded_fonts no)
 		)
-	)
-	(wire
-		(pts
-			(xy 168.91 83.82) (xy 168.91 88.9)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "8eb3b435-676c-4691-96df-71d8ae99f91d")
 	)
 	(global_label "Pull up"
 		(shape input)
@@ -1073,29 +1104,29 @@
 	)
 	(global_label "LED7"
 		(shape input)
-		(at 156.21 73.66 180)
+		(at 180.34 67.31 0)
 		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify right)
+			(justify left)
 		)
 		(uuid "38f373b2-09e9-4802-8b10-b03726c2aa6c")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 148.5682 73.66 0)
+			(at 187.9818 67.31 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 				(hide yes)
 			)
 		)
 	)
 	(global_label "LED1"
 		(shape input)
-		(at 156.21 53.34 180)
+		(at 163.83 57.15 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
@@ -1105,7 +1136,7 @@
 		)
 		(uuid "3a541a98-6a8f-478b-85ea-3605a214af7b")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 148.5682 53.34 0)
+			(at 156.1882 57.15 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -1513,7 +1544,7 @@
 	)
 	(global_label "LED4"
 		(shape input)
-		(at 156.21 60.96 180)
+		(at 163.83 64.77 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
@@ -1523,7 +1554,7 @@
 		)
 		(uuid "85af09fc-d553-4b1e-920e-065741a322fa")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 148.5682 60.96 0)
+			(at 156.1882 64.77 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -1535,22 +1566,22 @@
 	)
 	(global_label "LED6"
 		(shape input)
-		(at 156.21 76.2 180)
+		(at 180.34 69.85 0)
 		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify right)
+			(justify left)
 		)
 		(uuid "875104fa-2abf-48e3-aebd-2c6b504af189")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 148.5682 76.2 0)
+			(at 187.9818 69.85 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 				(hide yes)
 			)
 		)
@@ -1667,22 +1698,22 @@
 	)
 	(global_label "LED5"
 		(shape input)
-		(at 156.21 78.74 180)
+		(at 180.34 72.39 0)
 		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify right)
+			(justify left)
 		)
 		(uuid "c54562d3-7b91-45b7-b56f-aefc72bb8394")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 148.5682 78.74 0)
+			(at 187.9818 72.39 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 				(hide yes)
 			)
 		)
@@ -1733,22 +1764,22 @@
 	)
 	(global_label "LED8"
 		(shape input)
-		(at 156.21 71.12 180)
+		(at 180.34 64.77 0)
 		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify right)
+			(justify left)
 		)
 		(uuid "cad01514-5a87-47a3-917f-8c27dd95b829")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 148.5682 71.12 0)
+			(at 187.9818 64.77 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 				(hide yes)
 			)
 		)
@@ -1777,7 +1808,7 @@
 	)
 	(global_label "Pull up"
 		(shape input)
-		(at 156.21 68.58 180)
+		(at 163.83 72.39 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
@@ -1787,7 +1818,7 @@
 		)
 		(uuid "d5f88c91-66e3-4feb-bf40-74b550cb76c6")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 146.2098 68.58 0)
+			(at 153.8298 72.39 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -1843,7 +1874,7 @@
 	)
 	(global_label "LED3"
 		(shape input)
-		(at 156.21 58.42 180)
+		(at 163.83 62.23 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
@@ -1853,7 +1884,7 @@
 		)
 		(uuid "e4c15eaf-1d19-4aec-b73a-18c680485dab")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 148.5682 58.42 0)
+			(at 156.1882 62.23 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -1931,22 +1962,22 @@
 	)
 	(global_label "GND"
 		(shape input)
-		(at 168.91 88.9 270)
+		(at 180.34 57.15 0)
 		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify right)
+			(justify left)
 		)
 		(uuid "e943da55-5d72-453d-b2d3-f43dd5301c39")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 168.91 95.7557 90)
+			(at 187.1957 57.15 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 				(hide yes)
 			)
 		)
@@ -2063,7 +2094,7 @@
 	)
 	(global_label "LED2"
 		(shape input)
-		(at 156.21 55.88 180)
+		(at 163.83 59.69 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
@@ -2073,7 +2104,7 @@
 		)
 		(uuid "fea8d43a-7e77-4e12-879b-3156496d31d9")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 148.5682 55.88 0)
+			(at 156.1882 59.69 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2444,112 +2475,6 @@
 			(project "agent-main-mk1"
 				(path "/98219bbf-a93f-490c-927f-e4ae55e2f73c"
 					(reference "R9")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "fab:Module_XIAO_Generic_SocketSMD")
-		(at 168.91 66.04 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "50accbb5-39f4-43bf-8e97-8e74e0095ef1")
-		(property "Reference" "M1"
-			(at 180.34 64.7699 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "Module_XIAO_Generic_SocketSMD"
-			(at 180.34 67.3099 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" "fab:Module_XIAO_Generic_SocketSMD"
-			(at 168.91 66.04 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" "https://wiki.seeedstudio.com/xiao_topic_page/"
-			(at 168.91 66.04 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" "The Seeed Studio XIAO series, named after the Chinese word for \"small,\" comprises tiny development boards based on various hardware platforms of ESP32, SAMD21, RP2040, nRF52840, RP2350 and RA4M1, MG24"
-			(at 168.91 66.04 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "9"
-			(uuid "c71dc7a7-7870-4a17-81af-b67c33df9c55")
-		)
-		(pin "11"
-			(uuid "ee6421f9-74b9-434c-8e07-33df8552940b")
-		)
-		(pin "7"
-			(uuid "d44ba49e-723d-471d-9514-bc5fde07ddce")
-		)
-		(pin "1"
-			(uuid "72b67f7a-9255-4634-b385-27bdb9765c7c")
-		)
-		(pin "12"
-			(uuid "1137e8fb-8763-42ac-aa91-9551ab1e01f5")
-		)
-		(pin "6"
-			(uuid "d0b631cd-d231-48d8-948c-89a451700b01")
-		)
-		(pin "3"
-			(uuid "b715349c-2883-4ef9-bff7-6fbf9676b7b6")
-		)
-		(pin "14"
-			(uuid "af7b7f82-9bd2-4ed2-91f5-1c34e572b167")
-		)
-		(pin "10"
-			(uuid "442e554d-58ce-478f-a9b1-bc0210afde75")
-		)
-		(pin "5"
-			(uuid "588da7ca-d3ea-4781-b4bb-35bd92d7f00b")
-		)
-		(pin "4"
-			(uuid "965d50e4-1cd3-45e4-bc07-d27d90b2dabd")
-		)
-		(pin "2"
-			(uuid "b9e158c6-1a1c-448b-960d-0729c9ad741c")
-		)
-		(pin "13"
-			(uuid "268bbc2d-c7c2-4a2b-b755-7eeacb674708")
-		)
-		(pin "8"
-			(uuid "c06f8c58-4d66-4ced-aad2-400683c4af05")
-		)
-		(instances
-			(project ""
-				(path "/98219bbf-a93f-490c-927f-e4ae55e2f73c"
-					(reference "M1")
 					(unit 1)
 				)
 			)
@@ -3016,6 +2941,91 @@
 		)
 	)
 	(symbol
+		(lib_id "Connector:Conn_01x07_Socket")
+		(at 168.91 64.77 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "bc2d2f94-655e-44f6-aafd-71474856cdd2")
+		(property "Reference" "J9"
+			(at 170.18 63.4999 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+		(property "Value" "Xiao Left"
+			(at 161.036 52.578 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Connector_PinSocket_2.54mm:PinSocket_1x07_P2.54mm_Vertical"
+			(at 168.91 64.77 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 168.91 64.77 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Generic connector, single row, 01x07, script generated"
+			(at 168.91 64.77 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "757c6cff-edad-4b13-84ba-5b510da0bae1")
+		)
+		(pin "6"
+			(uuid "37225470-100a-4329-8a67-bc070f681b4b")
+		)
+		(pin "7"
+			(uuid "f92d9f95-f2e3-41fe-96aa-8cf085c5e85d")
+		)
+		(pin "5"
+			(uuid "fae9d5e6-7fa1-42fd-93ad-f4d58662e6ad")
+		)
+		(pin "4"
+			(uuid "512d531b-a57a-4560-9f4e-054abfd46a91")
+		)
+		(pin "2"
+			(uuid "257a4fc6-5438-4fb1-b55c-c17b1125409e")
+		)
+		(pin "3"
+			(uuid "1a09618f-d6a4-4272-aea5-df2395b85cbc")
+		)
+		(instances
+			(project ""
+				(path "/98219bbf-a93f-490c-927f-e4ae55e2f73c"
+					(reference "J9")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Connector:Conn_01x06_Socket")
 		(at 49.53 59.69 180)
 		(unit 1)
@@ -3376,6 +3386,92 @@
 			(project "agent-main-mk1"
 				(path "/98219bbf-a93f-490c-927f-e4ae55e2f73c"
 					(reference "R10")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Connector:Conn_01x07_Socket")
+		(at 175.26 64.77 0)
+		(mirror y)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "ff0fbb5a-0f02-45f3-9c7a-87aeda27764c")
+		(property "Reference" "J10"
+			(at 173.99 63.4999 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+		(property "Value" "Xiao Right"
+			(at 183.134 52.578 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Connector_PinSocket_2.54mm:PinSocket_1x07_P2.54mm_Vertical"
+			(at 175.26 64.77 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 175.26 64.77 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Generic connector, single row, 01x07, script generated"
+			(at 175.26 64.77 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "5ca5a6f7-e701-454b-a712-bd657958edbd")
+		)
+		(pin "6"
+			(uuid "d9e3b583-f181-4bce-8636-c61e918f0e15")
+		)
+		(pin "7"
+			(uuid "7e12122c-0f03-4a63-9d5f-6bfc695b2672")
+		)
+		(pin "5"
+			(uuid "8dd25e1f-c417-4869-8679-ef324365b55f")
+		)
+		(pin "4"
+			(uuid "56926d14-16cd-4082-a066-955138485329")
+		)
+		(pin "2"
+			(uuid "20695bd5-7bc5-4505-a137-df4d175b9f43")
+		)
+		(pin "3"
+			(uuid "103224c3-1bff-44bf-ba11-71a4dd186d05")
+		)
+		(instances
+			(project "agent-main-mk1"
+				(path "/98219bbf-a93f-490c-927f-e4ae55e2f73c"
+					(reference "J10")
 					(unit 1)
 				)
 			)
