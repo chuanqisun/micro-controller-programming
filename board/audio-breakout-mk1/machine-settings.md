@@ -62,3 +62,5 @@ Dot duration: 200 µs
 Power: 100%
 DPI: 800
 Pass: 8
+
+Results: deeper engraving, can see the underlying FR1
