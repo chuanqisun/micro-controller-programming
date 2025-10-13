@@ -4,7 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "npm run build:switchboard && npm run upload:switchboard && npm run monitor",
+    "dev": "npm run build:operator && npm run upload:operator && npm run monitor",
+    "build:operator": "arduino-cli compile -b esp32:esp32:XIAO_ESP32C3 ./sketches/operator",
+    "upload:operator": "arduino-cli upload -p /dev/ttyACM0 -b esp32:esp32:XIAO_ESP32C3 ./sketches/operator",
+    "dev:operator": "npm run build:operator && npm run upload:operator && npm run monitor",
     "build:switchboard": "arduino-cli compile -b esp32:esp32:XIAO_ESP32C3 ./sketches/switchboard",
     "upload:switchboard": "arduino-cli upload -p /dev/ttyACM0 -b esp32:esp32:XIAO_ESP32C3 ./sketches/switchboard",
     "dev:switchboard": "npm run build:switchboard && npm run upload:switchboard && npm run monitor",
