@@ -4,7 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "npm run build:sound-test && npm run upload:sound-test && npm run monitor",
+    "dev": "npm run build:switchboard && npm run upload:switchboard && npm run monitor",
+    "build:switchboard": "arduino-cli compile -b esp32:esp32:XIAO_ESP32C3 ./sketches/switchboard",
+    "upload:switchboard": "arduino-cli upload -p /dev/ttyACM0 -b esp32:esp32:XIAO_ESP32C3 ./sketches/switchboard",
+    "dev:switchboard": "npm run build:switchboard && npm run upload:switchboard && npm run monitor",
     "dev:rp2040": "npm run build:rp2040 && npm run upload:rp2040 && npm run monitor",
     "build:rp2040": "arduino-cli compile -b rp2040:rp2040:seeed_xiao_rp2040 ./sketches/cube-viewer",
     "upload:rp2040": "arduino-cli upload -p /dev/ttyACM0 -b rp2040:rp2040:seeed_xiao_rp2040 ./sketches/cube-viewer",
