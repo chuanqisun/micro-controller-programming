@@ -46,3 +46,16 @@ frontside:
 bottom: 5 mm
 entered left: 3.156 mm = 4.74 - (5.51 - 3.9265 )
 expected right: 5.51 mm
+
+
+# Run 3
+
+frontside:
+bottom: 5 mm
+entered left: 3.5 mm
+actual left: 5.26, 5.23, 5.33, 5.29 avg to 5.2775
+actual right: 5.07, 5.05, 5.07, 5.02 avg to 5.0525
+
+backside:
+bottom: 5 mm
+entered left: 3.275 mm = 5.0525 - (5.2775 - 3.5)
