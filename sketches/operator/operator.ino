@@ -12,6 +12,7 @@ void setup() {
   // Configure input pins. Use INPUT so external pull-ups/pull-downs can be applied as needed.
   for (int i = 0; i < numInputs; ++i) {
     pinMode(inputPins[i], INPUT);
+    digitalWrite(inputPins[i], HIGH); // TODO: test this to see if it solves the floating high issue. We need to reserve LOW^3 as unplugged state
   }
 
   Serial.println("Input monitor started");
@@ -29,5 +30,5 @@ void loop() {
     }
   }
   Serial.println(); // blank line between samples
-  delay(500);
+  delay(50);
 }
