@@ -9,10 +9,10 @@ void setup() {
   // Give Serial a moment to initialize on some boards
   delay(50);
 
-  // Configure input pins. Use INPUT so external pull-ups/pull-downs can be applied as needed.
+  // Configure input pins. Use INPUT_PULLUP so external pull-downs can be applied as needed.
   for (int i = 0; i < numInputs; ++i) {
-    pinMode(inputPins[i], INPUT);
-    digitalWrite(inputPins[i], LOW); // LOW LOW LOW means unplugged
+    pinMode(inputPins[i], INPUT_PULLUP);
+    digitalWrite(inputPins[i], HIGH); // HIGH HIGH HIGH means unplugged
   }
 
   Serial.println("Input monitor started");
