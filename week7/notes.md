@@ -6,8 +6,9 @@
 
 # Scale up
 
-- Learned about "dog bone" joint
+- Given the limited machine time, and material change from 2 by 4 to OSB, I adopted a more compact design
 - Found simpler design: https://www.ebay.com/itm/405232603666?chn=ps&mkevt=1&mkcid=28&google_free_listing_action=view_item
+- Learned about "dog bone" joint
 
 # Multi-pass issue
 
