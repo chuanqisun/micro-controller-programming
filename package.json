@@ -4,7 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "npm run build:operator && npm run upload:operator && npm run monitor",
+    "dev": "npm run build:talkie-only && npm run upload:talkie-only && npm run monitor",
+    "build:talkie-only": "arduino-cli compile -b esp32:esp32:XIAO_ESP32C3 ./sketches/talkie-only",
+    "upload:talkie-only": "arduino-cli upload -p /dev/ttyACM0 -b esp32:esp32:XIAO_ESP32C3 ./sketches/talkie-only",
+    "dev:talkie-only": "npm run build:talkie-only && npm run upload:talkie-only && npm run monitor",
     "build:operator": "arduino-cli compile -b esp32:esp32:XIAO_ESP32C3 ./sketches/operator",
     "upload:operator": "arduino-cli upload -p /dev/ttyACM0 -b esp32:esp32:XIAO_ESP32C3 ./sketches/operator",
     "dev:operator": "npm run build:operator && npm run upload:operator && npm run monitor",
