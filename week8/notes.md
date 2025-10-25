@@ -516,3 +516,239 @@ process.on("SIGINT", () => {
   });
 });
 ```
+
+## UDP low latency streaming
+
+Server
+
+```cpp
+
+/**
+ * @file talkie-only.ino
+ * @brief Sending audio over UDP using I2S microphone
+ * Following the UDP example pattern from AudioTools
+ */
+
+#include "AudioTools.h"
+#include "AudioTools/Communication/UDPStream.h"
+
+
+// WiFi credentials
+const char *ssid = "";
+const char *password = "";
+
+AudioInfo info(22000, 1, 16);  // 32kHz, mono, 16-bit
+I2SStream i2sStream;           // Access I2S as stream
+ConverterFillLeftAndRight<int16_t> filler(LeftIsEmpty); // fill both channels
+UDPStream udp(ssid, password);
+Throttle throttle(udp);
+IPAddress udpAddress(192, 168, 41, 106);  // Broadcast address
+const int udpPort = 8888;
+StreamCopy copier(throttle, i2sStream);  // copies I2S microphone input into UDP
+
+void setup() {
+  Serial.begin(115200);
+  delay(100);
+  AudioToolsLogger.begin(Serial, AudioToolsLogLevel::Info);
+
+  // Connect to WiFi
+  Serial.println("\nConnecting to WiFi...");
+  WiFi.begin(ssid, password);
+
+  int attempts = 0;
+  while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+    delay(500);
+    Serial.print(".");
+    attempts++;
+  }
+
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("\nFailed to connect to WiFi");
+    return;
+  }
+
+  Serial.println("\nWiFi connected!");
+  Serial.print("Device IP: ");
+  Serial.println(WiFi.localIP());
+
+  // Configure I2S with custom pinout
+  Serial.println("Starting I2S...");
+  auto i2sCfg = i2sStream.defaultConfig(RX_MODE);
+  i2sCfg.copyFrom(info);
+  i2sCfg.pin_bck = D0;   // BCLK
+  i2sCfg.pin_data = D1;  // DOUT
+  i2sCfg.pin_ws = D2;    // LRC
+  i2sCfg.i2s_format = I2S_STD_FORMAT;
+
+  if (!i2sStream.begin(i2sCfg)) {
+    Serial.println("Failed to initialize I2S");
+    return;
+  }
+  Serial.println("I2S initialized successfully");
+
+  // Define udp address and port
+  udp.begin(udpAddress, udpPort);
+
+  // Define Throttle
+  auto throttleCfg = throttle.defaultConfig();
+  throttleCfg.copyFrom(info);
+  //throttleCfg.correction_ms = 0;
+  throttle.begin(throttleCfg);
+
+  Serial.println("Started streaming...");
+  Serial.print("Sending to: ");
+  Serial.print(udpAddress);
+  Serial.print(":");
+  Serial.println(udpPort);
+}
+
+void loop() {
+  copier.copy();
+}
+
+```
+
+Client
+
+```js
+const dgram = require("dgram");
+const { spawn } = require("child_process");
+
+// Audio configuration (must match Arduino settings)
+const SAMPLE_RATE = 22000;
+const CHANNELS = 1;
+const BITS_PER_SAMPLE = 16;
+
+// UDP configuration
+const UDP_PORT = 8888;
+
+// Create UDP socket
+const server = dgram.createSocket("udp4");
+
+// FFmpeg process to play audio
+let ffmpegPlayer = null;
+
+// Statistics
+let packetsReceived = 0;
+let bytesReceived = 0;
+let lastStatsTime = Date.now();
+
+function startAudioPlayer() {
+  console.log("Starting audio player...");
+
+  // Use ffmpeg to play raw PCM audio
+  ffmpegPlayer = spawn("ffmpeg", [
+    "-f",
+    "s16le", // signed 16-bit little-endian
+    "-ar",
+    SAMPLE_RATE.toString(), // sample rate
+    "-ac",
+    CHANNELS.toString(), // channels
+    "-i",
+    "pipe:0", // input from stdin
+    "-f",
+    "alsa", // Use ALSA for Linux audio output
+    "default", // Default audio output device
+  ]);
+
+  ffmpegPlayer.stderr.on("data", (data) => {
+    // ffmpeg outputs info to stderr, only log errors
+    const message = data.toString();
+    if (message.includes("error") || message.includes("Error")) {
+      console.error("FFmpeg error:", message);
+    }
+  });
+
+  ffmpegPlayer.on("error", (err) => {
+    console.error("FFmpeg process error:", err);
+  });
+
+  ffmpegPlayer.on("close", (code) => {
+    console.log(`FFmpeg process exited with code ${code}`);
+  });
+
+  console.log("✓ Audio player started");
+}
+
+// Handle incoming UDP packets
+server.on("message", (msg, rinfo) => {
+  if (!ffmpegPlayer) {
+    startAudioPlayer();
+  }
+
+  // Write audio data to ffmpeg stdin
+  if (ffmpegPlayer && !ffmpegPlayer.killed) {
+    ffmpegPlayer.stdin.write(msg);
+  }
+
+  // Update statistics
+  packetsReceived++;
+  bytesReceived += msg.length;
+
+  // Log statistics every 5 seconds
+  const now = Date.now();
+  if (now - lastStatsTime > 5000) {
+    const elapsed = (now - lastStatsTime) / 1000;
+    const packetsPerSec = (packetsReceived / elapsed).toFixed(1);
+    const kbytesPerSec = (bytesReceived / elapsed / 1024).toFixed(2);
+
+    console.log(`Stats: ${packetsPerSec} packets/s, ${kbytesPerSec} KB/s from ${rinfo.address}:${rinfo.port}`);
+
+    packetsReceived = 0;
+    bytesReceived = 0;
+    lastStatsTime = now;
+  }
+});
+
+server.on("error", (err) => {
+  console.error(`Server error:\n${err.stack}`);
+  server.close();
+});
+
+server.on("listening", () => {
+  const address = server.address();
+  const interfaces = require("os").networkInterfaces();
+  const addresses = [];
+
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      if (iface.family === "IPv4" && !iface.internal) {
+        addresses.push(iface.address);
+      }
+    }
+  }
+
+  console.log("\n==============================================");
+  console.log("ESP32 Audio UDP Receiver");
+  console.log("==============================================");
+  console.log(`UDP Server listening on port ${address.port}`);
+  console.log(`Sample Rate: ${SAMPLE_RATE} Hz`);
+  console.log(`Channels: ${CHANNELS} (mono)`);
+  console.log(`Bits per sample: ${BITS_PER_SAMPLE}`);
+  console.log("\nListening on:");
+  console.log(`  Local:   ${address.address}:${address.port}`);
+  addresses.forEach((addr) => {
+    console.log(`  Network: ${addr}:${address.port}`);
+  });
+  console.log("\nWaiting for ESP32 to send audio...");
+  console.log("==============================================\n");
+});
+
+// Start UDP server
+server.bind(UDP_PORT);
+
+// Graceful shutdown
+process.on("SIGINT", () => {
+  console.log("\n\nShutting down...");
+
+  if (ffmpegPlayer && !ffmpegPlayer.killed) {
+    ffmpegPlayer.stdin.end();
+    ffmpegPlayer.kill("SIGTERM");
+  }
+
+  server.close(() => {
+    console.log("Server closed");
+    process.exit(0);
+  });
+});
+```
