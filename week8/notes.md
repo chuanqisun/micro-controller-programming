@@ -249,8 +249,8 @@ void loop() {
 #include "AudioTools/Communication/AudioHttp.h"
 
 // WiFi credentials
-const char *ssid = "";
-const char *password = "";
+const char *ssid = "REPLACE_WITH_SSID";
+const char *password = "REPLACE_WITH_REAL_PASSWORD";
 
 // I2S and Audio
 AudioInfo info(16000, 1, 16);  // 16kHz, mono, 16-bit
@@ -330,8 +330,8 @@ Server
 
 
 // WiFi credentials
-const char *ssid = "REPLACE";
-const char *password = "REPLACE";
+const char *ssid = "REPLACE_WITH_SSID";
+const char *password = "REPLACE_WITH_REAL_PASSWORD";
 
 AudioInfo info(22000, 1, 16);
 SineWaveGenerator<int16_t> sineWave(32000);  // subclass of SoundGenerator with max amplitude of 32000
@@ -534,8 +534,8 @@ Server
 
 
 // WiFi credentials
-const char *ssid = "";
-const char *password = "";
+const char *ssid = "REPLACE_WITH_SSID";
+const char *password = "REPLACE_WITH_REAL_PASSWORD";
 
 AudioInfo info(22000, 1, 16);  // 32kHz, mono, 16-bit
 I2SStream i2sStream;           // Access I2S as stream
@@ -1064,8 +1064,8 @@ client: adding hold-to-speak button
 
 
 // WiFi credentials
-const char *ssid = "";
-const char *password = "";
+const char *ssid = "REPLACE_WITH_SSID";
+const char *password = "REPLACE_WITH_REAL_PASSWORD";
 
 // Debounce settings
 const int DEBOUNCE_THRESHOLD = 5;
