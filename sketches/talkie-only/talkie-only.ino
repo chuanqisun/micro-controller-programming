@@ -13,7 +13,13 @@
 const char *ssid = "";
 const char *password = "";
 
-AudioInfo info(22000, 1, 16);  // 32kHz, mono, 16-bit
+// Debounce settings
+const int DEBOUNCE_THRESHOLD = 5;
+int buttonCounter = 0;
+bool buttonState = HIGH;
+bool lastButtonState = HIGH;
+
+AudioInfo info(22000, 1, 16);  // 22kHz, mono, 16-bit
 I2SStream i2sStream;           // Access I2S as stream
 ConverterFillLeftAndRight<int16_t> filler(LeftIsEmpty); // fill both channels
 UDPStream udp(ssid, password);
@@ -25,7 +31,11 @@ StreamCopy copier(throttle, i2sStream);  // copies I2S microphone input into UDP
 void setup() {
   Serial.begin(115200);
   delay(100);
-  AudioToolsLogger.begin(Serial, AudioToolsLogLevel::Info);
+  AudioToolsLogger.begin(Serial, AudioToolsLogLevel::Warning);
+
+  // Configure D8 and D9 as input with pull-up resistors
+  pinMode(D8, INPUT_PULLUP);
+  pinMode(D9, INPUT_PULLUP);
 
   // Connect to WiFi
   Serial.println("\nConnecting to WiFi...");
@@ -79,5 +89,36 @@ void setup() {
 }
 
 void loop() {
-  copier.copy();
+  // Read combined button state (LOW if either button is pressed)
+  int buttonReading = (digitalRead(D8) == LOW || digitalRead(D9) == LOW) ? LOW : HIGH;
+  
+  // Debounce combined button
+  if (buttonReading == LOW) {
+    buttonCounter++;
+    if (buttonCounter >= DEBOUNCE_THRESHOLD) {
+      buttonState = LOW;
+      buttonCounter = DEBOUNCE_THRESHOLD; // Cap the counter
+    }
+  } else {
+    buttonCounter--;
+    if (buttonCounter <= -DEBOUNCE_THRESHOLD) {
+      buttonState = HIGH;
+      buttonCounter = -DEBOUNCE_THRESHOLD; // Cap the counter
+    }
+  }
+
+  // Log state changes
+  if (buttonState != lastButtonState) {
+    if (buttonState == LOW) {
+      Serial.println("Speaking...");
+    } else {
+      Serial.println("Sent");
+    }
+    lastButtonState = buttonState;
+  }
+
+  // Transmit audio only if button is pressed
+  if (buttonState == LOW) {
+    copier.copy();
+  }
 }

@@ -2,3 +2,4 @@ node_modules
 fp-info-cache
 board/**/*.zip
 *.lck
+.env
