@@ -19,7 +19,7 @@ int buttonCounter = 0;
 bool buttonState = HIGH;
 bool lastButtonState = HIGH;
 
-AudioInfo info(22000, 1, 16);  // 22kHz, mono, 16-bit
+AudioInfo info(24000, 1, 16);  // 24kHz, mono, 16-bit
 I2SStream i2sStream;           // Access I2S as stream
 ConverterFillLeftAndRight<int16_t> filler(LeftIsEmpty); // fill both channels
 UDPStream udp(ssid, password);
