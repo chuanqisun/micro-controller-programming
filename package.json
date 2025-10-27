@@ -43,7 +43,6 @@
     "apps/*"
   ],
   "dependencies": {
-    "form-data": "^4.0.4",
     "openai": "^6.7.0",
     "ws": "^8.18.3"
   }
