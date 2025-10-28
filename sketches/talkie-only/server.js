@@ -42,7 +42,7 @@ function startServer() {
 function handleServerListening() {
   const address = server.address();
   logServerStartup(address);
-  silenceCheckInterval = setInterval(detectSilenceAndTranscribe, SILENCE_CHECK_INTERVAL_MS);
+  silenceCheckInterval = setInterval(detectSilence, SILENCE_CHECK_INTERVAL_MS);
 }
 
 function handleIncomingAudioPacket(msg, rinfo) {
@@ -187,7 +187,7 @@ function beginSpeakingStateIfNeeded() {
   }
 }
 
-function detectSilenceAndTranscribe() {
+function detectSilence() {
   if (currentState === STATE.SPEAKING && lastPacketTime) {
     const timeSinceLastPacket = Date.now() - lastPacketTime;
     if (timeSinceLastPacket > SILENCE_TIMEOUT_MS) {
