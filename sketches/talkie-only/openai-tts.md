@@ -1,3 +1,5 @@
+Follow this example to generate speech from text
+
 ```js
 import OpenAI from "openai";
 import { playAudio } from "openai/helpers/audio";

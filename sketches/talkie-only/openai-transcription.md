@@ -1,3 +1,5 @@
+Follow this example to transcribe audio file to text
+
 ```js
 import fs from "fs";
 import OpenAI from "openai";
