@@ -65,3 +65,6 @@ Key observations:
 - Opening serial port positively correlates with noise artifacts
 - Higher sampling frequency positively correlates with noise artifacts
 - Confounding: higher sampling frequency means higher data rate
+
+Hypothesis 1: Serial Port and its data transmission is causing interference
+Hypothesis 2: The microphone on the device is causing interference. Since it shares BCLK and LRC lines.
