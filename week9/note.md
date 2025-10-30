@@ -66,5 +66,9 @@ Key observations:
 - Higher sampling frequency positively correlates with noise artifacts
 - Confounding: higher sampling frequency means higher data rate
 
-Hypothesis 1: Serial Port and its data transmission is causing interference
-Hypothesis 2: The microphone on the device is causing interference. Since it shares BCLK and LRC lines.
+Follow up experiments:
+
+- Hypothesis 1: Serial Port and its data transmission is causing interference
+- Experiment: switching from a data passing usb c cable to a power only cable reduces artifacts
+- Hypothesis 2: The microphone on the device is causing interference. Since it shares BCLK and LRC lines.
+- Experiment: unplugging the microphone should reduce/remove noise
