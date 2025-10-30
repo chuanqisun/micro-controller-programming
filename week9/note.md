@@ -68,7 +68,9 @@ Key observations:
 
 Follow up experiments:
 
-- Hypothesis 1: Serial Port and its data transmission is causing interference
-- Experiment: switching from a data passing usb c cable to a power only cable reduces artifacts
-- Hypothesis 2: The microphone on the device is causing interference. Since it shares BCLK and LRC lines.
+- Hypothesis 1: The microphone on the device is causing interference. Since it shares BCLK and LRC lines.
 - Experiment: unplugging the microphone should reduce/remove noise
+- Result: no effect
+- Hypothesis 2: Serial Port and its data transmission is causing interference
+- Experiment: switching from a data passing usb c cable to a power only cable reduces artifacts
+- Result: noise reduced but not eliminated

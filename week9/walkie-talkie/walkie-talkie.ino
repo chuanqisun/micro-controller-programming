@@ -21,7 +21,7 @@ const int frequency = 440;    // frequency of sine wave in Hz
 const int sampleRate = 44100; // sample rate in Hz
 
 AudioInfo info(sampleRate, 2, 16);
-SineWaveGenerator<int16_t> sineWave(4000); // sine wave with max amplitude of 4000
+SineWaveGenerator<int16_t> sineWave(1000); // sine wave with max amplitude of 4000
 GeneratedSoundStream<int16_t> sound(sineWave); // stream generated from sine wave
 I2SStream out;
 StreamCopy copier(out, sound); // copies sound into i2s
