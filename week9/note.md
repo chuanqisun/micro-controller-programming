@@ -1,3 +1,6 @@
+## Playing sine wave
+
+```cpp
 #include "AudioTools.h"
 
 /**
@@ -29,7 +32,7 @@ StreamCopy copier(out, sound); // copies sound into i2s
 void setup() {
   Serial.begin(115200);
   Serial.println("I2S Sine Wave Playback");
-  
+
   AudioToolsLogger.begin(Serial, AudioToolsLogLevel::Info);
 
   // start I2S with custom pinout
@@ -49,3 +52,16 @@ void setup() {
 void loop() {
   copier.copy();
 }
+```
+
+- 44.1 kHz, pulsing sound artifact
+- 44 kHz, same artifact
+- 40 kHz, reduced artifact
+- 32 kHz, no artifact
+- 22kHz sample rate, no artifact
+
+Key observations:
+
+- Opening serial port positively correlates with noise artifacts
+- Higher sampling frequency positively correlates with noise artifacts
+- Confounding: higher sampling frequency means higher data rate
