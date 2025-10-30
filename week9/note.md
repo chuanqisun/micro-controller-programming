@@ -72,5 +72,5 @@ Follow up experiments:
 - Experiment: unplugging the microphone should reduce/remove noise
 - Result: no effect
 - Hypothesis 2: Serial Port and its data transmission is causing interference
-- Experiment: switching from a data passing usb c cable to a power only cable reduces artifacts
+- Experiment: switching from a data passing usb c cable to a power only cable reduces artifacts, and removing all serial communication in code
 - Result: noise reduced but not eliminated
