@@ -1,4 +1,10 @@
+/**
+ * @file walkie-talkie.ino
+ * @brief Receives UDP audio stream and plays it through I2S speaker
+ */
+
 #include "AudioTools.h"
+#include "AudioTools/Communication/UDPStream.h"
 
 /**
  * Pinout:
@@ -17,35 +23,76 @@
 #define BTN_PTT1 D8
 #define BTN_PTT2 D9
 
-const int frequency = 440;    // frequency of sine wave in Hz
-const int sampleRate = 44100; // sample rate in Hz
+// WiFi credentials
+const char *ssid = "";
+const char *password = "";
 
-AudioInfo info(sampleRate, 2, 16);
-SineWaveGenerator<int16_t> sineWave(1000); // sine wave with max amplitude of 4000
-GeneratedSoundStream<int16_t> sound(sineWave); // stream generated from sine wave
-I2SStream out;
-StreamCopy copier(out, sound); // copies sound into i2s
+// Audio configuration (must match server settings)
+const int SAMPLE_RATE = 22000;
+const int CHANNELS = 1;
+const int BITS_PER_SAMPLE = 16;
+const int UDP_PORT = 8888;
+
+AudioInfo info(SAMPLE_RATE, CHANNELS, BITS_PER_SAMPLE);
+I2SStream i2s;           // I2S output to speaker
+UDPStream udp(ssid, password);
+StreamCopy copier(i2s, udp, 1024); // copy UDP stream to I2S
 
 void setup() {
   Serial.begin(115200);
-  Serial.println("I2S Sine Wave Playback");
-  
-  AudioToolsLogger.begin(Serial, AudioToolsLogLevel::Info);
+  delay(100);
+  AudioToolsLogger.begin(Serial, AudioToolsLogLevel::Warning);
 
-  // start I2S with custom pinout
+  // Connect to WiFi
+  Serial.println("\nConnecting to WiFi...");
+  WiFi.begin(ssid, password);
+
+  int attempts = 0;
+  while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+    delay(500);
+    Serial.print(".");
+    attempts++;
+  }
+
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("\nFailed to connect to WiFi");
+    return;
+  }
+
+  Serial.println("\nWiFi connected!");
+  Serial.print("Device IP: ");
+  Serial.println(WiFi.localIP());
+
+  // Start I2S with custom pinout for speaker output
   Serial.println("Starting I2S...");
-  auto config = out.defaultConfig(TX_MODE);
-  config.copyFrom(info);
-  config.pin_bck = I2S_BCLK;
-  config.pin_ws = I2S_LRC;
-  config.pin_data = I2S_DIN;
-  out.begin(config);
+  auto i2sCfg = i2s.defaultConfig(TX_MODE);
+  i2sCfg.copyFrom(info);
+  i2sCfg.pin_bck = I2S_BCLK;
+  i2sCfg.pin_ws = I2S_LRC;
+  i2sCfg.pin_data = I2S_DIN;
+  i2sCfg.i2s_format = I2S_STD_FORMAT;
 
-  // Setup sine wave
-  sineWave.begin(info, frequency);
-  Serial.println("Started sine wave playback");
+  if (!i2s.begin(i2sCfg)) {
+    Serial.println("Failed to initialize I2S");
+    return;
+  }
+  Serial.println("I2S initialized successfully");
+
+  // Start UDP receiver
+  Serial.println("Starting UDP receiver...");
+  udp.begin(UDP_PORT);
+  
+  Serial.println("Ready to receive audio on port ");
+  Serial.println(UDP_PORT);
+  Serial.println("Waiting for audio stream...");
 }
 
 void loop() {
-  copier.copy();
+  int len = copier.copy();
+  if (len > 0) {
+    // Audio data received and copied to I2S
+  } else {
+    // No data available, just wait a bit
+    delay(1);
+  }
 }

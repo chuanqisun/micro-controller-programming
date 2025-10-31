@@ -1,11 +1,11 @@
 const dgram = require("dgram");
 
-const SAMPLE_RATE = 24000;
+const SAMPLE_RATE = 22000;
 const CHANNELS = 1;
 const BITS_PER_SAMPLE = 16;
 const UDP_PORT = 8888;
-const TARGET_IP = "192.168.41.106"; // ESP32 IP address
-const PACKET_SIZE = 512; // bytes per UDP packet
+const TARGET_IP = "192.168.41.239"; // ESP32 IP address
+const PACKET_SIZE = 1024; // bytes per UDP packet
 const FREQUENCY = 440; // Hz (A4 note)
 
 const client = dgram.createSocket("udp4");
@@ -20,9 +20,7 @@ function startServer() {
 }
 
 function handleGracefulShutdown() {
-  console.log("\n\nShutting down...");
   client.close(() => {
-    console.log("Client closed");
     process.exit(0);
   });
 }
@@ -32,37 +30,17 @@ function startSineWaveStream() {
   const samplesPerPacket = PACKET_SIZE / 2; // 2 bytes per sample (16-bit)
   const phaseIncrement = (2 * Math.PI * FREQUENCY) / SAMPLE_RATE;
 
-  console.log("🎵 Starting sine wave generation...\n");
-
   setInterval(
     () => {
-      const buffer = Buffer.alloc(PACKET_SIZE);
-
-      for (let i = 0; i < samplesPerPacket; i++) {
-        // Generate sine wave sample
-        const sample = Math.sin(phase) * 0.3; // 30% amplitude to avoid clipping
-
-        // Convert to 16-bit PCM
-        const pcm16Value = Math.round(sample * 32767);
-
-        // Write as little-endian 16-bit integer
-        buffer.writeInt16LE(pcm16Value, i * 2);
-
-        // Increment phase
-        phase += phaseIncrement;
-        if (phase >= 2 * Math.PI) {
-          phase -= 2 * Math.PI;
-        }
-      }
-
-      sendAudioPacket(buffer);
+      const result = generateSineWaveBuffer(phase, samplesPerPacket, phaseIncrement);
+      phase = result.phase;
+      sendAudioPacket(result.buffer);
     },
     (samplesPerPacket / SAMPLE_RATE) * 1000
-  ); // Send packets at the correct rate
+  );
 }
 
 function sendAudioPacket(buffer) {
-  // Send to ESP32 on port 8888
   client.send(buffer, UDP_PORT, TARGET_IP, (err) => {
     if (err) {
       console.error("❌ Error sending packet:", err.message);
@@ -102,4 +80,20 @@ function getNetworkAddresses() {
   }
 
   return addresses;
+}
+
+function generateSineWaveBuffer(phase, samplesPerPacket, phaseIncrement) {
+  const buffer = Buffer.alloc(PACKET_SIZE);
+
+  for (let i = 0; i < samplesPerPacket; i++) {
+    const sample = Math.sin(phase) * 0.3; // 30% amplitude to avoid clipping
+    const pcm16Value = Math.round(sample * 32767);
+    buffer.writeInt16LE(pcm16Value, i * 2);
+    phase += phaseIncrement;
+    if (phase >= 2 * Math.PI) {
+      phase -= 2 * Math.PI;
+    }
+  }
+
+  return { buffer, phase };
 }
