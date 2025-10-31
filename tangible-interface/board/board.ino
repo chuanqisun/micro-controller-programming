@@ -1,17 +1,19 @@
 #include "AudioTools.h"
 #include "AudioTools/Communication/UDPStream.h"
 
+// TODO: customize the following for your local WIFI
 const char *WIFI_SSID = "";
 const char *WIFI_PASSWORD = "";
+
+// TODO : customize the following for you pinout
+const int I2S_BCLK = D0;
+const int I2S_SPEAKER_DATA = D10;
+const int I2S_LRC = D2;
 
 const int SAMPLE_RATE = 22050;
 const int CHANNELS = 1;
 const int BITS_PER_SAMPLE = 16;
 const int UDP_RECEIVE_PORT = 8888;
-
-const int I2S_BCLK = D0;
-const int I2S_SPEAKER_DATA = D10;
-const int I2S_LRC = D2;
 
 AudioInfo audioInfo(SAMPLE_RATE, CHANNELS, BITS_PER_SAMPLE);
 
