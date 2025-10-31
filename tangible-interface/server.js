@@ -131,11 +131,15 @@ function streamMP3ToClient(targetIP) {
   // Use ffmpeg to convert MP3 to raw PCM
   // Output format: 16-bit signed little-endian PCM, mono, 16kHz
   const ffmpeg = spawn("ffmpeg", [
-    "-i", mp3Path,           // Input file
-    "-f", "s16le",           // Output format: signed 16-bit little-endian
-    "-ar", "16000",          // Sample rate: 16kHz
-    "-ac", "1",              // Channels: mono
-    "-",                     // Output to stdout
+    "-i",
+    mp3Path, // Input file
+    "-f",
+    "s16le", // Output format: signed 16-bit little-endian
+    "-ar",
+    "16000", // Sample rate: 16kHz
+    "-ac",
+    "1", // Channels: mono
+    "-", // Output to stdout
   ]);
 
   let packetIndex = 0;
