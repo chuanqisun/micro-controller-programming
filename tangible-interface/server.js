@@ -2,9 +2,14 @@ const express = require("express");
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
+const dgram = require("dgram");
 
 const app = express();
 const PORT = 8000;
+const UDP_PORT = 8888;
+const PACKET_SIZE = 1024; // bytes per UDP packet
+
+const udpClient = dgram.createSocket("udp4");
 
 // Handle POST request to /upload
 app.post("/upload", express.raw({ type: "*/*", limit: "10mb" }), (req, res) => {
@@ -39,12 +44,72 @@ app.post("/upload", express.raw({ type: "*/*", limit: "10mb" }), (req, res) => {
   fs.writeFileSync(filePath, jpegBuffer);
 
   console.log("File uploaded successfully: image.jpeg");
+
+  // Get client IP from request
+  const clientIP = req.ip.replace(/^::ffff:/, ""); // Remove IPv6 prefix if present
+
+  // Stream MP3 file via UDP
+  streamMP3ToClient(clientIP);
+
+  // Log client IP and response
+  console.log(`Streaming MP3 to client IP: ${clientIP}:${UDP_PORT}`);
+
   res.json({
     ok: true,
     message: "File uploaded successfully",
     filename: "image.jpeg",
   });
 });
+
+// Stream MP3 file to client via UDP
+function streamMP3ToClient(targetIP) {
+  const mp3Path = path.join(__dirname, "example.mp3");
+
+  if (!fs.existsSync(mp3Path)) {
+    console.error("❌ example.mp3 not found!");
+    return;
+  }
+
+  const mp3Data = fs.readFileSync(mp3Path);
+  const totalPackets = Math.ceil(mp3Data.length / PACKET_SIZE);
+
+  console.log("\n==============================================");
+  console.log("Starting MP3 UDP Stream");
+  console.log("==============================================");
+  console.log(`Target: ${targetIP}:${UDP_PORT}`);
+  console.log(`File size: ${mp3Data.length} bytes`);
+  console.log(`Packet size: ${PACKET_SIZE} bytes`);
+  console.log(`Total packets: ${totalPackets}`);
+  console.log("==============================================\n");
+
+  let packetIndex = 0;
+
+  const intervalId = setInterval(() => {
+    if (packetIndex >= totalPackets) {
+      clearInterval(intervalId);
+      console.log("✅ MP3 streaming completed");
+      return;
+    }
+
+    const start = packetIndex * PACKET_SIZE;
+    const end = Math.min(start + PACKET_SIZE, mp3Data.length);
+    const packet = mp3Data.slice(start, end);
+
+    udpClient.send(packet, UDP_PORT, targetIP, (err) => {
+      if (err) {
+        console.error(`❌ Error sending packet ${packetIndex}:`, err.message);
+      }
+    });
+
+    packetIndex++;
+
+    // Log progress every 100 packets
+    if (packetIndex % 100 === 0) {
+      const progress = ((packetIndex / totalPackets) * 100).toFixed(1);
+      console.log(`📦 Progress: ${progress}% (${packetIndex}/${totalPackets} packets)`);
+    }
+  }, 10); // Send a packet every 10ms
+}
 
 // Get local IP address
 function getLocalIpAddress() {
@@ -60,9 +125,23 @@ function getLocalIpAddress() {
   return "localhost";
 }
 
+// Handle graceful shutdown
+process.on("SIGINT", () => {
+  udpClient.close(() => {
+    console.log("\n👋 Server shutting down...");
+    process.exit(0);
+  });
+});
+
 // Start server
 app.listen(PORT, () => {
   const ipAddress = getLocalIpAddress();
-  console.log(`Server running at http://${ipAddress}:${PORT}`);
+  console.log("\n==============================================");
+  console.log("Image Upload Server with UDP Audio Streaming");
+  console.log("==============================================");
+  console.log(`HTTP Server: http://${ipAddress}:${PORT}`);
   console.log(`Upload endpoint: http://${ipAddress}:${PORT}/upload`);
+  console.log(`UDP Port: ${UDP_PORT}`);
+  console.log(`Packet size: ${PACKET_SIZE} bytes`);
+  console.log("==============================================\n");
 });
