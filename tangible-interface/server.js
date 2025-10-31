@@ -3,6 +3,8 @@ const path = require("path");
 const fs = require("fs");
 const os = require("os");
 const dgram = require("dgram");
+const OpenAI = require("openai");
+const { spawn } = require("child_process");
 
 const app = express();
 const PORT = 8000;
@@ -11,8 +13,49 @@ const PACKET_SIZE = 1024; // bytes per UDP packet
 
 const udpClient = dgram.createSocket("udp4");
 
+// Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+// Generate caption for image using OpenAI
+async function generateImageCaption(imageBuffer) {
+  try {
+    // Convert image buffer to base64 data URL
+    const base64Image = imageBuffer.toString("base64");
+    const imageUrl = `data:image/jpeg;base64,${base64Image}`;
+
+    const response = await openai.responses.create({
+      model: "gpt-5-mini",
+      input: [
+        {
+          role: "user",
+          content: [
+            { type: "input_text", text: "Describe this image in a short caption." },
+            { type: "input_image", image_url: imageUrl, detail: "auto" },
+          ],
+        },
+      ],
+      reasoning: { effort: "minimal" },
+      text: { verbosity: "low" },
+    });
+
+    // Extract the caption text from the response
+    const outputMessage = response.output.find((item) => item.type === "message");
+    if (outputMessage && outputMessage.content && outputMessage.content.length > 0) {
+      const textContent = outputMessage.content.find((c) => c.type === "output_text");
+      return textContent?.text || "No caption generated";
+    }
+
+    return "No caption generated";
+  } catch (error) {
+    console.error("❌ Error generating caption:", error.message);
+    return "Error generating caption";
+  }
+}
+
 // Handle POST request to /upload
-app.post("/upload", express.raw({ type: "*/*", limit: "10mb" }), (req, res) => {
+app.post("/upload", express.raw({ type: "*/*", limit: "10mb" }), async (req, res) => {
   const boundary = req.headers["content-type"]?.match(/boundary=(.+)$/)?.[1];
 
   if (!boundary) {
@@ -45,6 +88,11 @@ app.post("/upload", express.raw({ type: "*/*", limit: "10mb" }), (req, res) => {
 
   console.log("File uploaded successfully: image.jpeg");
 
+  // Generate caption for the image
+  console.log("🤖 Generating caption...");
+  const caption = await generateImageCaption(jpegBuffer);
+  console.log(`📝 Caption: ${caption}`);
+
   // Get client IP from request
   const clientIP = req.ip.replace(/^::ffff:/, ""); // Remove IPv6 prefix if present
 
@@ -58,10 +106,11 @@ app.post("/upload", express.raw({ type: "*/*", limit: "10mb" }), (req, res) => {
     ok: true,
     message: "File uploaded successfully",
     filename: "image.jpeg",
+    caption: caption,
   });
 });
 
-// Stream MP3 file to client via UDP
+// Convert MP3 to PCM and stream to client via UDP
 function streamMP3ToClient(targetIP) {
   const mp3Path = path.join(__dirname, "example.mp3");
 
@@ -70,45 +119,78 @@ function streamMP3ToClient(targetIP) {
     return;
   }
 
-  const mp3Data = fs.readFileSync(mp3Path);
-  const totalPackets = Math.ceil(mp3Data.length / PACKET_SIZE);
-
   console.log("\n==============================================");
-  console.log("Starting MP3 UDP Stream");
+  console.log("Starting PCM UDP Stream (from MP3)");
   console.log("==============================================");
   console.log(`Target: ${targetIP}:${UDP_PORT}`);
-  console.log(`File size: ${mp3Data.length} bytes`);
+  console.log(`Source: ${mp3Path}`);
   console.log(`Packet size: ${PACKET_SIZE} bytes`);
-  console.log(`Total packets: ${totalPackets}`);
+  console.log("Converting MP3 to raw PCM...");
   console.log("==============================================\n");
 
+  // Use ffmpeg to convert MP3 to raw PCM
+  // Output format: 16-bit signed little-endian PCM, mono, 16kHz
+  const ffmpeg = spawn("ffmpeg", [
+    "-i", mp3Path,           // Input file
+    "-f", "s16le",           // Output format: signed 16-bit little-endian
+    "-ar", "16000",          // Sample rate: 16kHz
+    "-ac", "1",              // Channels: mono
+    "-",                     // Output to stdout
+  ]);
+
   let packetIndex = 0;
+  let buffer = Buffer.alloc(0);
 
-  const intervalId = setInterval(() => {
-    if (packetIndex >= totalPackets) {
-      clearInterval(intervalId);
-      console.log("✅ MP3 streaming completed");
-      return;
-    }
+  ffmpeg.stdout.on("data", (chunk) => {
+    // Accumulate data
+    buffer = Buffer.concat([buffer, chunk]);
 
-    const start = packetIndex * PACKET_SIZE;
-    const end = Math.min(start + PACKET_SIZE, mp3Data.length);
-    const packet = mp3Data.slice(start, end);
+    // Send packets when we have enough data
+    while (buffer.length >= PACKET_SIZE) {
+      const packet = buffer.slice(0, PACKET_SIZE);
+      buffer = buffer.slice(PACKET_SIZE);
 
-    udpClient.send(packet, UDP_PORT, targetIP, (err) => {
-      if (err) {
-        console.error(`❌ Error sending packet ${packetIndex}:`, err.message);
+      udpClient.send(packet, UDP_PORT, targetIP, (err) => {
+        if (err) {
+          console.error(`❌ Error sending packet ${packetIndex}:`, err.message);
+        }
+      });
+
+      packetIndex++;
+
+      // Log progress every 100 packets
+      if (packetIndex % 100 === 0) {
+        console.log(`📦 Sent ${packetIndex} packets`);
       }
-    });
-
-    packetIndex++;
-
-    // Log progress every 100 packets
-    if (packetIndex % 100 === 0) {
-      const progress = ((packetIndex / totalPackets) * 100).toFixed(1);
-      console.log(`📦 Progress: ${progress}% (${packetIndex}/${totalPackets} packets)`);
     }
-  }, 10); // Send a packet every 10ms
+  });
+
+  ffmpeg.stdout.on("end", () => {
+    // Send any remaining data
+    if (buffer.length > 0) {
+      udpClient.send(buffer, UDP_PORT, targetIP, (err) => {
+        if (err) {
+          console.error(`❌ Error sending final packet:`, err.message);
+        }
+      });
+      packetIndex++;
+    }
+    console.log(`✅ PCM streaming completed (${packetIndex} packets total)`);
+  });
+
+  ffmpeg.stderr.on("data", (data) => {
+    // ffmpeg outputs its logs to stderr, suppress them unless there's an error
+  });
+
+  ffmpeg.on("error", (error) => {
+    console.error("❌ ffmpeg error:", error.message);
+  });
+
+  ffmpeg.on("close", (code) => {
+    if (code !== 0) {
+      console.error(`❌ ffmpeg exited with code ${code}`);
+    }
+  });
 }
 
 // Get local IP address
