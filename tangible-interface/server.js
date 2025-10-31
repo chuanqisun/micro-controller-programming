@@ -1,3 +1,7 @@
+import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
+const elevenlabs = new ElevenLabsClient({
+  apiKey: process.env.ELEVENLABS_API_KEY,
+});
 const express = require("express");
 const path = require("path");
 const fs = require("fs");
@@ -103,11 +107,12 @@ app.post("/upload", express.raw({ type: "*/*", limit: "10mb" }), async (req, res
   // Get client IP from request
   const clientIP = req.ip.replace(/^::ffff:/, ""); // Remove IPv6 prefix if present
 
-  // Stream MP3 file via UDP
-  streamMP3ToClient(clientIP);
+  // Generate sound from caption and stream via UDP
+  console.log("🔊 Generating sound from caption and streaming...");
+  await streamCaptionAudioToClient(caption, clientIP);
 
   // Log client IP and response
-  console.log(`Streaming MP3 to client IP: ${clientIP}:${UDP_PORT}`);
+  console.log(`Streaming PCM audio to client IP: ${clientIP}:${UDP_PORT}`);
 
   res.json({
     ok: true,
@@ -117,100 +122,88 @@ app.post("/upload", express.raw({ type: "*/*", limit: "10mb" }), async (req, res
   });
 });
 
-// Convert MP3 to PCM and stream to client via UDP
-function streamMP3ToClient(targetIP) {
-  const mp3Path = path.join(__dirname, "example.mp3");
+// Convert 16-bit PCM stereo buffer to mono
+function stereoToMono(buffer) {
+  if (buffer.length % 4 !== 0) {
+    console.warn("Stereo buffer length is not a multiple of 4 (2 channels x 2 bytes)");
+  }
+  const monoBuffer = Buffer.alloc(Math.floor(buffer.length / 2));
+  for (let i = 0, j = 0; i + 3 < buffer.length; i += 4, j += 2) {
+    // Read left and right samples
+    const left = buffer.readInt16LE(i);
+    const right = buffer.readInt16LE(i + 2);
+    // Average and write as mono
+    const mono = Math.floor((left + right) / 2);
+    monoBuffer.writeInt16LE(mono, j);
+  }
+  return monoBuffer;
+}
 
-  if (!fs.existsSync(mp3Path)) {
-    console.error("❌ example.mp3 not found!");
+// Generate sound from caption and stream PCM audio via UDP
+async function streamCaptionAudioToClient(caption, targetIP) {
+  console.log("🔊 Requesting ElevenLabs sound for caption:", caption);
+  let audioBuffer = Buffer.alloc(0);
+  try {
+    const audio = await elevenlabs.textToSoundEffects.convert({
+      outputFormat: "pcm_22050", // Match microcontroller sample rate
+      text: caption,
+    });
+    const reader = audio.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      audioBuffer = Buffer.concat([audioBuffer, Buffer.from(value)]);
+    }
+    console.log(`✅ Audio loaded: ${audioBuffer.length} bytes`);
+    // If stereo, convert to mono
+    if (audioBuffer.length % 4 === 0) {
+      console.log("Converting stereo to mono...");
+      audioBuffer = stereoToMono(audioBuffer);
+      console.log(`✅ Converted to mono: ${audioBuffer.length} bytes`);
+    }
+  } catch (error) {
+    console.error("❌ Error loading/generating audio:", error.message);
     return;
   }
 
-  console.log("\n==============================================");
-  console.log("Starting PCM UDP Stream (from MP3)");
-  console.log("==============================================");
-  console.log(`Target: ${targetIP}:${UDP_PORT}`);
-  console.log(`Source: ${mp3Path}`);
-  console.log(`Packet size: ${PACKET_SIZE} bytes`);
-  console.log(`Sample rate: ${SAMPLE_RATE} Hz`);
-  console.log(`Samples per packet: ${SAMPLES_PER_PACKET}`);
-  console.log(`Delay per packet: ${MS_PER_PACKET.toFixed(2)} ms`);
-  console.log("Converting MP3 to raw PCM...");
-  console.log("==============================================\n");
-
-  // Use ffmpeg to convert MP3 to raw PCM
-  // Output format: 16-bit signed little-endian PCM, mono, 16kHz
-  const ffmpeg = spawn("ffmpeg", [
-    "-i",
-    mp3Path, // Input file
-    "-f",
-    "s16le", // Output format: signed 16-bit little-endian
-    "-ar",
-    "16000", // Sample rate: 16kHz
-    "-ac",
-    "1", // Channels: mono
-    "-", // Output to stdout
-  ]);
-
+  // Stream audio over UDP
   let packetIndex = 0;
-  let buffer = Buffer.alloc(0);
-
-  ffmpeg.stdout.on("data", (chunk) => {
-    // Accumulate data
-    buffer = Buffer.concat([buffer, chunk]);
-
-    // Send packets when we have enough data
+  let buffer = Buffer.from(audioBuffer);
+  try {
     while (buffer.length >= PACKET_SIZE) {
       const packet = buffer.subarray(0, PACKET_SIZE);
       buffer = buffer.subarray(PACKET_SIZE);
-
-      // Schedule the packet send with proper timing to match playback speed
-      setTimeout(() => {
+      await new Promise((resolve) => {
         udpClient.send(packet, UDP_PORT, targetIP, (err) => {
           if (err) {
             console.error(`❌ Error sending packet ${packetIndex}:`, err.message);
           }
+          resolve();
         });
-      }, packetIndex * MS_PER_PACKET);
-
+      });
+      await new Promise((resolve) => setTimeout(resolve, MS_PER_PACKET));
       packetIndex++;
-
-      // Log progress every 100 packets
       if (packetIndex % 100 === 0) {
         const seconds = (packetIndex * MS_PER_PACKET) / 1000;
         console.log(`📦 Sent ${packetIndex} packets (${seconds.toFixed(1)}s of audio)`);
       }
     }
-  });
-
-  ffmpeg.stdout.on("end", () => {
     // Send any remaining data
     if (buffer.length > 0) {
-      setTimeout(() => {
+      await new Promise((resolve) => {
         udpClient.send(buffer, UDP_PORT, targetIP, (err) => {
           if (err) {
             console.error(`❌ Error sending final packet:`, err.message);
           }
+          resolve();
         });
-      }, packetIndex * MS_PER_PACKET);
+      });
       packetIndex++;
     }
     console.log(`✅ PCM streaming completed (${packetIndex} packets total)`);
-  });
-
-  ffmpeg.stderr.on("data", (data) => {
-    // ffmpeg outputs its logs to stderr, suppress them unless there's an error
-  });
-
-  ffmpeg.on("error", (error) => {
-    console.error("❌ ffmpeg error:", error.message);
-  });
-
-  ffmpeg.on("close", (code) => {
-    if (code !== 0) {
-      console.error(`❌ ffmpeg exited with code ${code}`);
-    }
-  });
+  } catch (error) {
+    console.error("❌ Error streaming audio:", error.message);
+  }
 }
 
 // Get local IP address
