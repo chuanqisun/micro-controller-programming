@@ -63,8 +63,8 @@ function streamMP3Loop() {
 
     // Send packets when we have enough data
     while (buffer.length >= PACKET_SIZE) {
-      const packet = buffer.slice(0, PACKET_SIZE);
-      buffer = buffer.slice(PACKET_SIZE);
+      const packet = buffer.subarray(0, PACKET_SIZE);
+      buffer = buffer.subarray(PACKET_SIZE);
 
       // Schedule the packet send with proper timing to match playback speed
       setTimeout(() => {
