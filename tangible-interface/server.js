@@ -94,10 +94,11 @@ app.post("/upload", express.raw({ type: "*/*", limit: "10mb" }), async (req, res
     return res.status(400).json({ error: "No image data found" });
   }
 
-  const filePath = path.join(__dirname, "..", "image.jpeg");
+  await fs.promises.mkdir("output/", { recursive: true });
+  const filePath = `output/image-${Date.now()}.jpeg`;
   fs.writeFileSync(filePath, jpegBuffer);
 
-  console.log("File uploaded successfully: image.jpeg");
+  console.log("File uploaded successfully");
 
   // Generate caption for the image
   console.log("🤖 Generating caption...");

@@ -1,6 +1,8 @@
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import dgram from "dgram";
 import "dotenv/config";
+import fs from "fs";
+import { mkdir } from "fs/promises";
 import os from "os";
 
 const UDP_PORT = 8888;
@@ -68,10 +70,12 @@ const audio = await elevenlabs.textToSoundEffects.convert({
 
 console.log("Audio generated! Starting UDP stream...\n");
 
+const [playbackStream, saveStream] = audio.tee();
+
 let audioBuffer = Buffer.alloc(0);
 
 // First, read all audio data into memory
-const reader = audio.getReader();
+const reader = playbackStream.getReader();
 try {
   while (true) {
     const { done, value } = await reader.read();
@@ -90,6 +94,10 @@ try {
   console.error("❌ Error loading audio:", error.message);
   process.exit(1);
 }
+
+// Load save buffer from tee'd stream
+await mkdir("output", { recursive: true });
+await saveAudioToFile(saveStream, `output/sound-${Date.now()}.wav`);
 
 let loopCount = 0;
 
@@ -133,6 +141,28 @@ async function streamAudio() {
   }
 }
 
+// Create WAV buffer from PCM data
+function createWavBuffer(pcmBuffer, sampleRate, channels, bitsPerSample) {
+  const dataSize = pcmBuffer.length;
+  const header = Buffer.alloc(44);
+
+  header.write("RIFF", 0);
+  header.writeUInt32LE(36 + dataSize, 4); // file size - 8
+  header.write("WAVE", 8);
+  header.write("fmt ", 12);
+  header.writeUInt32LE(16, 16); // fmt chunk size
+  header.writeUInt16LE(1, 20); // audio format PCM
+  header.writeUInt16LE(channels, 22);
+  header.writeUInt32LE(sampleRate, 24);
+  header.writeUInt32LE((sampleRate * channels * bitsPerSample) / 8, 28); // byte rate
+  header.writeUInt16LE((channels * bitsPerSample) / 8, 32); // block align
+  header.writeUInt16LE(bitsPerSample, 34);
+  header.write("data", 36);
+  header.writeUInt32LE(dataSize, 40);
+
+  return Buffer.concat([header, pcmBuffer]);
+}
+
 // Convert 16-bit PCM stereo buffer to mono
 function stereoToMono(buffer) {
   if (buffer.length % 4 !== 0) {
@@ -151,3 +181,29 @@ function stereoToMono(buffer) {
 }
 
 streamAudio();
+
+// Save audio from stream to WAV file
+async function saveAudioToFile(saveStream, filename = `sound-${Date.now()}.wav`) {
+  const saveReader = saveStream.getReader();
+  let saveBuffer = Buffer.alloc(0);
+  try {
+    while (true) {
+      const { done, value } = await saveReader.read();
+      if (done) break;
+      saveBuffer = Buffer.concat([saveBuffer, Buffer.from(value)]);
+    }
+    console.log(`✅ Save buffer loaded: ${saveBuffer.length} bytes\n`);
+
+    // Convert save buffer to mono if stereo
+    if (saveBuffer.length % 4 === 0) {
+      saveBuffer = stereoToMono(saveBuffer);
+    }
+
+    // Create WAV buffer and save to file
+    const wavBuffer = createWavBuffer(saveBuffer, SAMPLE_RATE, 1, BITS_PER_SAMPLE);
+    fs.writeFileSync(filename, wavBuffer);
+    console.log(`✅ Saved ${filename}\n`);
+  } catch (error) {
+    console.error("❌ Error loading save buffer:", error.message);
+  }
+}
