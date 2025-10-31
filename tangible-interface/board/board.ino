@@ -4,7 +4,7 @@
 const char *WIFI_SSID = "";
 const char *WIFI_PASSWORD = "";
 
-const int SAMPLE_RATE = 16000;
+const int SAMPLE_RATE = 22050;
 const int CHANNELS = 1;
 const int BITS_PER_SAMPLE = 16;
 const int UDP_RECEIVE_PORT = 8888;

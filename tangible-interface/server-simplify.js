@@ -9,11 +9,11 @@ const PACKET_SIZE = 1024; // bytes per UDP packet
 const TARGET_IP = "192.168.41.27"; // Broadcast address - change this to target specific IP
 
 // Audio parameters must match the microcontroller
-const SAMPLE_RATE = 16000; // Hz
+const SAMPLE_RATE = 22050; // Hz
 const BITS_PER_SAMPLE = 16; // bits
-const BYTES_PER_SAMPLE = BITS_PER_SAMPLE / 8; // 2 bytes
-const SAMPLES_PER_PACKET = PACKET_SIZE / BYTES_PER_SAMPLE; // 512 samples
-const MS_PER_PACKET = (SAMPLES_PER_PACKET / SAMPLE_RATE) * 1000; // 32ms
+const BYTES_PER_SAMPLE = BITS_PER_SAMPLE / 8;
+const SAMPLES_PER_PACKET = PACKET_SIZE / BYTES_PER_SAMPLE;
+const MS_PER_PACKET = (SAMPLES_PER_PACKET / SAMPLE_RATE) * 1000;
 
 const udpClient = dgram.createSocket("udp4");
 udpClient.bind(() => {
@@ -48,7 +48,7 @@ function streamMP3Loop() {
     "-f",
     "s16le", // Output format: signed 16-bit little-endian
     "-ar",
-    "16000", // Sample rate: 16kHz
+    SAMPLE_RATE, // Sample rate: 16kHz
     "-ac",
     "1", // Channels: mono
     "-", // Output to stdout
