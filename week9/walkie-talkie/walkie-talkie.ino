@@ -6,13 +6,14 @@
 #include "AudioTools.h"
 #include "AudioTools/Communication/UDPStream.h"
 
-const char *WIFI_SSID = "";
+const char *WIFI_SSID = "MLDEV";
 const char *WIFI_PASSWORD = "";
 
 const int SAMPLE_RATE = 24000;
 const int CHANNELS = 1;
 const int BITS_PER_SAMPLE = 16;
-const int UDP_PORT = 8888;
+const int UDP_SEND_PORT = 8888;
+const int UDP_RECEIVE_PORT = 8889;
 
 const int BTN_PTT1 = D8;
 const int BTN_PTT2 = D9;
@@ -29,11 +30,12 @@ AudioInfo audioInfo(SAMPLE_RATE, CHANNELS, BITS_PER_SAMPLE);
 
 I2SStream i2sMic;
 I2SStream i2sSpeaker;
-UDPStream udpStream(WIFI_SSID, WIFI_PASSWORD);
-Throttle throttle(udpStream);
+UDPStream udpSend(WIFI_SSID, WIFI_PASSWORD);
+UDPStream udpReceive(WIFI_SSID, WIFI_PASSWORD);
+Throttle throttle(udpSend);
 
 StreamCopy transmitCopier(throttle, i2sMic);
-StreamCopy receiveCopier(i2sSpeaker, udpStream, 1024);
+StreamCopy receiveCopier(i2sSpeaker, udpReceive, 1024);
 
 int debounceCounter = 0;
 bool isTransmitting = false;
@@ -41,7 +43,7 @@ bool lastTransmitState = false;
 
 void setup() {
   Serial.begin(115200);
-  delay(100);
+  delay(1000);
   AudioToolsLogger.begin(Serial, AudioToolsLogLevel::Warning);
 
   pinMode(BTN_PTT1, INPUT_PULLUP);
@@ -94,7 +96,9 @@ void setup() {
 
   Serial.println("I2S initialized successfully");
 
-  udpStream.begin(udpTargetAddress, UDP_PORT);
+  Serial.println("Starting UDP streams...");
+  udpSend.begin(udpTargetAddress, UDP_SEND_PORT);
+  udpReceive.begin(UDP_RECEIVE_PORT);
 
   auto throttleConfig = throttle.defaultConfig();
   throttleConfig.copyFrom(audioInfo);
@@ -104,7 +108,9 @@ void setup() {
   Serial.print("Transmit target: ");
   Serial.print(udpTargetAddress);
   Serial.print(":");
-  Serial.println(UDP_PORT);
+  Serial.println(UDP_SEND_PORT);
+  Serial.print("Receive on port: ");
+  Serial.println(UDP_RECEIVE_PORT);
 }
 
 void loop() {
@@ -133,9 +139,11 @@ void loop() {
     lastTransmitState = isTransmitting;
   }
 
+  // Full-duplex: always handle both transmit and receive
   if (isTransmitting) {
     transmitCopier.copy();
-  } else {
-    receiveCopier.copy();
   }
+  
+  // Always listen for incoming audio
+  receiveCopier.copy();
 }

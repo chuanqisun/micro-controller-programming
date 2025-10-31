@@ -5,7 +5,8 @@ const WebSocket = require("ws");
 const SAMPLE_RATE = 24000;
 const CHANNELS = 1;
 const BITS_PER_SAMPLE = 16;
-const UDP_PORT = 8888;
+const UDP_RECEIVE_PORT = 8888;
+const UDP_SEND_PORT = 8889;
 const TARGET_IP = "192.168.41.239";
 const PACKET_SIZE = 1024;
 const SILENCE_TIMEOUT_MS = 1000;
@@ -41,7 +42,7 @@ function startServer() {
 }
 
 function setupUDPReceiver() {
-  udpReceiver.bind(UDP_PORT);
+  udpReceiver.bind(UDP_RECEIVE_PORT);
   udpReceiver.on("listening", handleReceiverListening);
   udpReceiver.on("message", handleIncomingAudioPacket);
   udpReceiver.on("error", handleReceiverError);
@@ -218,17 +219,18 @@ async function commitAudioAndRequestResponse() {
   }
 }
 
-function handleResponseComplete(event) {
+async function handleResponseComplete(event) {
   const responseText = extractResponseText(event);
 
   if (responseText) {
     console.log(`💬 Final response: "${responseText}"`);
-    synthesizeAndStreamSpeech(responseText);
+    await synthesizeAndStreamSpeech(responseText);
   } else {
     console.log("⚠️  No text response received");
   }
 
   isProcessing = false;
+  console.log("✓ Ready for next input");
 }
 
 async function synthesizeAndStreamSpeech(text) {
@@ -332,7 +334,7 @@ async function streamAudioToUDP(pcmBuffer) {
 
 function sendAudioPacketToESP32(buffer) {
   return new Promise((resolve, reject) => {
-    udpSender.send(buffer, UDP_PORT, TARGET_IP, (err) => {
+    udpSender.send(buffer, UDP_SEND_PORT, TARGET_IP, (err) => {
       if (err) {
         console.error("❌ Error sending UDP packet:", err.message);
         reject(err);
@@ -414,8 +416,8 @@ function logServerStartup(address) {
   console.log("\n==============================================");
   console.log("ESP32 Bidirectional Voice with Realtime API");
   console.log("==============================================");
-  console.log(`UDP Server listening on port ${address.port}`);
-  console.log(`UDP Target: ${TARGET_IP}:${UDP_PORT}`);
+  console.log(`UDP Server receiving on port ${address.port}`);
+  console.log(`UDP Server sending to: ${TARGET_IP}:${UDP_SEND_PORT}`);
   console.log(`Sample Rate: ${SAMPLE_RATE} Hz`);
   console.log(`Channels: ${CHANNELS} (mono)`);
   console.log(`Bits per sample: ${BITS_PER_SAMPLE}`);
