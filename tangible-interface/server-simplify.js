@@ -6,7 +6,14 @@ const { spawn } = require("child_process");
 
 const UDP_PORT = 8888;
 const PACKET_SIZE = 1024; // bytes per UDP packet
-const TARGET_IP = "192.168.1.255"; // Broadcast address - change this to target specific IP
+const TARGET_IP = "192.168.41.27"; // Broadcast address - change this to target specific IP
+
+// Audio parameters must match the microcontroller
+const SAMPLE_RATE = 16000; // Hz
+const BITS_PER_SAMPLE = 16; // bits
+const BYTES_PER_SAMPLE = BITS_PER_SAMPLE / 8; // 2 bytes
+const SAMPLES_PER_PACKET = PACKET_SIZE / BYTES_PER_SAMPLE; // 512 samples
+const MS_PER_PACKET = (SAMPLES_PER_PACKET / SAMPLE_RATE) * 1000; // 32ms
 
 const udpClient = dgram.createSocket("udp4");
 udpClient.bind(() => {
@@ -59,17 +66,21 @@ function streamMP3Loop() {
       const packet = buffer.slice(0, PACKET_SIZE);
       buffer = buffer.slice(PACKET_SIZE);
 
-      udpClient.send(packet, UDP_PORT, TARGET_IP, (err) => {
-        if (err) {
-          console.error(`❌ Error sending packet ${packetIndex}:`, err.message);
-        }
-      });
+      // Schedule the packet send with proper timing to match playback speed
+      setTimeout(() => {
+        udpClient.send(packet, UDP_PORT, TARGET_IP, (err) => {
+          if (err) {
+            console.error(`❌ Error sending packet ${packetIndex}:`, err.message);
+          }
+        });
+      }, packetIndex * MS_PER_PACKET);
 
       packetIndex++;
 
       // Log progress every 100 packets
       if (packetIndex % 100 === 0) {
-        console.log(`📦 Sent ${packetIndex} packets`);
+        const seconds = (packetIndex * MS_PER_PACKET) / 1000;
+        console.log(`📦 Sent ${packetIndex} packets (${seconds.toFixed(1)}s of audio)`);
       }
     }
   });
@@ -120,6 +131,9 @@ console.log(`Local IP: ${ipAddress}`);
 console.log(`UDP Port: ${UDP_PORT}`);
 console.log(`Target IP: ${TARGET_IP}`);
 console.log(`Packet size: ${PACKET_SIZE} bytes`);
+console.log(`Sample rate: ${SAMPLE_RATE} Hz`);
+console.log(`Samples per packet: ${SAMPLES_PER_PACKET}`);
+console.log(`Delay per packet: ${MS_PER_PACKET.toFixed(2)} ms`);
 console.log("==============================================\n");
 
 streamMP3Loop();

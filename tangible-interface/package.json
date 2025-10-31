@@ -5,8 +5,8 @@
   "main": "server.js",
   "scripts": {
     "dev": "npm run build && npm run upload && concurrently \"npm run monitor\"",
-    "build": "arduino-cli compile -b esp32:esp32:XIAO_ESP32C3 ./walkie-talkie",
-    "upload": "arduino-cli upload -p /dev/ttyACM0 -b esp32:esp32:XIAO_ESP32C3 ./walkie-talkie",
+    "build": "arduino-cli compile -b esp32:esp32:XIAO_ESP32C3 ./board",
+    "upload": "arduino-cli upload -p /dev/ttyACM0 -b esp32:esp32:XIAO_ESP32C3 ./board",
     "monitor": "arduino-cli monitor -p /dev/ttyACM0 -c baudrate=115200",
     "serve": "node --env-file .env ./server.js"
   },
