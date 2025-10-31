@@ -1,14 +1,14 @@
-import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
-const elevenlabs = new ElevenLabsClient({
-  apiKey: process.env.ELEVENLABS_API_KEY,
-});
+const { ElevenLabsClient } = require("@elevenlabs/elevenlabs-js");
 const express = require("express");
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
 const dgram = require("dgram");
 const OpenAI = require("openai");
-const { spawn } = require("child_process");
+
+const elevenlabs = new ElevenLabsClient({
+  apiKey: process.env.ELEVENLABS_API_KEY,
+});
 
 const app = express();
 const PORT = 8000;
