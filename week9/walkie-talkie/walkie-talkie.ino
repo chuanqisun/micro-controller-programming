@@ -24,7 +24,7 @@ const int I2S_MIC_DATA = D1;
 const int I2S_SPEAKER_DATA = D10;
 const int I2S_LRC = D2;
 
-IPAddress udpTargetAddress(192, 168, 41, 106);
+IPAddress udpTargetAddress(192, 168, 41, 104);
 
 AudioInfo audioInfo(SAMPLE_RATE, CHANNELS, BITS_PER_SAMPLE);
 
