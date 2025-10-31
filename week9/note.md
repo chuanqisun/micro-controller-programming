@@ -1,58 +1,6 @@
 ## Playing sine wave
 
-```cpp
-#include "AudioTools.h"
-
-/**
- * Pinout:
- * D0 - I2S BCLK
- * D1 - I2S DOUT (from microphone)
- * D2 - I2S LRC
- * D8 - Push-to-talk button 1
- * D9 - Push-to-talk button 2
- * D10 - I2S DIN (to speaker)
- */
-
-#define I2S_BCLK D0
-#define I2S_DOUT D1
-#define I2S_LRC  D2
-#define I2S_DIN  D10
-#define BTN_PTT1 D8
-#define BTN_PTT2 D9
-
-const int frequency = 440;    // frequency of sine wave in Hz
-const int sampleRate = 44100; // sample rate in Hz
-
-AudioInfo info(sampleRate, 2, 16);
-SineWaveGenerator<int16_t> sineWave(4000); // sine wave with max amplitude of 4000
-GeneratedSoundStream<int16_t> sound(sineWave); // stream generated from sine wave
-I2SStream out;
-StreamCopy copier(out, sound); // copies sound into i2s
-
-void setup() {
-  Serial.begin(115200);
-  Serial.println("I2S Sine Wave Playback");
-
-  AudioToolsLogger.begin(Serial, AudioToolsLogLevel::Info);
-
-  // start I2S with custom pinout
-  Serial.println("Starting I2S...");
-  auto config = out.defaultConfig(TX_MODE);
-  config.copyFrom(info);
-  config.pin_bck = I2S_BCLK;
-  config.pin_ws = I2S_LRC;
-  config.pin_data = I2S_DIN;
-  out.begin(config);
-
-  // Setup sine wave
-  sineWave.begin(info, frequency);
-  Serial.println("Started sine wave playback");
-}
-
-void loop() {
-  copier.copy();
-}
-```
+(see step-00)
 
 - 44.1 kHz, pulsing sound artifact
 - 44 kHz, same artifact
@@ -76,3 +24,9 @@ Follow up experiments:
 - Result: noise reduced but not eliminated
 
 ## Stream sine wave from computer to device
+
+(see step-01)
+
+## Transcribing audio and stream voice from computer to device
+
+(see step-02)
