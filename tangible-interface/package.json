@@ -18,6 +18,8 @@
     "concurrently": "^9.2.1"
   },
   "dependencies": {
+    "@elevenlabs/elevenlabs-js": "^2.21.0",
+    "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "openai": "^6.7.0",
     "ws": "^8.18.3"
