@@ -62,7 +62,8 @@ console.log("Generating audio with 11labs...");
 /** audio: ReadableStream<Uint8Array<ArrayBufferLike>> */
 const audio = await elevenlabs.textToSoundEffects.convert({
   outputFormat: "pcm_22050", // Match the microcontroller's sample rate
-  text: "A flock of ducks quacking",
+  text: "A horse slowly walking on a stone path, with occasional bird chirps in the background",
+  loop: true,
 });
 
 console.log("Audio generated! Starting UDP stream...\n");
@@ -78,6 +79,13 @@ try {
     audioBuffer = Buffer.concat([audioBuffer, Buffer.from(value)]);
   }
   console.log(`✅ Audio loaded: ${audioBuffer.length} bytes (${(audioBuffer.length / SAMPLE_RATE / BYTES_PER_SAMPLE).toFixed(2)}s)\n`);
+
+  // If stereo, convert to mono (assume stereo if divisible by 4 and not by 2)
+  if (audioBuffer.length % 4 === 0) {
+    console.log("Converting stereo to mono...");
+    audioBuffer = stereoToMono(audioBuffer);
+    console.log(`✅ Converted to mono: ${audioBuffer.length} bytes (${(audioBuffer.length / SAMPLE_RATE / BYTES_PER_SAMPLE).toFixed(2)}s)\n`);
+  }
 } catch (error) {
   console.error("❌ Error loading audio:", error.message);
   process.exit(1);
@@ -123,6 +131,23 @@ async function streamAudio() {
   } catch (error) {
     console.error("❌ Error streaming audio:", error.message);
   }
+}
+
+// Convert 16-bit PCM stereo buffer to mono
+function stereoToMono(buffer) {
+  if (buffer.length % 4 !== 0) {
+    console.warn("Stereo buffer length is not a multiple of 4 (2 channels x 2 bytes)");
+  }
+  const monoBuffer = Buffer.alloc(Math.floor(buffer.length / 2));
+  for (let i = 0, j = 0; i + 3 < buffer.length; i += 4, j += 2) {
+    // Read left and right samples
+    const left = buffer.readInt16LE(i);
+    const right = buffer.readInt16LE(i + 2);
+    // Average and write as mono
+    const mono = Math.floor((left + right) / 2);
+    monoBuffer.writeInt16LE(mono, j);
+  }
+  return monoBuffer;
 }
 
 streamAudio();
