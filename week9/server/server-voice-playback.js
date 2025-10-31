@@ -6,8 +6,6 @@ const SAMPLE_RATE = 24000;
 const CHANNELS = 1;
 const BITS_PER_SAMPLE = 16;
 const UDP_PORT = 8888;
-const TARGET_IP = "192.168.41.239";
-const PACKET_SIZE = 1024;
 const SILENCE_TIMEOUT_MS = 1000;
 const STATS_INTERVAL_MS = 5000;
 const SILENCE_CHECK_INTERVAL_MS = 100;
@@ -17,8 +15,7 @@ const STATE = {
   SPEAKING: "speaking",
 };
 
-const udpReceiver = dgram.createSocket("udp4");
-const udpSender = dgram.createSocket("udp4");
+const server = dgram.createSocket("udp4");
 
 let currentState = STATE.SILENT;
 let audioBuffer = [];
@@ -34,21 +31,16 @@ let sessionReady = false;
 startServer();
 
 function startServer() {
-  validateEnvironment();
   connectToRealtimeAPI();
-  setupUDPReceiver();
+  server.bind(UDP_PORT);
+  server.on("listening", handleServerListening);
+  server.on("message", handleIncomingAudioPacket);
+  server.on("error", handleServerError);
   process.on("SIGINT", handleGracefulShutdown);
 }
 
-function setupUDPReceiver() {
-  udpReceiver.bind(UDP_PORT);
-  udpReceiver.on("listening", handleReceiverListening);
-  udpReceiver.on("message", handleIncomingAudioPacket);
-  udpReceiver.on("error", handleReceiverError);
-}
-
-function handleReceiverListening() {
-  const address = udpReceiver.address();
+function handleServerListening() {
+  const address = server.address();
   logServerStartup(address);
   silenceCheckInterval = setInterval(detectSilence, SILENCE_CHECK_INTERVAL_MS);
 }
@@ -58,50 +50,40 @@ function handleIncomingAudioPacket(msg, rinfo) {
   lastPacketTime = Date.now();
   audioBuffer.push(Buffer.from(msg));
 
+  // Stream audio to Realtime API immediately if session is ready
   if (sessionReady && realtimeWs && realtimeWs.readyState === WebSocket.OPEN) {
-    streamAudioChunkToRealtime(msg);
+    streamAudioChunk(msg);
   }
 
   updateStatistics(msg.length);
   logStatisticsIfIntervalElapsed();
 }
 
-function handleReceiverError(err) {
-  console.error(`Receiver error:\n${err.stack}`);
-  udpReceiver.close();
+function handleServerError(err) {
+  console.error(`Server error:\n${err.stack}`);
+  server.close();
 }
 
-function detectSilence() {
-  if (currentState === STATE.SPEAKING && lastPacketTime) {
-    const timeSinceLastPacket = Date.now() - lastPacketTime;
-    if (timeSinceLastPacket > SILENCE_TIMEOUT_MS) {
-      transitionToSilentAndProcessAudio();
-    }
+function handleGracefulShutdown() {
+  console.log("\n\nShutting down...");
+  if (silenceCheckInterval) {
+    clearInterval(silenceCheckInterval);
   }
-}
-
-function beginSpeakingStateIfNeeded() {
-  if (currentState !== STATE.SPEAKING) {
-    console.log("🎤 Speaking...");
-    currentState = STATE.SPEAKING;
-    audioBuffer = [];
+  if (realtimeWs) {
+    realtimeWs.close();
   }
-}
-
-async function transitionToSilentAndProcessAudio() {
-  if (currentState !== STATE.SILENT) {
-    console.log("📤 Sent");
-    currentState = STATE.SILENT;
-
-    if (audioBuffer.length > 0 && !isProcessing && sessionReady) {
-      isProcessing = true;
-      audioBuffer = [];
-      await commitAudioAndRequestResponse();
-    }
-  }
+  server.close(() => {
+    console.log("Server closed");
+    process.exit(0);
+  });
 }
 
 function connectToRealtimeAPI() {
+  if (!process.env.OPENAI_API_KEY) {
+    console.error("⚠️  OPENAI_API_KEY not set. Cannot connect to Realtime API.");
+    process.exit(1);
+  }
+
   const url = "wss://api.openai.com/v1/realtime?model=gpt-realtime";
   const headers = {
     Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -149,6 +131,7 @@ function handleRealtimeMessage(data) {
         break;
 
       case "response.output_text.delta":
+        // Text being generated in chunks (optional logging)
         process.stdout.write(event.delta);
         break;
 
@@ -184,19 +167,50 @@ function configureSession() {
   const sessionConfig = {
     type: "session.update",
     session: {
-      modalities: ["text"],
+      modalities: ["text"], // Only text output, no audio
       instructions: "Respond to user speech in the voice of a HAM radio operator. One short spoken phrase response only.",
       voice: "ash",
       input_audio_format: "pcm16",
       output_audio_format: "pcm16",
-      turn_detection: null,
+      turn_detection: null, // Disable VAD - we handle silence detection manually
     },
   };
 
   realtimeWs.send(JSON.stringify(sessionConfig));
 }
 
-function streamAudioChunkToRealtime(audioChunk) {
+function beginSpeakingStateIfNeeded() {
+  if (currentState !== STATE.SPEAKING) {
+    console.log("🎤 Speaking...");
+    currentState = STATE.SPEAKING;
+    audioBuffer = [];
+  }
+}
+
+function detectSilence() {
+  if (currentState === STATE.SPEAKING && lastPacketTime) {
+    const timeSinceLastPacket = Date.now() - lastPacketTime;
+    if (timeSinceLastPacket > SILENCE_TIMEOUT_MS) {
+      transitionToSilentAndProcessAudio();
+    }
+  }
+}
+
+async function transitionToSilentAndProcessAudio() {
+  if (currentState !== STATE.SILENT) {
+    console.log("📤 Sent");
+    currentState = STATE.SILENT;
+
+    if (audioBuffer.length > 0 && !isProcessing && sessionReady) {
+      isProcessing = true;
+      audioBuffer = [];
+      await commitAudioAndRequestResponse();
+    }
+  }
+}
+
+function streamAudioChunk(audioChunk) {
+  // Convert PCM16 buffer to base64 and send to Realtime API
   const base64Audio = audioChunk.toString("base64");
   const event = {
     type: "input_audio_buffer.append",
@@ -219,11 +233,27 @@ async function commitAudioAndRequestResponse() {
 }
 
 function handleResponseComplete(event) {
-  const responseText = extractResponseText(event);
+  // Extract text from response
+  const response = event.response;
+  let responseText = "";
+
+  if (response && response.output) {
+    for (const item of response.output) {
+      if (item.type === "message" && item.content) {
+        for (const content of item.content) {
+          if (content.type === "text") {
+            responseText = content.text;
+            break;
+          }
+        }
+      }
+      if (responseText) break;
+    }
+  }
 
   if (responseText) {
     console.log(`💬 Final response: "${responseText}"`);
-    synthesizeAndStreamSpeech(responseText);
+    speakTextAloud(responseText);
   } else {
     console.log("⚠️  No text response received");
   }
@@ -231,10 +261,11 @@ function handleResponseComplete(event) {
   isProcessing = false;
 }
 
-async function synthesizeAndStreamSpeech(text) {
-  console.log(`🔊 Synthesizing TTS for: "${text}"`);
+async function speakTextAloud(text) {
+  console.log(`🔊 Playing TTS for: "${text}"`);
 
   try {
+    // Use OpenAI REST API for TTS since Realtime API is text-only mode
     const response = await fetch("https://api.openai.com/v1/audio/speech", {
       method: "POST",
       headers: {
@@ -254,137 +285,30 @@ async function synthesizeAndStreamSpeech(text) {
       throw new Error(`TTS API error: ${response.status}`);
     }
 
-    const wavBuffer = Buffer.from(await response.arrayBuffer());
-    await playAndStreamAudio(wavBuffer);
+    const buffer = Buffer.from(await response.arrayBuffer());
+    await playAudioBufferThroughSpeakers(buffer);
   } catch (error) {
     console.error("❌ TTS error:", error.message);
   }
 }
 
-async function playAndStreamAudio(wavBuffer) {
-  const pcmBuffer = await convertWavToPCM16(wavBuffer);
-  await Promise.all([playAudioThroughSpeakers(wavBuffer), streamAudioToUDP(pcmBuffer)]);
-}
+async function playAudioBufferThroughSpeakers(buffer) {
+  const ffplay = spawn("ffplay", ["-nodisp", "-autoexit", "-loglevel", "quiet", "-i", "pipe:0"]);
 
-async function convertWavToPCM16(wavBuffer) {
-  return new Promise((resolve, reject) => {
-    const ffmpeg = spawn("ffmpeg", ["-i", "pipe:0", "-f", "s16le", "-ar", SAMPLE_RATE.toString(), "-ac", CHANNELS.toString(), "-loglevel", "quiet", "pipe:1"]);
-
-    const chunks = [];
-
-    ffmpeg.stdout.on("data", (chunk) => {
-      chunks.push(chunk);
-    });
-
-    ffmpeg.on("close", (code) => {
-      if (code === 0) {
-        resolve(Buffer.concat(chunks));
-      } else {
-        reject(new Error(`ffmpeg exited with code ${code}`));
-      }
-    });
-
-    ffmpeg.on("error", reject);
-
-    ffmpeg.stdin.write(wavBuffer);
-    ffmpeg.stdin.end();
+  ffplay.on("error", (err) => {
+    console.error("❌ ffplay error:", err.message);
   });
-}
 
-async function playAudioThroughSpeakers(wavBuffer) {
-  return new Promise((resolve, reject) => {
-    const ffplay = spawn("ffplay", ["-nodisp", "-autoexit", "-loglevel", "quiet", "-i", "pipe:0"]);
-
-    ffplay.on("error", reject);
-
-    ffplay.on("close", (code) => {
-      if (code === 0) {
-        console.log("✓ Speaker playback completed");
-        resolve();
-      } else {
-        reject(new Error(`ffplay exited with code ${code}`));
-      }
-    });
-
-    ffplay.stdin.write(wavBuffer);
-    ffplay.stdin.end();
-  });
-}
-
-async function streamAudioToUDP(pcmBuffer) {
-  console.log("📡 Streaming audio to ESP32...");
-
-  const totalPackets = Math.ceil(pcmBuffer.length / PACKET_SIZE);
-
-  for (let i = 0; i < totalPackets; i++) {
-    const start = i * PACKET_SIZE;
-    const end = Math.min(start + PACKET_SIZE, pcmBuffer.length);
-    const packet = pcmBuffer.slice(start, end);
-
-    await sendAudioPacketToESP32(packet);
-
-    const delayMs = (PACKET_SIZE / 2 / SAMPLE_RATE) * 1000;
-    await sleep(delayMs);
-  }
-
-  console.log("✓ UDP streaming completed");
-}
-
-function sendAudioPacketToESP32(buffer) {
-  return new Promise((resolve, reject) => {
-    udpSender.send(buffer, UDP_PORT, TARGET_IP, (err) => {
-      if (err) {
-        console.error("❌ Error sending UDP packet:", err.message);
-        reject(err);
-      } else {
-        resolve();
-      }
-    });
-  });
-}
-
-function handleGracefulShutdown() {
-  console.log("\n\nShutting down...");
-  if (silenceCheckInterval) {
-    clearInterval(silenceCheckInterval);
-  }
-  if (realtimeWs) {
-    realtimeWs.close();
-  }
-  udpReceiver.close(() => {
-    udpSender.close(() => {
-      console.log("Server closed");
-      process.exit(0);
-    });
-  });
-}
-
-function validateEnvironment() {
-  if (!process.env.OPENAI_API_KEY) {
-    console.error("⚠️  OPENAI_API_KEY not set. Cannot connect to Realtime API.");
-    process.exit(1);
-  }
-}
-
-function extractResponseText(event) {
-  const response = event.response;
-  let responseText = "";
-
-  if (response && response.output) {
-    for (const item of response.output) {
-      if (item.type === "message" && item.content) {
-        for (const content of item.content) {
-          if (content.type === "text") {
-            responseText = content.text;
-            break;
-          }
-        }
-      }
-      if (responseText) break;
+  ffplay.on("close", (code) => {
+    if (code === 0) {
+      console.log("✓ TTS playback completed");
+    } else {
+      console.error(`❌ ffplay exited with code ${code}`);
     }
-  }
+  });
 
-  return responseText;
+  ffplay.stdin.write(buffer);
+  ffplay.stdin.end();
 }
 
 function updateStatistics(messageLength) {
@@ -412,10 +336,9 @@ function logServerStartup(address) {
   const networkAddresses = getNetworkAddresses();
 
   console.log("\n==============================================");
-  console.log("ESP32 Bidirectional Voice with Realtime API");
+  console.log("ESP32 Audio UDP Receiver with Realtime API");
   console.log("==============================================");
   console.log(`UDP Server listening on port ${address.port}`);
-  console.log(`UDP Target: ${TARGET_IP}:${UDP_PORT}`);
   console.log(`Sample Rate: ${SAMPLE_RATE} Hz`);
   console.log(`Channels: ${CHANNELS} (mono)`);
   console.log(`Bits per sample: ${BITS_PER_SAMPLE}`);
@@ -444,8 +367,4 @@ function getNetworkAddresses() {
   }
 
   return addresses;
-}
-
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }

@@ -1,51 +1,54 @@
 /**
  * @file walkie-talkie.ino
- * @brief Receives UDP audio stream and plays it through I2S speaker
+ * @brief Full-duplex walkie-talkie: transmit on button press, receive when idle
  */
 
 #include "AudioTools.h"
 #include "AudioTools/Communication/UDPStream.h"
 
-/**
- * Pinout:
- * D0 - I2S BCLK
- * D1 - I2S DOUT (from microphone)
- * D2 - I2S LRC
- * D8 - Push-to-talk button 1
- * D9 - Push-to-talk button 2
- * D10 - I2S DIN (to speaker)
- */
+const char *WIFI_SSID = "";
+const char *WIFI_PASSWORD = "";
 
-#define I2S_BCLK D0
-#define I2S_DOUT D1
-#define I2S_LRC  D2
-#define I2S_DIN  D10
-#define BTN_PTT1 D8
-#define BTN_PTT2 D9
-
-// WiFi credentials
-const char *ssid = "";
-const char *password = "";
-
-// Audio configuration (must match server settings)
-const int SAMPLE_RATE = 22000;
+const int SAMPLE_RATE = 24000;
 const int CHANNELS = 1;
 const int BITS_PER_SAMPLE = 16;
 const int UDP_PORT = 8888;
 
-AudioInfo info(SAMPLE_RATE, CHANNELS, BITS_PER_SAMPLE);
-I2SStream i2s;           // I2S output to speaker
-UDPStream udp(ssid, password);
-StreamCopy copier(i2s, udp, 1024); // copy UDP stream to I2S
+const int BTN_PTT1 = D8;
+const int BTN_PTT2 = D9;
+const int DEBOUNCE_THRESHOLD = 5;
+
+const int I2S_BCLK = D0;
+const int I2S_MIC_DATA = D1;
+const int I2S_SPEAKER_DATA = D10;
+const int I2S_LRC = D2;
+
+IPAddress udpTargetAddress(192, 168, 41, 106);
+
+AudioInfo audioInfo(SAMPLE_RATE, CHANNELS, BITS_PER_SAMPLE);
+
+I2SStream i2sMic;
+I2SStream i2sSpeaker;
+UDPStream udpStream(WIFI_SSID, WIFI_PASSWORD);
+Throttle throttle(udpStream);
+
+StreamCopy transmitCopier(throttle, i2sMic);
+StreamCopy receiveCopier(i2sSpeaker, udpStream, 1024);
+
+int debounceCounter = 0;
+bool isTransmitting = false;
+bool lastTransmitState = false;
 
 void setup() {
   Serial.begin(115200);
   delay(100);
   AudioToolsLogger.begin(Serial, AudioToolsLogLevel::Warning);
 
-  // Connect to WiFi
+  pinMode(BTN_PTT1, INPUT_PULLUP);
+  pinMode(BTN_PTT2, INPUT_PULLUP);
+
   Serial.println("\nConnecting to WiFi...");
-  WiFi.begin(ssid, password);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
   int attempts = 0;
   while (WiFi.status() != WL_CONNECTED && attempts < 20) {
@@ -63,36 +66,76 @@ void setup() {
   Serial.print("Device IP: ");
   Serial.println(WiFi.localIP());
 
-  // Start I2S with custom pinout for speaker output
-  Serial.println("Starting I2S...");
-  auto i2sCfg = i2s.defaultConfig(TX_MODE);
-  i2sCfg.copyFrom(info);
-  i2sCfg.pin_bck = I2S_BCLK;
-  i2sCfg.pin_ws = I2S_LRC;
-  i2sCfg.pin_data = I2S_DIN;
-  i2sCfg.i2s_format = I2S_STD_FORMAT;
+  Serial.println("Starting I2S microphone...");
+  auto micConfig = i2sMic.defaultConfig(RX_MODE);
+  micConfig.copyFrom(audioInfo);
+  micConfig.pin_bck = I2S_BCLK;
+  micConfig.pin_data = I2S_MIC_DATA;
+  micConfig.pin_ws = I2S_LRC;
+  micConfig.i2s_format = I2S_STD_FORMAT;
 
-  if (!i2s.begin(i2sCfg)) {
-    Serial.println("Failed to initialize I2S");
+  if (!i2sMic.begin(micConfig)) {
+    Serial.println("Failed to initialize I2S microphone");
     return;
   }
+
+  Serial.println("Starting I2S speaker...");
+  auto speakerConfig = i2sSpeaker.defaultConfig(TX_MODE);
+  speakerConfig.copyFrom(audioInfo);
+  speakerConfig.pin_bck = I2S_BCLK;
+  speakerConfig.pin_data = I2S_SPEAKER_DATA;
+  speakerConfig.pin_ws = I2S_LRC;
+  speakerConfig.i2s_format = I2S_STD_FORMAT;
+
+  if (!i2sSpeaker.begin(speakerConfig)) {
+    Serial.println("Failed to initialize I2S speaker");
+    return;
+  }
+
   Serial.println("I2S initialized successfully");
 
-  // Start UDP receiver
-  Serial.println("Starting UDP receiver...");
-  udp.begin(UDP_PORT);
-  
-  Serial.println("Ready to receive audio on port ");
+  udpStream.begin(udpTargetAddress, UDP_PORT);
+
+  auto throttleConfig = throttle.defaultConfig();
+  throttleConfig.copyFrom(audioInfo);
+  throttle.begin(throttleConfig);
+
+  Serial.println("Walkie-talkie ready!");
+  Serial.print("Transmit target: ");
+  Serial.print(udpTargetAddress);
+  Serial.print(":");
   Serial.println(UDP_PORT);
-  Serial.println("Waiting for audio stream...");
 }
 
 void loop() {
-  int len = copier.copy();
-  if (len > 0) {
-    // Audio data received and copied to I2S
+  bool buttonPressed = (digitalRead(BTN_PTT1) == LOW || digitalRead(BTN_PTT2) == LOW);
+  
+  if (buttonPressed) {
+    debounceCounter++;
+    if (debounceCounter >= DEBOUNCE_THRESHOLD) {
+      isTransmitting = true;
+      debounceCounter = DEBOUNCE_THRESHOLD;
+    }
   } else {
-    // No data available, just wait a bit
-    delay(1);
+    debounceCounter--;
+    if (debounceCounter <= -DEBOUNCE_THRESHOLD) {
+      isTransmitting = false;
+      debounceCounter = -DEBOUNCE_THRESHOLD;
+    }
+  }
+
+  if (isTransmitting != lastTransmitState) {
+    if (isTransmitting) {
+      Serial.println("Speaking...");
+    } else {
+      Serial.println("Listening...");
+    }
+    lastTransmitState = isTransmitting;
+  }
+
+  if (isTransmitting) {
+    transmitCopier.copy();
+  } else {
+    receiveCopier.copy();
   }
 }
