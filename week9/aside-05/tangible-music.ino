@@ -57,7 +57,8 @@ bool isChanging = false;
 void checkPosition() {
   encoder.tick(); // Call tick() to check the state
 }
-@@ -65,17 +17,6 @@ void setup() {
+
+void setup() {
   // Attach interrupts for encoder pins
   attachInterrupt(digitalPinToInterrupt(PIN_ENCODER_A), checkPosition, CHANGE);
   attachInterrupt(digitalPinToInterrupt(PIN_ENCODER_B), checkPosition, CHANGE);
@@ -75,7 +76,6 @@ void checkPosition() {
 }
 
 void loop() {
-@@ -84,60 +25,10 @@ void loop() {
   static int lastPosition = 0;
 
   if (newPosition != lastPosition) {

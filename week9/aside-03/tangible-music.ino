@@ -1,4 +1,4 @@
-#include <RotaryEncoder.h>
+#include "RotaryEncoder.h"
 #include "AudioTools.h"
 
 // Define the pins connected to the encoder
