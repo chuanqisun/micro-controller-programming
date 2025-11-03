@@ -67,6 +67,9 @@ async function generateImageCaption(imageBuffer) {
 
 // Handle POST request to /upload
 app.post("/upload", express.raw({ type: "*/*", limit: "10mb" }), async (req, res) => {
+  console.log("📥 Received file upload request");
+  console.log(`📊 Total request size: ${req.body.length} bytes`);
+
   const boundary = req.headers["content-type"]?.match(/boundary=(.+)$/)?.[1];
 
   if (!boundary) {
@@ -74,17 +77,22 @@ app.post("/upload", express.raw({ type: "*/*", limit: "10mb" }), async (req, res
   }
 
   // Extract JPEG data from multipart body
+  console.log("🔍 Parsing multipart data...");
   const body = req.body.toString("binary");
   const parts = body.split("--" + boundary);
+  console.log(`📦 Found ${parts.length} parts in multipart data`);
 
   let jpegBuffer = null;
-  for (const part of parts) {
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
     if (part.includes("Content-Type: image/jpeg")) {
+      console.log(`✅ Found JPEG data in part ${i}`);
       const startMarker = "\r\n\r\n";
       const start = part.indexOf(startMarker) + startMarker.length;
       const end = part.lastIndexOf("\r\n");
       if (start > startMarker.length && end > start) {
         jpegBuffer = Buffer.from(part.substring(start, end), "binary");
+        console.log(`✅ Extracted JPEG: ${jpegBuffer.length} bytes`);
         break;
       }
     }
@@ -98,7 +106,7 @@ app.post("/upload", express.raw({ type: "*/*", limit: "10mb" }), async (req, res
   const filePath = `output/image-${Date.now()}.jpeg`;
   fs.writeFileSync(filePath, jpegBuffer);
 
-  console.log("File uploaded successfully");
+  console.log(`✅ File uploaded successfully: ${filePath}`);
 
   // Generate caption for the image
   console.log("🤖 Generating caption...");
@@ -107,13 +115,14 @@ app.post("/upload", express.raw({ type: "*/*", limit: "10mb" }), async (req, res
 
   // Get client IP from request
   const clientIP = req.ip.replace(/^::ffff:/, ""); // Remove IPv6 prefix if present
+  console.log(`👤 Client IP: ${clientIP}`);
 
   // Generate sound from caption and stream via UDP
   console.log("🔊 Generating sound from caption and streaming...");
   await streamCaptionAudioToClient(caption, clientIP);
 
   // Log client IP and response
-  console.log(`Streaming PCM audio to client IP: ${clientIP}:${UDP_PORT}`);
+  console.log(`✅ Upload and streaming complete for ${clientIP}:${UDP_PORT}\n`);
 
   res.json({
     ok: true,
@@ -156,17 +165,24 @@ async function streamCaptionAudioToClient(caption, targetIP) {
     saveAudioToFile(saveStream, `output/sound-${Date.now()}.wav`);
 
     // Read playback stream
+    console.log("📖 Reading audio stream...");
     let audioBuffer = Buffer.alloc(0);
     const reader = playbackStream.getReader();
+    let chunkCount = 0;
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      audioBuffer = Buffer.concat([audioBuffer, Buffer.from(value)]);
+      chunkCount++;
+      const chunkBuffer = Buffer.from(value);
+      audioBuffer = Buffer.concat([audioBuffer, chunkBuffer]);
+      if (chunkCount % 10 === 0) {
+        console.log(`📦 Received chunk ${chunkCount}: ${audioBuffer.length} bytes total`);
+      }
     }
-    console.log(`✅ Audio loaded: ${audioBuffer.length} bytes`);
+    console.log(`✅ Audio loaded: ${audioBuffer.length} bytes (${chunkCount} chunks)`);
     // If stereo, convert to mono
     if (audioBuffer.length % 4 === 0) {
-      console.log("Converting stereo to mono...");
+      console.log("🔄 Converting stereo to mono...");
       audioBuffer = stereoToMono(audioBuffer);
       console.log(`✅ Converted to mono: ${audioBuffer.length} bytes`);
     }
