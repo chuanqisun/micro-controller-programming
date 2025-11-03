@@ -10,8 +10,6 @@
 #define I2S_LRC  D2
 #define I2S_DIN  D10
 
-const unsigned long DEBOUNCE_TIME = 50;
-
 RotaryEncoder encoder(PIN_ENCODER_A, PIN_ENCODER_B);
 
 const int sampleRate = 22000;
@@ -67,7 +65,7 @@ void loop() {
     }
   }
 
-  if (isChanging && (millis() - lastChangeTime > DEBOUNCE_TIME)) {
+  if (isChanging && (millis() - lastChangeTime > 100)) {
     counter++;
     Serial.print("Position change group ended, Counter: ");
     Serial.println(counter);
