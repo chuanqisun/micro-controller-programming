@@ -27,8 +27,8 @@ float getFreq(char note) {
 const char song[62] = {
   'E','E','F','G','G','F','E','D','C','C','D','E','E','D','D',
   'E','E','F','G','G','F','E','D','C','C','D','E','D','C','C',
-  'D','D','E','C','D','E','F','E','C','D','E','F','E','D','C','g',
-  'D','E','E','F','G','G','F','E','D','C','C','D','E','D','C','C'
+  'D','D','E','C','D','E','F','E','C','D','E','F','E','D','C','D','g',
+  'E','E','F','G','G','F','E','D','C','C','D','E','D','C','C'
 };
 
 RotaryEncoder encoder(PIN_ENCODER_A, PIN_ENCODER_B);
@@ -84,7 +84,7 @@ void loop() {
     if (!groupStarted) {
       Serial.println("Position change group started");
       playing = true;
-      char note = song[currentNote % 62];
+      char note = song[currentNote % 63];
       float freq = getFreq(note);
       sineWave.setFrequency(freq);
       currentNote++;
