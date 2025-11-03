@@ -5,10 +5,13 @@
   "main": "server.js",
   "scripts": {
     "dev": "npm run build && npm run upload && concurrently \"npm run monitor\"",
-    "dev:power": "npm run build:power && npm run upload && concurrently \"npm run monitor\"",
+    "dev:power": "npm run build:power && npm run upload:power && concurrently \"npm run monitor\"",
+    "dev:music": "npm run build:music && npm run upload:music && concurrently \"npm run monitor\"",
     "build": "arduino-cli compile -b esp32:esp32:XIAO_ESP32C3 ./walkie-talkie",
     "build:power": "arduino-cli compile -b esp32:esp32:XIAO_ESP32C3 ./power-measurement",
-    "upload": "arduino-cli upload -p /dev/ttyACM0 -b esp32:esp32:XIAO_ESP32C3 ./power-measurement",
+    "build:music": "arduino-cli compile -b esp32:esp32:XIAO_ESP32C3 ./tangible-music",
+    "upload:power": "arduino-cli upload -p /dev/ttyACM0 -b esp32:esp32:XIAO_ESP32C3 ./power-measurement",
+    "upload:music": "arduino-cli upload -p /dev/ttyACM0 -b esp32:esp32:XIAO_ESP32C3 ./tangible-music",
     "monitor": "arduino-cli monitor -p /dev/ttyACM0 -c baudrate=115200",
     "serve": "node --env-file .env ./server/server.js"
   },
