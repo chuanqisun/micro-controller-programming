@@ -6,7 +6,7 @@ const { spawn } = require("child_process");
 
 const UDP_PORT = 8888;
 const PACKET_SIZE = 1024; // bytes per UDP packet
-const TARGET_IP = "192.168.41.27"; // Broadcast address - change this to target specific IP
+const TARGET_IP = "192.168.41.37"; // Broadcast address - change this to target specific IP
 
 // Audio parameters must match the microcontroller
 const SAMPLE_RATE = 22050; // Hz
