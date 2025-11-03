@@ -91,11 +91,18 @@ void loop() {
     Serial.print("Encoder Position: ");
     Serial.println(newPosition);
     
-    // Reset note if direction changed
-    if (dir != lastDirection) {
+    // Check for direction change only after debounce period (when not currently changing)
+    if (!isChanging && dir != lastDirection && lastDirection != 0) {
       currentNote = 0;
       lastDirection = dir;
       Serial.print("Direction changed to: ");
+      Serial.println(dir);
+    }
+    
+    // Set initial direction if not set
+    if (lastDirection == 0) {
+      lastDirection = dir;
+      Serial.print("Initial direction: ");
       Serial.println(dir);
     }
     
