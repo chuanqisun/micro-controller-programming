@@ -85,6 +85,11 @@ app.post("/upload", express.raw({ type: "*/*", limit: "10mb" }), async (req, res
   let jpegBuffer = null;
   for (let i = 0; i < parts.length; i++) {
     const part = parts[i];
+    const progress = Math.round((i / parts.length) * 100);
+    if (progress % 20 === 0 || i === parts.length - 1) {
+      console.log(`⏳ Parsing progress: ${progress}% (${i}/${parts.length} parts)`);
+    }
+
     if (part.includes("Content-Type: image/jpeg")) {
       console.log(`✅ Found JPEG data in part ${i}`);
       const startMarker = "\r\n\r\n";
@@ -92,7 +97,7 @@ app.post("/upload", express.raw({ type: "*/*", limit: "10mb" }), async (req, res
       const end = part.lastIndexOf("\r\n");
       if (start > startMarker.length && end > start) {
         jpegBuffer = Buffer.from(part.substring(start, end), "binary");
-        console.log(`✅ Extracted JPEG: ${jpegBuffer.length} bytes`);
+        console.log(`✅ Extracted JPEG: ${jpegBuffer.length} bytes (${((jpegBuffer.length / req.body.length) * 100).toFixed(1)}% of upload)`);
         break;
       }
     }
