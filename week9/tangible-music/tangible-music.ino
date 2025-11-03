@@ -41,7 +41,7 @@ RotaryEncoder encoder(PIN_ENCODER_A, PIN_ENCODER_B);
 
 const int sampleRate = 22000;
 AudioInfo info(sampleRate, 1, 16);
-SineWaveGenerator<int16_t> sineWave(16000);
+SineWaveGenerator<int16_t> sineWave(32000);
 GeneratedSoundStream<int16_t> sound(sineWave);
 I2SStream out;
 StreamCopy copier(out, sound);
