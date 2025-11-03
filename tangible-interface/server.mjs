@@ -42,7 +42,7 @@ async function generateImageCaption(imageBuffer) {
         {
           role: "user",
           content: [
-            { type: "input_text", text: "Describe this image in a short caption." },
+            { type: "input_text", text: "Design a sound to best represent the image. Respond with one sentence vivid description of such sound. " },
             { type: "input_image", image_url: imageUrl, detail: "auto" },
           ],
         },
@@ -198,44 +198,67 @@ async function streamCaptionAudioToClient(caption, targetIP) {
     return;
   }
 
-  // Stream audio over UDP
-  let packetIndex = 0;
-  let buffer = Buffer.from(audioBuffer);
-  try {
-    while (buffer.length >= PACKET_SIZE) {
-      const packet = buffer.subarray(0, PACKET_SIZE);
-      buffer = buffer.subarray(PACKET_SIZE);
-      await new Promise((resolve) => {
-        udpClient.send(packet, UDP_PORT, targetIP, (err) => {
-          if (err) {
-            console.error(`❌ Error sending packet ${packetIndex}:`, err.message);
-          }
-          resolve();
-        });
-      });
-      await new Promise((resolve) => setTimeout(resolve, MS_PER_PACKET));
-      packetIndex++;
-      if (packetIndex % 100 === 0) {
-        const seconds = (packetIndex * MS_PER_PACKET) / 1000;
-        console.log(`📦 Sent ${packetIndex} packets (${seconds.toFixed(1)}s of audio)`);
+  // Start streaming with looping
+  let loopCount = 0;
+
+  function streamAudioLoop() {
+    loopCount++;
+    if (loopCount > 10) {
+      console.log(`✅ Completed all 10 loops\n`);
+      return;
+    }
+
+    console.log(`🔄 Starting loop #${loopCount}...`);
+
+    let packetIndex = 0;
+    let buffer = Buffer.from(audioBuffer); // Create a copy for this loop
+
+    try {
+      while (buffer.length >= PACKET_SIZE) {
+        const packet = buffer.subarray(0, PACKET_SIZE);
+        buffer = buffer.subarray(PACKET_SIZE);
+
+        // Schedule the packet send with proper timing to match playback speed
+        setTimeout(() => {
+          udpClient.send(packet, UDP_PORT, targetIP, (err) => {
+            if (err) {
+              console.error(`❌ Error sending packet ${packetIndex}:`, err.message);
+            }
+          });
+        }, packetIndex * MS_PER_PACKET);
+
+        packetIndex++;
+
+        // Log progress every 100 packets
+        if (packetIndex % 100 === 0) {
+          const seconds = (packetIndex * MS_PER_PACKET) / 1000;
+          console.log(`📦 Loop #${loopCount}: Sent ${packetIndex} packets (${seconds.toFixed(1)}s of audio)`);
+        }
       }
+
+      // Send any remaining data
+      if (buffer.length > 0) {
+        setTimeout(() => {
+          udpClient.send(buffer, UDP_PORT, targetIP, (err) => {
+            if (err) {
+              console.error(`❌ Error sending final packet:`, err.message);
+            }
+          });
+        }, packetIndex * MS_PER_PACKET);
+        packetIndex++;
+      }
+
+      // Schedule the next loop after all packets have been sent
+      const totalDuration = packetIndex * MS_PER_PACKET;
+      setTimeout(() => {
+        streamAudioLoop(); // Start next loop
+      }, totalDuration);
+    } catch (error) {
+      console.error("❌ Error streaming audio:", error.message);
     }
-    // Send any remaining data
-    if (buffer.length > 0) {
-      await new Promise((resolve) => {
-        udpClient.send(buffer, UDP_PORT, targetIP, (err) => {
-          if (err) {
-            console.error(`❌ Error sending final packet:`, err.message);
-          }
-          resolve();
-        });
-      });
-      packetIndex++;
-    }
-    console.log(`✅ PCM streaming completed (${packetIndex} packets total)`);
-  } catch (error) {
-    console.error("❌ Error streaming audio:", error.message);
   }
+
+  streamAudioLoop();
 }
 
 // Create WAV buffer from PCM data
