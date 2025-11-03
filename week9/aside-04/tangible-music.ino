@@ -24,17 +24,11 @@ float getFreq(char note) {
   }
 }
 
-// ode to joy
-const char odeToJoy[62] = {
+const char song[62] = {
   'E','E','F','G','G','F','E','D','C','C','D','E','E','D','D',
   'E','E','F','G','G','F','E','D','C','C','D','E','D','C','C',
   'D','D','E','C','D','E','F','E','C','D','E','F','E','D','C','D','g',
   'E','E','F','G','G','F','E','D','C','C','D','E','D','C','C'
-};
-
-// little lamb
-const char littleLamb[26] = {
-  'E','D','C','D','E','E','E','D','D','D','E','G','G','E','D','C','D','E','E','E','C', 'D','D','E','D','C'
 };
 
 RotaryEncoder encoder(PIN_ENCODER_A, PIN_ENCODER_B);
@@ -48,11 +42,11 @@ StreamCopy copier(out, sound);
 bool playing = false;
 
 int currentNote = 0;
-int lastDirection = 0;
 
 int counter = 0;
 unsigned long lastChangeTime = 0;
 bool isChanging = false;
+bool groupStarted = false;
 
 void checkPosition() {
   encoder.tick(); // Call tick() to check the state
@@ -84,50 +78,27 @@ void loop() {
   static int lastPosition = 0;
 
   if (newPosition != lastPosition) {
-    int dir = (newPosition > lastPosition) ? 1 : -1;
     lastPosition = newPosition;
     lastChangeTime = millis();
-    
-    Serial.print("Encoder Position: ");
-    Serial.println(newPosition);
-    
-    // Reset note if direction changed
-    if (dir != lastDirection) {
-      currentNote = 0;
-      lastDirection = dir;
-      Serial.print("Direction changed to: ");
-      Serial.println(dir);
-    }
-    
-    // Set up the note to play (only when starting a new playing session)
-    if (!isChanging) {
-      char note;
-      if (lastDirection == 1) {
-        note = odeToJoy[currentNote % 62];
-      } else if (lastDirection == -1) {
-        note = littleLamb[currentNote % 26];
-      }
-      
+    isChanging = true;
+    if (!groupStarted) {
+      Serial.println("Position change group started");
+      playing = true;
+      char note = song[currentNote % 63];
       float freq = getFreq(note);
       sineWave.setFrequency(freq);
-      
-      Serial.print("Playing note ");
-      Serial.print(currentNote);
-      Serial.print(": ");
-      Serial.println(note);
-      
-      Serial.println("Encoder movement started - playing");
-      isChanging = true;
-      playing = true;
+      currentNote++;
+      groupStarted = true;
     }
   }
 
-  // Stop playing when encoder hasn't moved for DEBOUNCE_TIME
   if (isChanging && (millis() - lastChangeTime > DEBOUNCE_TIME)) {
-    Serial.println("Encoder stopped - silence");
-    isChanging = false;
+    counter++;
+    Serial.print("Position change group ended, Counter: ");
+    Serial.println(counter);
     playing = false;
-    currentNote++; // Advance to next note after playing stops
+    isChanging = false;
+    groupStarted = false;
   }
 
   if (playing) {
