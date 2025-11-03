@@ -10,10 +10,11 @@
 #define I2S_LRC  D2
 #define I2S_DIN  D10
 
-const unsigned long DEBOUNCE_TIME = 50;
+const unsigned long DEBOUNCE_TIME = 100;
 
 float getFreq(char note) {
   switch (note) {
+    case 'g': return 392.00 / 2;
     case 'C': return 261.63;
     case 'D': return 293.66;
     case 'E': return 329.63;
@@ -26,7 +27,7 @@ float getFreq(char note) {
 const char song[62] = {
   'E','E','F','G','G','F','E','D','C','C','D','E','E','D','D',
   'E','E','F','G','G','F','E','D','C','C','D','E','D','C','C',
-  'D','D','E','C','D','E','F','E','C','D','E','F','E','D','C',
+  'D','D','E','C','D','E','F','E','C','D','E','F','E','D','C','g',
   'D','E','E','F','G','G','F','E','D','C','C','D','E','D','C','C'
 };
 
