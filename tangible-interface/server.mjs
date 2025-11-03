@@ -153,6 +153,8 @@ function stereoToMono(buffer) {
 async function streamCaptionAudioToClient(caption, targetIP) {
   console.log("🔊 Requesting ElevenLabs sound for caption:", caption);
 
+  let audioBuffer = Buffer.alloc(0);
+
   try {
     const audio = await elevenlabs.textToSoundEffects.convert({
       outputFormat: "pcm_22050", // Match microcontroller sample rate
@@ -166,7 +168,7 @@ async function streamCaptionAudioToClient(caption, targetIP) {
 
     // Read playback stream
     console.log("📖 Reading audio stream...");
-    let audioBuffer = Buffer.alloc(0);
+    audioBuffer = Buffer.alloc(0);
     const reader = playbackStream.getReader();
     let chunkCount = 0;
     while (true) {
