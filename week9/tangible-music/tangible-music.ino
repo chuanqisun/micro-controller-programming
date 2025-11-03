@@ -34,7 +34,7 @@ const char odeToJoy[62] = {
 
 // little lamb
 const char littleLamb[26] = {
-  'E','D','C','D','E','E','E','D','D','D','E','G','G','E','D','C','D','E','E','E','C','D','D','E','D','C'
+  'E','D','C','D','E','E','E','D','D','D','E','G','G','E','D','C','D','E','E','E','C', 'D','D','E','D','C'
 };
 
 RotaryEncoder encoder(PIN_ENCODER_A, PIN_ENCODER_B);
@@ -57,7 +57,11 @@ bool isChanging = false;
 void checkPosition() {
   encoder.tick(); // Call tick() to check the state
 }
-@@ -65,17 +17,6 @@ void setup() {
+
+void setup() {
+  Serial.begin(115200);
+  Serial.println("Rotary Encoder Example");
+
   // Attach interrupts for encoder pins
   attachInterrupt(digitalPinToInterrupt(PIN_ENCODER_A), checkPosition, CHANGE);
   attachInterrupt(digitalPinToInterrupt(PIN_ENCODER_B), checkPosition, CHANGE);
@@ -75,7 +79,8 @@ void checkPosition() {
 }
 
 void loop() {
-@@ -84,60 +25,10 @@ void loop() {
+  // Read encoder position
+  int newPosition = encoder.getPosition();
   static int lastPosition = 0;
 
   if (newPosition != lastPosition) {
