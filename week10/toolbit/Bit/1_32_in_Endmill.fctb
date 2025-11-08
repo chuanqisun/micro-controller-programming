@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "name": "1/32 inch Endmill",
+  "shape": "endmill.fcstd",
+  "parameter": {
+    "CuttingEdgeHeight": "30.0000 mm",
+    "Diameter": "0.79375 mm",
+    "Length": "50.0000 mm",
+    "ShankDiameter": "0.79375 mm"
+  },
+  "attribute": {}
+}
