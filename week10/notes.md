@@ -6,7 +6,7 @@ https://fab.cba.mit.edu/classes/863.16/doc/tutorials/PCB_Rivets/#:~:text=For%20t
 - pos/neg spatial reasoning
 - lofting
 
-# Setting up cam
+## Setting up cam
 
 - freecad 1st time setup (previously used Dan's fusion360)
 - tutorial: https://www.youtube.com/watch?v=ER1wUvfIswk
@@ -26,3 +26,15 @@ https://fab.cba.mit.edu/classes/863.16/doc/tutorials/PCB_Rivets/#:~:text=For%20t
   "attribute": {}
 }
 ```
+
+## Roughing
+
+- use 1/8" endmill
+- Step down: 1mm
+- Cut mode: offset
+- Checked: Min Travel, Use Rest Machining
+
+## Tried:
+
+- FreeCAD adaptive clearing, 3D pocket, Mods
+- The programs all have issues with my geometry
