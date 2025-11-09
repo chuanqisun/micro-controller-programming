@@ -55,6 +55,13 @@ https://fab.cba.mit.edu/classes/863.16/doc/tutorials/PCB_Rivets/#:~:text=For%20t
       - Enabled ironing
       - Reduced layer height to 0.05mm
       - Switched to concentric infill
+    - Casting
+      - Shake bottle causing too many bubbles
+      - Stir is better
+      - Pulling bubbles with vaccum is bad, as it cause the bottom surface to be rough
+    - Post-processing
+      - Belt sander and deburring tools to remove rough edges
+      - The lips are too tight. My next iteraction added fi
 
 # Reference notes
 
