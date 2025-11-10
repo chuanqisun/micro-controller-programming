@@ -20,73 +20,97 @@
     - [Adaptive clearing](https://academy.cba.mit.edu/classes/computer_machining/AdaptiveRest.mp4)
   - Modeling parts in Onshape, create tool paths in FreeCAD
     - A quick boolean operation against a stock geometry reveals design flow: I had edges without thickness
+      ![TODO: show image of boolean operation failure](...)
     - I managed to setup machine job, creating tool bits based on example endmill shapes, modifying the json file
+
+    ```json
+    // TODO embed json file
+    ```
+
     - Problem with narrow gutter. The toolpath can't detect the ring-like pocket geometry
-    - Increasing ring-width to be significantly greater than tool diameter solves the problem (tool: 1/8", ring width: 3.4mm)
+      ![TODO: show image of FreeCAD toolpath failure](...)
+    - Increasing ring-width to be significantly greater than tool diameter solves the problem, but I didn't want to alter the design
     - Multiple tool paths feature is very buggy in FreeCAD. After the 1st tool path, producing paths for the remaining material doesn't work
+
   - Tried modeling directly in FreeCAD
     - Transitioning from Onshape to FreeCAD is a bit rough, as FreeCAD feels more rigid
     - Finished the mold design, tested in CAM, but still had issues with multiple tool paths
+      ![TODO: show FreeCAD toolpath failure](...)
   - Switching to Mods for tool path
     - Unable to generate multiple tool paths that builds on each other
     - Realized the U-pipe geometry requires ball endmill. Adding custom bit geometry would take too long
+    - It still failed to generate proper tool paths (similar issues to FreeCAD CAM). I'm suspecting issues with my modeling process
   - List of what I failed at (2x2 grid, showing modeling software vs CAM software and the issue I got)
     - Onshape modeling -> FreeCAD CAM: unnecessary vertical travels
     - FreeCAD modeling -> FreeCAD CAM: missing tool paths on half of the ring
     - Onshape modeling -> Mods CAM: unnecessary horizontal back-and-forth travels
     - FreeCAD modeling -> Mods CAM: missing tool paths on half of the ring
+
 - In the spirit of supply driven project management, I need to move forward with something I can make real progress on. 3D printing it is!
 
-### The 3D Printing Redemption
+### Table of contents
 
-- A physical "table of contents"
-  - Image of a table, show from top to bottom, each iteration I've been through
-  - From left to right is the mother-mold, the mold, and the cast
-  - Timeline is aligned, staggered development visualized
-- 3D printing mold -> Rubber mold -> Plastic part
-  - Design in Onshape, sliced, and printed in PLA
-  - Casted, and realized that I got the positive/negative inverted
-  - To smooth surface, I considered
-    - Apply resin coating: Kat's feedback is that resin inhibits silicone curing, use wax
-    - Apply wax coating: switch to PETG, because wax melts PLA
-  - Melt, brush on, Heat gun, drain
-  - I warped the PETG during the drain process
-  - Casting the rubber mold
-    - The waxed mold couldn't eliminiate the layer lines, and also, it destroyed the sharp edges
-      ![TODO: show waxing process](...)
-  - Comparison
-    - PLA is easy to print. If the printer is well-calibrated, the surface can be very smooth, but the layer lines are still visible.
-    - PETG is more difficult to print. In our shop, the fillament had quality issue so the resulting surface isn't ideal. With wax treament, the sharp edges were smoothed out but some of the layer lines remained.
-  - Switching back to PLA
-    - I recalled from the 3D printing week there was an ironing setting. I wonder if that can improve the surface
-    - Reduced layer height to 0.05mm
-    - Switched to concentric infill
-      - This ends up speeding up the print quite significantly, probably because my geometry is circle like so the concentric infill minimizes travel moves
-      - See characteristics photo
-      - Top left: monotonic line infill
-      - Top right: concentric infill
-      - Bottom left: Ironing at 0.15mm spacing, 15% flow rate
-      - Bottom right: Ironing at 0.1mm spacing, 10% flow rate
-        ![TODO: show comparison photos](...)
-    - "Low and slow" -- Texas BBQ pitmaster.
-    - Low layer height and slow ironing does the trick.
-  - During mold making
-    - I used a glass to press down the backside of the rubber as it cures
-      - Extremely difficult to release from glass
-        ![TODO: show glass release photo](...)
-    - It was also extremely difficult to release the rubber from the plastic mold
-      - I torn the wall of the rubber
-        ![TODO: show torn rubber photo](...)
-      - Next time, I should add more draft angle
-      - As a work around, I 3D printed a support ring to hold the mold in shape
-  - During parts casting, I learned a few things
-    - Shake bottle causing too many bubbles. It's ok to pour and stir using the "sheering" motion mentioned in the lecture.
-    - Pulling bubbles with vaccum is bad, as it cause the bottom surface to be rough
+- Image of a table, show from top to bottom, each iteration I've been through
+  ![TODO: show a physical gantt chart of artifacts](...)
+- From left to right is the mother-mold, the mold, and the cast
+- Timeline is aligned, staggered development visualized
+
+### Perfectly Making The Wrong Thing
+
+- Design in Onshape, sliced, and printed in PLA
+  - ![TODO: show CAD model](...)
+  - ![TODO: printing result](...)
+- To smooth surface, I considered
+  - Apply resin coating: Kat's feedback is that resin inhibits silicone curing, use wax
+  - Apply wax coating: switch to PETG, because wax melts PLA
+- Melt, brush on, Heat gun, drain
+- I warped the PETG during the drain process
+- Casting the rubber mold
+  - The waxed mold couldn't eliminiate the layer lines, and also, it destroyed the sharp edges
+    ![TODO: show waxing process](...)
+- Comparison
+  - PLA is easy to print. If the printer is well-calibrated, the surface can be very smooth, but the layer lines are still visible.
+  - PETG is more difficult to print. In our shop, the fillament had quality issue so the resulting surface isn't ideal. With wax treament, the sharp edges were smoothed out but some of the layer lines remained.
+- Casted, and realized that I got the positive/negative inverted
+  - ![TODO: casting process](...)
+- Switching back to PLA
+  - I recalled from the 3D printing week there was an ironing setting. I wonder if that can improve the surface
+  - Reduced layer height to 0.05mm
+  - Switched to concentric infill
+    - This ends up speeding up the print quite significantly, probably because my geometry is circle like so the concentric infill minimizes travel moves
+    - See characteristics photo
+    - Top left: monotonic line infill
+    - Top right: concentric infill
+    - Bottom left: Ironing at 0.15mm spacing, 15% flow rate
+    - Bottom right: Ironing at 0.1mm spacing, 10% flow rate
       ![TODO: show comparison photos](...)
-    - My next iteration added chamfer and increased silicone base thickness
-  - Post-processing
-    - Belt sander and deburring tools to remove rough edges
-    - The lips are too tight.
+  - "Low and slow" -- Texas BBQ pitmaster.
+  - Low layer height and slow ironing does the trick.
+- Casting the rubber mold from poorly ironed PLA mold
+  - I used a glass to press down the backside of the rubber as it cures
+    - Extremely difficult to release from glass
+      ![TODO: show glass release photo](...)
+  - It was also extremely difficult to release the rubber from the plastic mold
+    - "Poor worker blaming his tools". I've tried nearly all of the 3D printers in the shop and identified 3 machines that works consistently well
+    - Due to printing congestion, I used the least performant printer. There as not only visible layer lines, but they had a very rough texture that grabbed onto the rubber
+    - I torn the wall of the rubber
+      ![TODO: show torn rubber photo](...)
+    - Next time, I should add more draft angle
+    - As a work around, I 3D printed a support ring to hold the mold in shape
+      ![TODO: show image of adhoc support ring](...)
+- During parts casting, I learned a few things
+  - Shake bottle causing too many bubbles. It's ok to pour and stir using the "sheering" motion mentioned in the lecture.
+  - Pulling bubbles with vaccum is bad, as it cause the bottom surface to be rough
+    ![TODO: show comparison photos](...)
+  - This prompted me to:
+    - Add chamfer and increased silicone base thickness
+    - Switch to the best PLA printer in the lab
+- Post-processing
+  - Belt sander and deburring tools to remove rough edges
+    ![TODO: show post-processing photo](...)
+  - The interface are too tight. But after enough repeated mating, the two parts finally fit well.
+    - Kerf makes the male part wider and female part narrower. Should adjust for that
+      ![TODO: show the result](...)
 
 ## Reflection
 
@@ -96,9 +120,9 @@
 
 ## Appendix
 
-- Infill and ironing testing print
-- Final model for CNC mother-mold
-- Final model for 3D printable mother-mold
+- TODO, attach: Infill and ironing testing print
+- TODO, attach: Final model for CNC mother-mold
+- TODO, attach: Final model for 3D printable mother-mold
 
 # Raw notes
 
