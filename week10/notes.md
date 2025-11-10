@@ -1,5 +1,9 @@
 # Week 10: Pitmaster's Wisdom
 
+> Hofstadter's law: It always takes longer than you expect, even when you take into account Hofstadter's law.
+
+> Neal's law: You will cast the opposite of what you expect, even after Neal told you about Neal's law.
+
 ## Group assignment
 
 - I went to the training hosted by [Kat](https://fabacademy.org/2023/labs/kamakura/students/ekaterina-kormilitsyna/).
@@ -48,7 +52,7 @@
 
 - In the spirit of supply driven project management, I need to move forward with something I can make real progress on. 3D printing it is!
 
-### Table of contents
+### Table of contents, Literally
 
 - Image of a table, show from top to bottom, each iteration I've been through
   ![TODO: show a physical gantt chart of artifacts](...)
@@ -117,6 +121,7 @@
 - Single threaded tasks carry much more risk. Mother-mold -> Mold -> Cast is a linear process, and any failure in the chain causes big overhauls. It's worth being more cautious and validating the designs as we go.
 - There are emotional factors at play. One of my 3D printing tasks was near finish when I realized that I should have added fillet on the interface. I couldn't stop the job because I fell victim to the sunk cost fallacy.
 - I mistakely flipped the positive/negative relation, even when I was fully aware of such fallacy. Sometimes, it's better to have others check your work than trusting your own brain.
+- The "table of contents" show how important pipelining is. Imagine doing this in a single thread, it would take 40+ hours.
 
 ## Appendix
 
