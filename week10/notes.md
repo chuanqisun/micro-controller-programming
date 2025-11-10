@@ -1,4 +1,4 @@
-# Week 10: Pitmaster's Wisdom
+# Week 10:
 
 > Hofstadter's law: It always takes longer than you expect, even when you take into account Hofstadter's law.
 
@@ -8,6 +8,7 @@
 
 - I went to the training hosted by [Kat](https://fabacademy.org/2023/labs/kamakura/students/ekaterina-kormilitsyna/).
 - Read the SDS for oomoo 30 rubber and smooth-cast 300 plastic, both by Smooth-On.
+- See [group notes](https://fab.cba.mit.edu/classes/MAS.863/CBA/group_assignments/week10/).
 
 ## Project: Manual Particle Accelerator
 
