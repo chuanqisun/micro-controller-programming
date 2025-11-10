@@ -35,6 +35,7 @@
     - FreeCAD modeling -> FreeCAD CAM: missing tool paths on half of the ring
     - Onshape modeling -> Mods CAM: unnecessary horizontal back-and-forth travels
     - FreeCAD modeling -> Mods CAM: missing tool paths on half of the ring
+- In the spirit of supply driven project management, I need to move forward with something I can make real progress on. 3D printing it is!
 
 ### The 3D Printing Redemption
 
@@ -42,7 +43,6 @@
   - Image of a table, show from top to bottom, each iteration I've been through
   - From left to right is the mother-mold, the mold, and the cast
   - Timeline is aligned, staggered development visualized
-- In the spirit of supply driven project management, I need to move forward with something I can make real progress on. 3D printing it is!
 - 3D printing mold -> Rubber mold -> Plastic part
   - Design in Onshape, sliced, and printed in PLA
   - Casted, and realized that I got the positive/negative inverted
@@ -56,15 +56,26 @@
     - Damaged the rubber
     - Fixed it with a quick 3D printed support ring
     - The waxed mold couldn't eliminiate the layer lines, and also, it destroyed the sharp edges
+  - Comparison
+    - PLA is easy to print. If the printer is well-calibrated, the surface can be very smooth, but the layer lines are still visible.
+    - PETG is more difficult to print. In our shop, the fillament had quality issue so the resulting surface isn't ideal. With wax treament, the sharp edges were smoothed out but some of the layer lines remained.
   - Switching back to PLA
-    - Enabled ironing
+    - I recalled from the 3D printing week there was an ironing setting. I wonder if that can improve the surface
     - Reduced layer height to 0.05mm
     - Switched to concentric infill
-    - "Low and slow" -- Texas BBQ pitmaster
-  - Casting
-    - Shake bottle causing too many bubbles
-    - Stir is better
+      - This ends up speeding up the print quite significantly, probably because my geometry is circle like so the concentric infill minimizes travel moves
+      - See characteristics photo
+      - Top left: monotonic line infill
+      - Top right: concentric infill
+      - Bottom left: Ironing at 0.15mm spacing, 15% flow rate
+      - Bottom right: Ironing at 0.1mm spacing, 10% flow rate
+        ![TODO: show comparison photos](...)
+    - "Low and slow" -- Texas BBQ pitmaster.
+    - Low layer height and slow ironing does the trick.
+  - During casting, I learned a few things
+    - Shake bottle causing too many bubbles. It's ok to pour and stir using the "sheering" motion mentioned in the lecture.
     - Pulling bubbles with vaccum is bad, as it cause the bottom surface to be rough
+      ![TODO: show comparison photos](...)
   - Post-processing
     - Belt sander and deburring tools to remove rough edges
     - The lips are too tight.
