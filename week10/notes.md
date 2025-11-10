@@ -52,10 +52,8 @@
   - Melt, brush on, Heat gun, drain
   - I warped the PETG during the drain process
   - Casting the rubber mold
-    - Difficult release from PETG mold
-    - Damaged the rubber
-    - Fixed it with a quick 3D printed support ring
     - The waxed mold couldn't eliminiate the layer lines, and also, it destroyed the sharp edges
+      ![TODO: show waxing process](...)
   - Comparison
     - PLA is easy to print. If the printer is well-calibrated, the surface can be very smooth, but the layer lines are still visible.
     - PETG is more difficult to print. In our shop, the fillament had quality issue so the resulting surface isn't ideal. With wax treament, the sharp edges were smoothed out but some of the layer lines remained.
@@ -72,14 +70,23 @@
         ![TODO: show comparison photos](...)
     - "Low and slow" -- Texas BBQ pitmaster.
     - Low layer height and slow ironing does the trick.
-  - During casting, I learned a few things
+  - During mold making
+    - I used a glass to press down the backside of the rubber as it cures
+      - Extremely difficult to release from glass
+        ![TODO: show glass release photo](...)
+    - It was also extremely difficult to release the rubber from the plastic mold
+      - I torn the wall of the rubber
+        ![TODO: show torn rubber photo](...)
+      - Next time, I should add more draft angle
+      - As a work around, I 3D printed a support ring to hold the mold in shape
+  - During parts casting, I learned a few things
     - Shake bottle causing too many bubbles. It's ok to pour and stir using the "sheering" motion mentioned in the lecture.
     - Pulling bubbles with vaccum is bad, as it cause the bottom surface to be rough
       ![TODO: show comparison photos](...)
+    - My next iteration added chamfer and increased silicone base thickness
   - Post-processing
     - Belt sander and deburring tools to remove rough edges
     - The lips are too tight.
-  - My next iteration added chamfer and increased silicone base thickness
 
 ## Reflection
 
