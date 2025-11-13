@@ -37,16 +37,16 @@
       <button id="signInBtn">Sign in with Google</button>
     </div>
 
-    <div id="appSection" class="hidden">
+    <div id="appSection">
       <div class="section">
         <div>User: <span id="userEmail">-</span></div>
-        <button id="signOutBtn">Sign out</button>
+        <button id="signOutBtn" class="hidden">Sign out</button>
       </div>
 
       <div class="section">
         <form id="ipForm">
           <input type="text" id="ipInput" placeholder="192.168.0.0" required />
-          <button type="submit">Submit</button>
+          <button type="submit" id="submitBtn" disabled>Submit</button>
         </form>
       </div>
 
@@ -60,45 +60,6 @@
       </div>
     </div>
 
-    <script>
-      globalThis.readonlyFS = {
-        async getFile(filename) {
-          const script = document.querySelector(`script[type="embedded-file"][filename="${filename}"]`);
-          if (!script) {
-            throw new Errol(`File not found: ${filename}`);
-          }
-          const data = script.getAttribute("data");
-          // fetch dataUrl into File object
-          const blob = await (await fetch(data)).blob();
-          const file = new File([blob], filename, { type: blob.type });
-          return file;
-        },
-      };
-
-      globalThis.writeonlyFS = {
-        async writeFile(filename, text) {
-          const blob = new Blob([text], { type: "text/plain" });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = filename;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        },
-      };
-
-      globalThis.llm = {
-        async prompt(_prompt) {
-          throw new Error("The llm.prompt function is not available in the exported artifact. You can only use it in the runtime environment.");
-        },
-
-        async abortAll() {
-          // noop
-        },
-      };
-    </script>
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
       import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
@@ -125,6 +86,7 @@
       const signInBtn = document.getElementById("signInBtn");
       const signOutBtn = document.getElementById("signOutBtn");
       const userEmail = document.getElementById("userEmail");
+      const submitBtn = document.getElementById("submitBtn");
 
       let currentUser = null;
 
@@ -147,11 +109,14 @@
         currentUser = user;
         if (user) {
           authSection.classList.add("hidden");
-          appSection.classList.remove("hidden");
           userEmail.textContent = user.email;
+          signOutBtn.classList.remove("hidden");
+          submitBtn.disabled = false;
         } else {
           authSection.classList.remove("hidden");
-          appSection.classList.add("hidden");
+          userEmail.textContent = "-";
+          signOutBtn.classList.add("hidden");
+          submitBtn.disabled = true;
         }
       });
 
