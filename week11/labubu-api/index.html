@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Tool</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      input,
+      button {
+        padding: 0.25rem 0.5rem;
+        font-size: 20px;
+      }
+      body {
+        font-family: "Courier New", monospace;
+        background-color: Canvas;
+      }
+      .section {
+        margin-bottom: 30px;
+      }
+      a {
+        color: inherit;
+        word-break: break-all;
+      }
+      .hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="authSection" class="section">
+      <button id="signInBtn">Sign in with Google</button>
+    </div>
+
+    <div id="appSection" class="hidden">
+      <div class="section">
+        <div>User: <span id="userEmail">-</span></div>
+        <button id="signOutBtn">Sign out</button>
+      </div>
+
+      <div class="section">
+        <form id="ipForm">
+          <input type="text" id="ipInput" placeholder="192.168.0.0" required />
+          <button type="submit">Submit</button>
+        </form>
+      </div>
+
+      <div class="section">
+        <div>Current IP: <span id="currentIp">-</span></div>
+        <div>Modified by: <span id="modifiedBy">-</span></div>
+      </div>
+
+      <div class="section">
+        <div>Endpoint: <a id="getUrl" href="" target="_blank">-</a></div>
+      </div>
+    </div>
+
+    <script>
+      globalThis.readonlyFS = {
+        async getFile(filename) {
+          const script = document.querySelector(`script[type="embedded-file"][filename="${filename}"]`);
+          if (!script) {
+            throw new Errol(`File not found: ${filename}`);
+          }
+          const data = script.getAttribute("data");
+          // fetch dataUrl into File object
+          const blob = await (await fetch(data)).blob();
+          const file = new File([blob], filename, { type: blob.type });
+          return file;
+        },
+      };
+
+      globalThis.writeonlyFS = {
+        async writeFile(filename, text) {
+          const blob = new Blob([text], { type: "text/plain" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        },
+      };
+
+      globalThis.llm = {
+        async prompt(_prompt) {
+          throw new Error("The llm.prompt function is not available in the exported artifact. You can only use it in the runtime environment.");
+        },
+
+        async abortAll() {
+          // noop
+        },
+      };
+    </script>
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+      import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+      import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyAjFJZ5BQk7FTPojGz9BfaXAOmfXxyRg1k",
+        authDomain: "htmaa-25-labubu.firebaseapp.com",
+        databaseURL: "https://htmaa-25-labubu-default-rtdb.firebaseio.com",
+        projectId: "htmaa-25-labubu",
+        storageBucket: "htmaa-25-labubu.firebasestorage.app",
+        messagingSenderId: "173460075430",
+        appId: "1:173460075430:web:06f7c77fefe22f0b319567",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getDatabase(app);
+      const auth = getAuth(app);
+      const provider = new GoogleAuthProvider();
+      const configRef = ref(db, "config");
+
+      const authSection = document.getElementById("authSection");
+      const appSection = document.getElementById("appSection");
+      const signInBtn = document.getElementById("signInBtn");
+      const signOutBtn = document.getElementById("signOutBtn");
+      const userEmail = document.getElementById("userEmail");
+
+      let currentUser = null;
+
+      const getUrl = `${firebaseConfig.databaseURL}/ip.json`;
+      const urlElement = document.getElementById("getUrl");
+      urlElement.textContent = getUrl;
+      urlElement.href = getUrl;
+
+      signInBtn.addEventListener("click", () => {
+        signInWithPopup(auth, provider).catch((error) => {
+          console.error("Sign in error:", error);
+        });
+      });
+
+      signOutBtn.addEventListener("click", () => {
+        signOut(auth);
+      });
+
+      onAuthStateChanged(auth, (user) => {
+        currentUser = user;
+        if (user) {
+          authSection.classList.add("hidden");
+          appSection.classList.remove("hidden");
+          userEmail.textContent = user.email;
+        } else {
+          authSection.classList.remove("hidden");
+          appSection.classList.add("hidden");
+        }
+      });
+
+      document.getElementById("ipForm").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const ip = document.getElementById("ipInput").value;
+        set(configRef, { ip: ip, modifiedBy: currentUser.email });
+        document.getElementById("ipInput").value = "";
+      });
+
+      onValue(configRef, (snapshot) => {
+        const data = snapshot.val();
+        const ip = data ? data.ip : "-";
+        const modifiedBy = data ? data.modifiedBy : "-";
+        document.getElementById("currentIp").textContent = ip;
+        document.getElementById("modifiedBy").textContent = modifiedBy;
+      });
+    </script>
+  </body>
+</html>

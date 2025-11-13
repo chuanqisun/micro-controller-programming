@@ -140,7 +140,7 @@
 ## Setting up cam
 
 - freecad 1st time setup (previously used Dan's fusion360)
-- tutorial: https://www.youtube.com/watch?v=ER1wUvfIswk
+- tutorial: https://www.youtube.com/watch?v=er1wuvfiswk
 - copy pasted example file 5mm_Endmill.fctb and modified for 1/8", 1/16", 1/32" endmills
 
 ```json
