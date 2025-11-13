@@ -30,6 +30,12 @@
       .hidden {
         display: none;
       }
+      pre {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        border: 1px solid currentColor;
+        padding: 0.5ch 1ch;
+      }
     </style>
   </head>
   <body>
@@ -57,6 +63,19 @@
 
       <div class="section">
         <div>Endpoint: <a id="getUrl" href="" target="_blank">-</a></div>
+      </div>
+
+      <div class="section">
+        <div style="margin-bottom: 15px">
+          <div>Get IP in Windows (PowerShell):</div>
+          <pre>
+powershell -Command "(Get-NetIPAddress -AddressFamily IPv4 | Where-Object {$_.InterfaceAlias -notlike '*Loopback*'} | Select-Object -First 1).IPAddress"</pre
+          >
+        </div>
+        <div>
+          <div>Get IP in Mac/Linux (Bash):</div>
+          <pre>hostname -I | awk '{print $1}' || ifconfig | grep -A1 "en0\|eth0" | grep "inet " | awk '{print $2}' | sed 's/addr://'</pre>
+        </div>
       </div>
     </div>
 
