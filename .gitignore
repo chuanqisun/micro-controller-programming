@@ -3,3 +3,4 @@ fp-info-cache
 board/**/*.zip
 *.lck
 .env
+env.h

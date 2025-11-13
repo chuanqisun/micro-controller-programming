@@ -1,8 +1,6 @@
-#include <WiFi.h>
-#include <AsyncUDP.h>
-
-const char* WIFI_SSID = "MLDEV";
-const char* WIFI_PASSWORD = "";
+#include "WiFi.h"
+#include "AsyncUDP.h"
+#include "env.h"
 
 AsyncUDP udp;
 IPAddress targetIP(192, 168, 41, 229); // Target unicast address
