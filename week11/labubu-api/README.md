@@ -24,6 +24,10 @@ The following firebase rule setup ensures security:
     "config": {
       ".read": true,
       ".write": "(auth.token.email.endsWith('@mit.edu') || auth.token.email.endsWith('@media.mit.edu')) && auth.token.email_verified == true"
+    },
+    "metadata": {
+      ".read": "(auth.token.email.endsWith('@mit.edu') || auth.token.email.endsWith('@media.mit.edu')) && auth.token.email_verified == true",
+      ".write": "(auth.token.email.endsWith('@mit.edu') || auth.token.email.endsWith('@media.mit.edu')) && auth.token.email_verified == true"
     }
   }
 }

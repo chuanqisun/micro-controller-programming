@@ -77,6 +77,10 @@ powershell -Command "(Get-NetIPAddress -AddressFamily IPv4 | Where-Object {$_.In
           <pre>hostname -I | awk '{print $1}' || ifconfig | grep -A1 "en0\|eth0" | grep "inet " | awk '{print $2}' | sed 's/addr://'</pre>
         </div>
       </div>
+
+      <div class="section">
+        <a href="https://gitlab.cba.mit.edu/classes/863.25/CBA/cba-machine/-/tree/main/public/labubu-api" target="_blank">Source code and documentation</a>
+      </div>
     </div>
 
     <script type="module">
@@ -99,6 +103,7 @@ powershell -Command "(Get-NetIPAddress -AddressFamily IPv4 | Where-Object {$_.In
       const auth = getAuth(app);
       const provider = new GoogleAuthProvider();
       const configRef = ref(db, "config");
+      const metadataRef = ref(db, "metadata");
 
       const authSection = document.getElementById("authSection");
       const appSection = document.getElementById("appSection");
@@ -142,15 +147,20 @@ powershell -Command "(Get-NetIPAddress -AddressFamily IPv4 | Where-Object {$_.In
       document.getElementById("ipForm").addEventListener("submit", (e) => {
         e.preventDefault();
         const ip = document.getElementById("ipInput").value;
-        set(configRef, { ip: ip, modifiedBy: currentUser.email });
+        set(configRef, { ip: ip });
+        set(metadataRef, { modifiedBy: currentUser.email, modifiedAt: new Date().toISOString() });
         document.getElementById("ipInput").value = "";
       });
 
       onValue(configRef, (snapshot) => {
         const data = snapshot.val();
         const ip = data ? data.ip : "-";
-        const modifiedBy = data ? data.modifiedBy : "-";
         document.getElementById("currentIp").textContent = ip;
+      });
+
+      onValue(metadataRef, (snapshot) => {
+        const data = snapshot.val();
+        const modifiedBy = data ? data.modifiedBy : "-";
         document.getElementById("modifiedBy").textContent = modifiedBy;
       });
     </script>
