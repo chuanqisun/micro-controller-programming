@@ -1,69 +1,39 @@
-# Software Architecture
+# Rolling Ball – Servo Test (ESP32-S3 + PCA9685 + Single MUX)
+writer: saetbyeol
+- ESP32-S3 (I2C master)
+- PCA9685 16-channel Servo Driver
+- SunFounder Digital Servos
+- One 74HC4067 16-channel analog MUX (for face servos)
 
-## Microcontroller Top Level Logic
+### Features
+- Move two selected faces together by JSON command
+- Routing logic automatically chooses
+    - AA → both faces on MUX A
+    - BB → both faces on MUX B
+    - AB → one face on A, one on B (simultaneous output)
+- Sends PWM to the correct MUX and PCA9685 channel
+- Physical movement supported for Face 1 and Face 2 (servo A/B)
+- Other faces print debug messages for now
+- Supports JSON test input inside .ino file:
+```json
+{"cmd":"move_servo","args":"1,14"}
+```
 
+### Hardware Wiring
+- PCA9685 OUT0 → Servo A  
+- PCA9685 OUT1 → Servo B  
+- PCA9685 OUT2 → MUX A Common
+- PCA9685 OUT3 → MUX B Common
+- ESP32-S3 Pins 2, 3, 4, 5 → MUX S0–S3  
+- Face servos → MUX Channels 0–9  
+
+### How to Test
+- In the .ino file:
 ```cpp
-void setup() {
-  Serial.begin(115200);
-  setupWiFi();
-
-  if (udp.connect(targetIP, targetPort)) {
-    udp.onPacket([](AsyncUDPPacket packet) {
-      String msg = ...;
-      String cmd, args;
-      parseMessage(msg, cmd, args);
-
-      // Call all handlers in series, each handler choose what to do
-      handle_move_servo(cmd, args);
-      handle_reset(cmd, args);
-      // ... more handlers
-    });
-
-    udp.print("Hello Server!");
-  }
-}
-
-void loop() {
-  updateSensorData();
-  udp.print(getSensorJSON());
-}
+String incomingJson = R"({"cmd":"move_servo","args":"1,2"})";
 ```
-
-## Networking
-
-### Laptop IP Discovery
-
-ESP32 needs to know the IP address of the laptop to start UDP streaming.
-
-The laptop IP address is available at `https://htmaa-25-labubu-default-rtdb.firebaseio.com/config.json` in this format:
-
-```json
-{ "ip": "192.168.41.100" }
-```
-
-During `setup()` phase, ESP32 will first connect to WIFI, then acquire laptop IP.
-
-### ESP32 -> Laptop Message Format
-
-The minimal message includes Quaternion (w, x, y, z) and Accelerometer (ax, ay, az) data in JSON format.
-Additional data may be appended in the future, including temperature, gyroscope.
-
-```json
-{ "w": -0.0686, "x": 0.7928, "y": -0.3534, "z": 0.4918, "ax": 0.0003, "ay": -0.0005, "az": 0.0098 }
-```
-
-### Laptop -> ESP32 Message Format
-
-General format is JSON with "cmd" and "args" fields. For simplicity, "args" is a string. It is optional.
-
-Move servo command
-
-```json
-{ "cmd": "move_servo", "args": "5,12" }
-```
-
-Reset device command
-
-```json
-{ "cmd": "reset" }
-```
+- Change "1,2" to any pair:
+    - "1,2" → moves servo A & B
+    - "1,14" → moves A + prints B
+    - "3,7" → prints (MUX A)
+    - "14,20" → prints (MUX B future)

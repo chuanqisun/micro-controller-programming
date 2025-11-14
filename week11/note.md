@@ -60,3 +60,8 @@ loop() {
   send_udp_message(wifi, laptop_ip, sendor_data);
 }
 ```
+
+## Testing (friday Tea hour)
+
+- In Media Lab tea party with about 40 people, the device can experience 3 seconds+ delays
+- The WXYZ quaternion takes 12+ seconds to stablize
