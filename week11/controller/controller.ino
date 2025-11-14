@@ -2,13 +2,21 @@
 #include "env.h"
 
 AsyncUDP udp;
-IPAddress targetIP(192, 168, 41, 229); // Target unicast address
+IPAddress targetIP; // Target unicast address (will be discovered)
 const unsigned int targetPort = 41234;
 
 void setup() {
   Serial.begin(115200);
 
   setupWiFi();
+  
+  // Discover laptop IP from Firebase
+  if (!discoverLaptopIP(targetIP)) {
+    Serial.println("Failed to discover laptop IP. Halting.");
+    while (1) {
+      delay(1000);
+    }
+  }
   
   if (udp.connect(targetIP, targetPort)) {
     Serial.println("UDP connected");
@@ -33,10 +41,8 @@ void setup() {
 }
 
 void loop() {
-  // Update sensor readings
   updateSensorData();
   
-  // Send sensor data as JSON
   udp.print(getSensorJSON());
   
   delay(100);  // 10Hz = 100ms delay

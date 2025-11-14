@@ -31,6 +31,18 @@ void loop() {
 
 ## Networking
 
+### Laptop IP Discovery
+
+ESP32 needs to know the IP address of the laptop to start UDP streaming.
+
+The laptop IP address is available at `https://htmaa-25-labubu-default-rtdb.firebaseio.com/config.json` in this format:
+
+```json
+{ "ip": "192.168.41.100" }
+```
+
+During `setup()` phase, ESP32 will first connect to WIFI, then acquire laptop IP.
+
 ### ESP32 -> Laptop Message Format
 
 The minimal message includes Quaternion (w, x, y, z) and Accelerometer (ax, ay, az) data in JSON format.
