@@ -4,40 +4,35 @@
 AsyncUDP udp;
 IPAddress targetIP(192, 168, 41, 229); // Target unicast address
 const unsigned int targetPort = 41234;
-int packetNum = 0;
-
-unsigned long startTime = 0;
 
 void setup() {
   Serial.begin(115200);
 
-  // Connect to WiFi
   setupWiFi();
   
-  // Record start time for restart test
-  startTime = millis();
-  
-  // Connect to target IP
   if (udp.connect(targetIP, targetPort)) {
     Serial.println("UDP connected");
     udp.onPacket([](AsyncUDPPacket packet) {
-      // Print received packet content
       String msg = String((char*)packet.data(), packet.length());
       Serial.println("Received: " + msg);
+      String cmd, args;
+      if (!parseMessage(msg, cmd, args)) {
+        Serial.println("Failed to parse message");
+        return;
+      }
+      
+      Serial.println("Command: " + cmd + ", Args: " + args);
+      
+      // Call all handlers in series, each handler choose what to do
+      handle_move_servo(cmd, args);
+      handle_reset(cmd, args);
     });
-    // Send initial message
+    
     udp.print("Hello Server!");
   }
 }
 
 void loop() {
-  // Test: restart device after 10 seconds
-  if (millis() - startTime >= 10000) {
-    Serial.println("10 seconds elapsed. Restarting device...");
-    delay(100);  // Brief delay to allow serial print
-    ESP.restart();
-  }
-  
   // Update sensor readings
   updateSensorData();
   
