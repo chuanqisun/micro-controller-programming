@@ -65,3 +65,19 @@ loop() {
 
 - In Media Lab tea party with about 40 people, the device can experience 3 seconds+ delays
 - The WXYZ quaternion takes 12+ seconds to stablize
+
+## Migration
+
+After the testing I tool Miranda's Bluetooth 2-way communication code, and used Claude 4.5 Sonnet to migrate the Wifi+UDP code with Bluetooth
+
+```txt
+Plan step by step, we are going to swap out the wifi + UDP + WebSocket based communication between ESP32 and Node.js with a simpler Bluetooth BLE based communication between ESP32 and the Web page, using Web Bluetooth API.
+
+The change will include at least the following:
+1. Remove UDP and Wifi on both ESP32 and Node.js
+2. Add BLE on both ESP32 and the web page
+3. Remove IP discovery code
+...
+
+Make sure to carefully map out the migration and execute it with a checklist.
+```

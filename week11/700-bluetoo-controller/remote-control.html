@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ESP32 BLE Receiver</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        max-width: 600px;
+        margin: 50px auto;
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+      }
+
+      .container {
+        background: white;
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      }
+
+      h1 {
+        color: #333;
+        text-align: center;
+        margin-bottom: 30px;
+      }
+
+      button {
+        background: #667eea;
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        font-size: 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        width: 100%;
+        transition: background 0.3s;
+      }
+
+      button:hover:not(:disabled) {
+        background: #5568d3;
+      }
+
+      button:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+      }
+
+      #status {
+        margin-top: 20px;
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+        font-weight: 500;
+      }
+
+      .disconnected {
+        background: #fee;
+        color: #c33;
+      }
+
+      .connected {
+        background: #efe;
+        color: #3c3;
+      }
+
+      .connecting {
+        background: #fef5e7;
+        color: #f39c12;
+      }
+
+      #messageDisplay {
+        margin-top: 30px;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        min-height: 100px;
+      }
+
+      #messageDisplay h3 {
+        margin-top: 0;
+        color: #555;
+      }
+
+      #messages {
+        max-height: 300px;
+        overflow-y: auto;
+      }
+
+      .message {
+        padding: 10px;
+        margin: 5px 0;
+        background: white;
+        border-left: 4px solid #667eea;
+        border-radius: 4px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .message-value {
+        font-size: 24px;
+        font-weight: bold;
+        color: #667eea;
+      }
+
+      .message-time {
+        font-size: 12px;
+        color: #999;
+      }
+
+      .info {
+        background: #e7f3ff;
+        padding: 15px;
+        border-radius: 8px;
+        margin-top: 20px;
+        font-size: 14px;
+        color: #555;
+      }
+
+      .info strong {
+        color: #333;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🔵 ESP32 BLE Receiver</h1>
+
+      <button id="connectBtn">Connect to ESP32</button>
+
+      <button id="sendTimeBtn" style="margin-top: 10px" disabled>Send Timestamp to ESP32</button>
+
+      <div id="status" class="disconnected">Status: Disconnected</div>
+
+      <div id="messageDisplay">
+        <h3>Received Messages:</h3>
+        <div id="messages"></div>
+      </div>
+
+      <div class="info">
+        <strong>Instructions:</strong><br />
+        1. Make sure your ESP32 is running the BLE sketch<br />
+        2. Click "Connect to ESP32"<br />
+        3. Select "ESP32-Counter" from the device list<br />
+        4. Watch the counter increment every second!
+      </div>
+    </div>
+
+    <script>
+      const connectBtn = document.getElementById("connectBtn");
+      const sendTimeBtn = document.getElementById("sendTimeBtn");
+      const statusDiv = document.getElementById("status");
+      const messagesDiv = document.getElementById("messages");
+
+      let bluetoothDevice = null;
+      let characteristic = null;
+
+      // BLE UUIDs - must match the ESP32 sketch
+      const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
+      const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
+
+      connectBtn.addEventListener("click", async () => {
+        if (!navigator.bluetooth) {
+          alert("Web Bluetooth API is not available in this browser. Please use Chrome, Edge, or Opera on desktop or Android.");
+          return;
+        }
+
+        try {
+          updateStatus("Connecting...", "connecting");
+          connectBtn.disabled = true;
+
+          // Request Bluetooth device
+          bluetoothDevice = await navigator.bluetooth.requestDevice({
+            filters: [{ name: "ESP32-Counter" }],
+            optionalServices: [SERVICE_UUID],
+          });
+
+          console.log("Device selected:", bluetoothDevice.name);
+
+          // Connect to GATT server
+          const server = await bluetoothDevice.gatt.connect();
+          console.log("Connected to GATT server");
+
+          // Get service
+          const service = await server.getPrimaryService(SERVICE_UUID);
+          console.log("Service found");
+
+          // Get characteristic
+          characteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
+          console.log("Characteristic found");
+
+          // Subscribe to notifications
+          await characteristic.startNotifications();
+          console.log("Notifications started");
+
+          // Listen for notifications
+          characteristic.addEventListener("characteristicvaluechanged", handleNotification);
+
+          // Handle disconnection
+          bluetoothDevice.addEventListener("gattserverdisconnected", onDisconnected);
+
+          updateStatus("Connected to " + bluetoothDevice.name, "connected");
+          connectBtn.textContent = "Disconnect";
+          connectBtn.disabled = false;
+          sendTimeBtn.disabled = false;
+        } catch (error) {
+          console.error("Connection error:", error);
+          updateStatus("Connection failed: " + error.message, "disconnected");
+          connectBtn.disabled = false;
+          sendTimeBtn.disabled = true;
+        }
+      });
+
+      sendTimeBtn.addEventListener("click", async () => {
+        if (!characteristic) {
+          alert("Not connected to ESP32");
+          return;
+        }
+
+        try {
+          const timestamp = new Date().toISOString();
+          const encoder = new TextEncoder();
+          await characteristic.writeValue(encoder.encode(timestamp));
+          console.log("Sent timestamp:", timestamp);
+
+          // Visual feedback
+          sendTimeBtn.textContent = "✓ Sent!";
+          setTimeout(() => {
+            sendTimeBtn.textContent = "Send Timestamp to ESP32";
+          }, 1000);
+        } catch (error) {
+          console.error("Error sending timestamp:", error);
+          alert("Failed to send timestamp: " + error.message);
+        }
+      });
+
+      function handleNotification(event) {
+        const value = new TextDecoder().decode(event.target.value);
+        console.log("Received:", value);
+
+        // Add message to display
+        const messageEl = document.createElement("div");
+        messageEl.className = "message";
+        messageEl.innerHTML = `
+        <span class="message-value">${value}</span>
+        <span class="message-time">${new Date().toLocaleTimeString()}</span>
+      `;
+
+        messagesDiv.insertBefore(messageEl, messagesDiv.firstChild);
+
+        // Keep only last 20 messages
+        while (messagesDiv.children.length > 20) {
+          messagesDiv.removeChild(messagesDiv.lastChild);
+        }
+      }
+
+      function onDisconnected() {
+        console.log("Device disconnected");
+        updateStatus("Disconnected", "disconnected");
+        connectBtn.textContent = "Connect to ESP32";
+        connectBtn.disabled = false;
+        sendTimeBtn.disabled = true;
+        bluetoothDevice = null;
+        characteristic = null;
+      }
+
+      function updateStatus(message, className) {
+        statusDiv.textContent = "Status: " + message;
+        statusDiv.className = className;
+      }
+
+      // Handle button click for disconnect
+      connectBtn.addEventListener("click", async () => {
+        if (bluetoothDevice && bluetoothDevice.gatt.connected) {
+          bluetoothDevice.gatt.disconnect();
+        }
+      });
+    </script>
+  </body>
+</html>

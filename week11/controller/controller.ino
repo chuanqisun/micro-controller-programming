@@ -1,83 +1,119 @@
-#include <ArduinoJson.h>
-#include "servo_control.h"
+// ESP32 BLE UART-style peripheral that notifies the browser.
+// Converted from MicroPython to Arduino
 
-ServoController servos;
-bool hasRun = false;
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLEUtils.h>
+#include <BLE2902.h>
+
+// Nordic UART Service UUIDs
+#define UART_SERVICE_UUID "6e400001-b5a3-f393-e0a9-e50e24dcca9e"
+#define UART_TX_UUID      "6e400003-b5a3-f393-e0a9-e50e24dcca9e"  // notify: ESP32 -> browser
+#define UART_RX_UUID      "6e400002-b5a3-f393-e0a9-e50e24dcca9e"  // write: browser -> ESP32
+
+BLEUUID serviceUUID(UART_SERVICE_UUID);
+BLEUUID txUUID(UART_TX_UUID);
+BLEUUID rxUUID(UART_RX_UUID);
+
+BLEServer* pServer = NULL;
+BLECharacteristic* pTxCharacteristic = NULL;
+BLECharacteristic* pRxCharacteristic = NULL;
+bool deviceConnected = false;
+bool oldDeviceConnected = false;
+
+// Callback for server events
+class MyServerCallbacks: public BLEServerCallbacks {
+    void onConnect(BLEServer* pServer) {
+        deviceConnected = true;
+        Serial.println("Central connected");
+    }
+
+    void onDisconnect(BLEServer* pServer) {
+        deviceConnected = false;
+        Serial.println("Central disconnected");
+    }
+};
+
+// Callback for RX characteristic (write from browser)
+class MyRxCallbacks: public BLECharacteristicCallbacks {
+    void onWrite(BLECharacteristic* pCharacteristic) {
+        String rxValue = pCharacteristic->getValue();
+        if (rxValue.length() > 0) {
+            Serial.print("RX from browser: ");
+            Serial.println(rxValue);
+            
+            // Check if received "b" command and send acknowledgement
+            if (rxValue == "b") {
+                Serial.println("Received 'b' command - sending acknowledgement");
+                String ack = "ACK: b";
+                pTxCharacteristic->setValue((uint8_t*)ack.c_str(), ack.length());
+                pTxCharacteristic->notify();
+            }
+        }
+    }
+};
 
 void setup() {
-  Serial.begin(115200);
-  delay(1500);
+    Serial.begin(115200);
+    Serial.println("Starting ESP32 BLE UART...");
 
-  Wire.begin();
-  servos.begin();
+    // Initialize BLE device
+    BLEDevice::init("ESP32-UART");
 
-  Serial.println("\n=== FINAL SERVO TEST MODE ===");
-  Serial.println("Faces 1–2 = REAL servos");
-  Serial.println("Faces 3–10 = MUX A (print only)");
-  Serial.println("Faces 11–20 = MUX B (print only)\n");
-}
+    // Create BLE server
+    pServer = BLEDevice::createServer();
+    pServer->setCallbacks(new MyServerCallbacks());
 
-void processJsonCommand(String jsonMsg) {
-  StaticJsonDocument<128> doc;
-  if (deserializeJson(doc, jsonMsg)) {
-    Serial.println("JSON parse error");
-    return;
-  }
+    // Create BLE service
+    BLEService* pService = pServer->createService(serviceUUID);
 
-  String cmd = doc["cmd"];
-  String args = doc["args"];
+    // Create TX characteristic (notify)
+    pTxCharacteristic = pService->createCharacteristic(
+        txUUID,
+        BLECharacteristic::PROPERTY_NOTIFY
+    );
+    pTxCharacteristic->addDescriptor(new BLE2902());
 
-  if (cmd != "move_servo") {
-    Serial.println("Unknown command");
-    return;
-  }
+    // Create RX characteristic (write)
+    pRxCharacteristic = pService->createCharacteristic(
+        rxUUID,
+        BLECharacteristic::PROPERTY_WRITE
+    );
+    pRxCharacteristic->setCallbacks(new MyRxCallbacks());
 
-  int comma = args.indexOf(',');
-  int f1 = args.substring(0, comma).toInt();
-  int f2 = args.substring(comma + 1).toInt();
+    // Start the service
+    pService->start();
 
-  Serial.print("\nCommanded faces: ");
-  Serial.print(f1);
-  Serial.print(", ");
-  Serial.println(f2);
-
-  // Always queue movement for BOTH faces
-  auto processOne = [&](int face) {
-    if (face == 1 || face == 2) {
-        Serial.print(" -> Moving PHYSICAL servo for face ");
-        Serial.println(face);
-
-        servos.queueFace(face, 180);  // queue movement
-    }
-    else if (face >= 3 && face <= 10) {
-        Serial.print(" -> (MUX A) Face ");
-        Serial.println(face);
-    }
-    else if (face >= 11 && face <= 20) {
-        Serial.print(" -> (MUX B) Face ");
-        Serial.println(face);
-    }
-  };
-
-  // queue both
-  processOne(f1);
-  processOne(f2);
-
-  // execute together
-  servos.applyQueuedOutput();
-  delay(400);
-
-  // reset
-  servos.resetAll();
-
-  Serial.println("Movement complete.\n");
+    // Start advertising
+    BLEAdvertising* pAdvertising = BLEDevice::getAdvertising();
+    pAdvertising->addServiceUUID(serviceUUID);
+    pAdvertising->setScanResponse(false);
+    pAdvertising->setMinPreferred(0x0);  // set value to 0x00 to not advertise this parameter
+    BLEDevice::startAdvertising();
+    Serial.println("Advertising as ESP32-UART");
 }
 
 void loop() {
-  // if (!hasRun) {
-    // Change this to any face pair
-    String incomingJson = R"({"cmd":"move_servo","args":"1,2"})";
-    processJsonCommand(incomingJson);
-    // hasRun = true;
-  // }
+    // Handle disconnection
+    if (!deviceConnected && oldDeviceConnected) {
+        delay(500); // give the bluetooth stack the chance to get things ready
+        pServer->startAdvertising(); // restart advertising
+        Serial.println("Restarting advertising");
+        oldDeviceConnected = deviceConnected;
+    }
+    
+    // Handle connection
+    if (deviceConnected && !oldDeviceConnected) {
+        oldDeviceConnected = deviceConnected;
+    }
+
+    // Send 'a' every second when connected
+    if (deviceConnected) {
+        pTxCharacteristic->setValue((uint8_t*)"a", 1);
+        pTxCharacteristic->notify();
+        delay(1000);
+    } else {
+        delay(200);
+    }
 }
+
