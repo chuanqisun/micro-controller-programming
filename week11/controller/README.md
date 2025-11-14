@@ -28,5 +28,28 @@ General format is JSON with "cmd" and "args" fields. For simplicity, "args" is a
 # ESP32 Top Level Logic
 
 ```cpp
+void setup() {
+  Serial.begin(115200);
+  setupWiFi();
 
+  if (udp.connect(targetIP, targetPort)) {
+    udp.onPacket([](AsyncUDPPacket packet) {
+      String msg = ...;
+      String cmd, args;
+      parseMessage(msg, cmd, args);
+
+      // Call all handlers in series, each handler choose what to do
+      handle_move_servo(cmd, args);
+      handle_reset(cmd, args);
+      // ... more handlers
+    });
+
+    udp.print("Hello Server!");
+  }
+}
+
+void loop() {
+  updateSensorData();
+  udp.print(getSensorJSON());
+}
 ```
