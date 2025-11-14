@@ -6,11 +6,16 @@ IPAddress targetIP(192, 168, 41, 229); // Target unicast address
 const unsigned int targetPort = 41234;
 int packetNum = 0;
 
+unsigned long startTime = 0;
+
 void setup() {
   Serial.begin(115200);
 
   // Connect to WiFi
   setupWiFi();
+  
+  // Record start time for restart test
+  startTime = millis();
   
   // Connect to target IP
   if (udp.connect(targetIP, targetPort)) {
@@ -26,6 +31,13 @@ void setup() {
 }
 
 void loop() {
+  // Test: restart device after 10 seconds
+  if (millis() - startTime >= 10000) {
+    Serial.println("10 seconds elapsed. Restarting device...");
+    delay(100);  // Brief delay to allow serial print
+    ESP.restart();
+  }
+  
   // Update sensor readings
   updateSensorData();
   

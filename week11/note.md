@@ -39,3 +39,24 @@
 
 - Yufeng ran the demo code for Adafruit IMU board
 - In parallel, I mocked the IMU data in a separate Xiao, communicate with a node.js server over UDP, and made user the node.js server can send commands back to Xiao.
+
+## Determine high level logic
+
+```cpp
+setup() {
+  wifi = connect_wifi();
+  laptop_ip = discover_laptop(wifi);
+
+  on_message_received = (message) => {
+    handle_reset(message);
+    handle_servo_command(message);
+  };
+
+  handle_laptop_udp_message(wifi, laptop_ip, on_message_received);
+}
+
+loop() {
+  sendor_data = read_imu_sensor();
+  send_udp_message(wifi, laptop_ip, sendor_data);
+}
+```
