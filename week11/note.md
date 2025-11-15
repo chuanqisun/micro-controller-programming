@@ -65,6 +65,7 @@ loop() {
 
 - In Media Lab tea party with about 40 people, the device can experience 3 seconds+ delays
 - The WXYZ quaternion takes 12+ seconds to stablize
+- Panic: we need to ditch al the wifi and UDP code. It's gonna be a rewrite!
 
 ## Migration
 
