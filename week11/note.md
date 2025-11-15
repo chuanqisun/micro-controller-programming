@@ -77,6 +77,11 @@ The change will include at least the following:
 1. Remove UDP and Wifi on both ESP32 and Node.js
 2. Add BLE on both ESP32 and the web page
 3. Remove IP discovery code
+4. Treat the server folder as static. use simple npx command to serve the file and not worry about maintaining a node.js server
+
+We already have working reference implemention in #file:bluetooth. You can use that code as skeleton.
+
+Keep the ESP32 organized by files, similar to existing structure lib-xx-name.ino; delete files that are no longer in use.
 ...
 
 Make sure to carefully map out the migration and execute it with a checklist.
