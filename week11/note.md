@@ -82,7 +82,6 @@ The change will include at least the following:
 We already have working reference implemention in #file:bluetooth. You can use that code as skeleton.
 
 Keep the ESP32 organized by files, similar to existing structure lib-xx-name.ino; delete files that are no longer in use.
-...
 
 Make sure to carefully map out the migration and execute it with a checklist.
 ```
