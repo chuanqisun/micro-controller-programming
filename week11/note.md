@@ -163,5 +163,18 @@ This implies that flow control is needed. On the browser side, we can throttle o
 
 Characterize the performance:
 
-- Latency: 60ms round trip
--
+### Best case, side by side same room
+
+- Bandwdith:
+  - Browser to ESP32: 14 messages/sec
+  - ESP32 to Browser: 100 messages/sec
+- Latency: 92 ms average, min: 84 ms, max: 140 ms
+
+### At distance of 30 meters, through one glass wall
+
+Unable to establish new connection at distance, but can tether previous connection to 30 meters
+
+- Bandwidth:
+  - Browser to ESP32: 8 messages/sec
+  - ESP32 to Browser: 50 messages/sec
+- Latency: 250 ms, min 89 ms, max 540 ms
