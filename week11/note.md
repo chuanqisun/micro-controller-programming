@@ -127,3 +127,12 @@ void sendSensorDataIfReady() {
 
 Matti directed us to run the adafruit official MUX PWM PCA9685 library code.
 We confirmed that the board wiring is correct, all servo motors are functional
+
+We solved the issue by using Adadruit official library example code as starting point and not worrying about the board.
+
+Matti also found out how to serial connect two MUX board by soldering the address pin to set one board at 0x41 instead of 0x40.
+
+## Stress testing the BLE communication
+
+We found out that rapidly sending BLE messages would the connection to drop.
+Matti suggested we use different tx characteristic for namespaced communication, saving bandwidth from command names
