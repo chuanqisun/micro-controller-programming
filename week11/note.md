@@ -191,3 +191,54 @@ Unable to establish new connection at distance, but can tether previous connecti
 Browser -> ESP32: 14 messages per second
 ESP32 -> Browser: 100 messages per second
 Latency: 230 ms, min 157 ms, max 332 ms
+
+## Integrate scheduler
+
+- I want the scheduler to be hidden behind the bluetooth module so the caller of the bluetooth module does not have to worry about scheduler and multiple callers of the bluetooth will be scheduled in a first in first out manner.
+
+Core implementation:
+
+```js
+  /**
+   * Add a task to the queue and process it
+   * @param {Function} taskFn - Async function to execute
+   * @returns {Promise} - Resolves when task completes
+   */
+  async enqueue(taskFn) {
+    return new Promise((resolve, reject) => {
+      this.queue.push({ taskFn, resolve, reject });
+      this.processQueue(); // After each task, check for more tasks
+    });
+  }
+
+  /**
+   * Process the queue sequentially
+   */
+  async processQueue() {
+    // If already processing, return
+    if (this.isProcessing) {
+      return;
+    }
+
+    // If queue is empty, return
+    if (this.queue.length === 0) {
+      return;
+    }
+
+    this.isProcessing = true;
+
+    while (this.queue.length > 0) {
+      const { taskFn, resolve, reject } = this.queue.shift();
+
+      try {
+        const result = await taskFn();
+        resolve(result);
+      } catch (error) {
+        console.error("Task failed in scheduler:", error);
+        reject(error); // The caller can ignore the rejection if they want.
+      }
+    }
+
+    this.isProcessing = false;
+  }
+```
