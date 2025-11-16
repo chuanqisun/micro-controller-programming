@@ -6,11 +6,14 @@
   "scripts": {
     "dev": "npm run dev:controller",
     "dev:sensor": "npm run build:sensor && npm run upload:sensor && concurrently \"npm run monitor\"",
+    "build:sensor": "arduino-cli compile -b esp32:esp32:XIAO_ESP32S3 ./read-sensor",
+    "upload:sensor": "arduino-cli upload -p /dev/ttyACM0 -b esp32:esp32:XIAO_ESP32S3 ./read-sensor",
     "dev:controller": "npm run build:controller && npm run upload:controller && concurrently \"npm run monitor\"",
     "build:controller": "arduino-cli compile -b esp32:esp32:XIAO_ESP32S3 ./controller",
-    "build:sensor": "arduino-cli compile -b esp32:esp32:XIAO_ESP32S3 ./read-sensor",
     "upload:controller": "arduino-cli upload -p /dev/ttyACM0 -b esp32:esp32:XIAO_ESP32S3 ./controller",
-    "upload:sensor": "arduino-cli upload -p /dev/ttyACM0 -b esp32:esp32:XIAO_ESP32S3 ./read-sensor",
+    "dev:c3": "npm run build:c3 && npm run upload:c3 && concurrently \"npm run monitor\"",
+    "build:c3": "arduino-cli compile -b esp32:esp32:XIAO_ESP32C3 ./controller",
+    "upload:c3": "arduino-cli upload -p /dev/ttyACM0 -b esp32:esp32:XIAO_ESP32C3 ./controller",
     "monitor": "arduino-cli monitor -p /dev/ttyACM0 -c baudrate=115200",
     "serve": "node server/server.js"
   },

@@ -1,10 +1,9 @@
-#include <ArduinoJson.h>
+// ============================================
+// SERVO CONTROL - Full Arduino Program
+// ============================================
+
 #include <Adafruit_PWMServoDriver.h>
 #include <Wire.h>
-
-// ============================================================================
-// SERVO CONTROLLER - Inlined from servo_control.h/cpp
-// ============================================================================
 
 // Tuned for SunFounder Digital Servo
 #define SERVO_MIN 100
@@ -27,59 +26,180 @@
 #define MUXB_S2 8
 #define MUXB_S3 9
 
+// Output type enum
 enum OutputType {
-    OUT_NONE = 0,
+    OUT_NONE,
     OUT_PHYSICAL,
     OUT_MUX_A,
     OUT_MUX_B
 };
 
 // Global servo state
-Adafruit_PWMServoDriver pwm(0x40);
+Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(0x40);
 
-// movement state
+// Movement state
 bool servo_active = false;
-unsigned long servo_lastStep = 0;
-int servo_phase = 0;        // 0 = forward, 1 = backward
+int servo_phase = 0;            // 0 = forward, 1 = back
 int servo_stepAngle = 0;
-const int servo_stepDeg = 3;          // degrees per step
-const int servo_stepIntervalMs = 15;  // ms per step (~60 fps)
+unsigned long servo_lastStep = 0;
 
-// face routing
-int servo_f1ID = 1;
-int servo_f2ID = 2;
+// Face ID being moved
+int servo_faceID = -1;
 
-OutputType servo_f1Type = OUT_NONE;
-OutputType servo_f2Type = OUT_NONE;
+// Routed output target
+OutputType servo_outputType = OUT_NONE;
+int servo_outputChannel = -1;
 
-int servo_f1Channel = -1;   // physical channel or mux channel
-int servo_f2Channel = -1;
+// Movement config
+const int servo_stepDeg = 4;         // 0→180 in 45 steps
+const int servo_stepIntervalMs = 12; // ~180ms total
 
-// ============================================================================
-// HELPER FUNCTIONS
-// ============================================================================
+// Movement counter
+int movementCount = 0;
+const int maxMovements = 5;
 
-int angleToPWM(int angle) {
-    angle = constrain(angle, 0, 180);
-    int pwmVal = map(angle, 0, 180, SERVO_MIN, SERVO_MAX);
-    return pwmVal;
+
+// ============================================
+// ARDUINO MAIN FUNCTIONS
+// ============================================
+
+void setup() {
+    Serial.begin(115200);
+    while (!Serial && millis() < 3000);
+    
+    Serial.println("\n=== Servo Test Program ===");
+    setupServo();
+    
+    // Start with servo 1
+    servo_startMovement(1);
 }
 
-void selectMuxA(int ch) {
-    digitalWrite(MUXA_S0, (ch >> 0) & 1);
-    digitalWrite(MUXA_S1, (ch >> 1) & 1);
-    digitalWrite(MUXA_S2, (ch >> 2) & 1);
-    digitalWrite(MUXA_S3, (ch >> 3) & 1);
+void loop() {
+    // Stop after reaching max movements
+    if (movementCount >= maxMovements) {
+        Serial.println("\n=== Test Complete: 10 movements finished ===");
+        while (true) {
+            delay(1000);
+        }
+    }
+    
+    updateServo();
+    
+    // When movement completes, start the next servo
+    static bool wasActive = false;
+    bool isActive = servo_isActive();
+    
+    if (wasActive && !isActive) {
+        // Movement just finished
+        movementCount++;
+        
+        Serial.print("Completed ");
+        Serial.print(movementCount);
+        Serial.print(" of ");
+        Serial.println(maxMovements);
+        
+        // Check if we've reached the limit
+        if (movementCount >= maxMovements) {
+            return;
+        }
+        
+        static int currentServo = 1;
+        
+        // Toggle between servo 1 and 2
+        currentServo = (currentServo == 1) ? 2 : 1;
+        
+        Serial.print("Starting servo ");
+        Serial.println(currentServo);
+        
+        servo_startMovement(currentServo);
+    }
+    
+    wasActive = isActive;
 }
 
-void selectMuxB(int ch) {
-    digitalWrite(MUXB_S0, (ch >> 0) & 1);
-    digitalWrite(MUXB_S1, (ch >> 1) & 1);
-    digitalWrite(MUXB_S2, (ch >> 2) & 1);
-    digitalWrite(MUXB_S3, (ch >> 3) & 1);
+
+
+// ============================================
+// PUBLIC SERVO API
+// ============================================
+
+void setupServo() {
+    Wire.begin();
+
+    // MUX A
+    pinMode(MUXA_S0, OUTPUT);
+    pinMode(MUXA_S1, OUTPUT);
+    pinMode(MUXA_S2, OUTPUT);
+    pinMode(MUXA_S3, OUTPUT);
+
+    // MUX B
+    pinMode(MUXB_S0, OUTPUT);
+    pinMode(MUXB_S1, OUTPUT);
+    pinMode(MUXB_S2, OUTPUT);
+    pinMode(MUXB_S3, OUTPUT);
+
+    pwm.begin();
+    pwm.setPWMFreq(50);
+    delay(20);
+    
+    Serial.println("Servo system initialized");
 }
 
-void resolveFace(int faceID, OutputType &type, int &outChannel) {
+void servo_startMovement(int faceID) {
+    servo_faceID = faceID;
+
+    servo_resolveFace(servo_faceID, servo_outputType, servo_outputChannel);
+
+    servo_active = true;
+    servo_phase = 0;        // 0 → going up
+    servo_stepAngle = 0;    // start at 0°
+    servo_lastStep = millis();
+
+    Serial.print("[Servo] Start movement face ");
+    Serial.println(servo_faceID);
+}
+
+void updateServo() {
+    if (!servo_active) return;
+
+    unsigned long now = millis();
+    if (now - servo_lastStep < (unsigned long)servo_stepIntervalMs) return;
+    servo_lastStep = now;
+
+    // Forward phase: 0 → 180
+    if (servo_phase == 0) {
+        servo_write(servo_outputType, servo_outputChannel, servo_stepAngle);
+
+        servo_stepAngle += servo_stepDeg;
+        if (servo_stepAngle >= 180) {
+            servo_stepAngle = 180;
+            servo_phase = 1;
+            Serial.println("[Servo] Reverse");
+        }
+    }
+    // Backward phase: 180 → 0
+    else if (servo_phase == 1) {
+        servo_write(servo_outputType, servo_outputChannel, servo_stepAngle);
+
+        servo_stepAngle -= servo_stepDeg;
+        if (servo_stepAngle <= 0) {
+            servo_stepAngle = 0;
+            servo_active = false;
+            Serial.println("[Servo] Done");
+        }
+    }
+}
+
+bool servo_isActive() {
+    return servo_active;
+}
+
+// ============================================
+// SERVO HELPER FUNCTIONS
+// ============================================
+
+
+void servo_resolveFace(int faceID, OutputType &type, int &outChannel) {
     type = OUT_NONE;
     outChannel = -1;
 
@@ -110,140 +230,49 @@ void resolveFace(int faceID, OutputType &type, int &outChannel) {
     }
 }
 
-void writeOne(OutputType type, int channel, int angle) {
-    int pwmVal = angleToPWM(angle);
+void servo_write(OutputType type, int channel, int angle) {
+    int pwmVal = servo_angleToPWM(angle);
 
     switch (type) {
         case OUT_PHYSICAL:
-            // channel is PCA9685 output index
             pwm.setPWM(channel, 0, pwmVal);
             break;
 
         case OUT_MUX_A:
             if (channel >= 0 && channel <= 15) {
-                selectMuxA(channel);
+                servo_selectMuxA(channel);
                 pwm.setPWM(PWM_MUX_A, 0, pwmVal);
             }
             break;
 
         case OUT_MUX_B:
             if (channel >= 0 && channel <= 15) {
-                selectMuxB(channel);
+                servo_selectMuxB(channel);
                 pwm.setPWM(PWM_MUX_B, 0, pwmVal);
             }
             break;
 
         default:
-            // OUT_NONE → do nothing
             break;
     }
 }
 
-void writeDual(int angle) {
-    writeOne(servo_f1Type, servo_f1Channel, angle);
-    writeOne(servo_f2Type, servo_f2Channel, angle);
+int servo_angleToPWM(int angle) {
+    angle = constrain(angle, 0, 180);
+    int pwmVal = map(angle, 0, 180, SERVO_MIN, SERVO_MAX);
+    return pwmVal;
 }
 
-void servo_begin() {
-    // MUX A
-    pinMode(MUXA_S0, OUTPUT);
-    pinMode(MUXA_S1, OUTPUT);
-    pinMode(MUXA_S2, OUTPUT);
-    pinMode(MUXA_S3, OUTPUT);
-
-    // MUX B
-    pinMode(MUXB_S0, OUTPUT);
-    pinMode(MUXB_S1, OUTPUT);
-    pinMode(MUXB_S2, OUTPUT);
-    pinMode(MUXB_S3, OUTPUT);
-
-    pwm.begin();
-    pwm.setPWMFreq(50);
-    delay(20);
+void servo_selectMuxA(int ch) {
+    digitalWrite(MUXA_S0, (ch >> 0) & 1);
+    digitalWrite(MUXA_S1, (ch >> 1) & 1);
+    digitalWrite(MUXA_S2, (ch >> 2) & 1);
+    digitalWrite(MUXA_S3, (ch >> 3) & 1);
 }
 
-void servo_startMovement(int face1, int face2) {
-    servo_f1ID = face1;
-    servo_f2ID = face2;
-
-    resolveFace(servo_f1ID, servo_f1Type, servo_f1Channel);
-    resolveFace(servo_f2ID, servo_f2Type, servo_f2Channel);
-
-    servo_active = true;
-    servo_phase = 0;        // 0 → going up
-    servo_stepAngle = 0;    // start at 0°
-    servo_lastStep = millis();
-
-    Serial.print("[Movement] Start faces ");
-    Serial.print(servo_f1ID);
-    Serial.print(", ");
-    Serial.println(servo_f2ID);
-}
-
-void servo_update() {
-    if (!servo_active) return;
-
-    unsigned long now = millis();
-    if (now - servo_lastStep < (unsigned long)servo_stepIntervalMs) return;
-    servo_lastStep = now;
-
-    // Forward phase: 0 → 180
-    if (servo_phase == 0) {
-        writeDual(servo_stepAngle);
-
-        servo_stepAngle += servo_stepDeg;
-        if (servo_stepAngle >= 180) {
-            servo_stepAngle = 180;
-            servo_phase = 1;
-            Serial.println("[Movement] Reverse");
-        }
-    }
-    // Backward phase: 180 → 0
-    else if (servo_phase == 1) {
-        writeDual(servo_stepAngle);
-
-        servo_stepAngle -= servo_stepDeg;
-        if (servo_stepAngle <= 0) {
-            servo_stepAngle = 0;
-            servo_active = false;
-            Serial.println("[Movement] Done");
-        }
-    }
-}
-
-// ============================================================================
-// MAIN PROGRAM
-// ============================================================================
-
-int currentServo = 1;
-unsigned long lastMoveTime = 0;
-const unsigned long MOVE_INTERVAL = 1000; // 1 second
-
-void setup() {
-  Serial.begin(115200);
-  Wire.begin();
-  servo_begin();
-
-  Serial.println("\n=== SERVO ALTERNATING DEMO ===");
-  Serial.println("Alternating servo 1 and 2 once per second\n");
-}
-
-void loop() {
-  // Always call servo_update() to handle ongoing movements
-  servo_update();
-
-  // Check if movement is complete and enough time has passed
-  if (!servo_active) {
-    unsigned long now = millis();
-    if (now - lastMoveTime >= MOVE_INTERVAL) {
-      // Start movement on current servo (move with itself for single servo movement)
-      Serial.print("Moving servo ");
-      Serial.println(currentServo);
-      servo_startMovement(currentServo, currentServo);
-      
-      // Alternate to the other servo
-      currentServo = (currentServo == 1) ? 2 : 1;
-      lastMoveTime = now;
-    }
-  }
+void servo_selectMuxB(int ch) {
+    digitalWrite(MUXB_S0, (ch >> 0) & 1);
+    digitalWrite(MUXB_S1, (ch >> 1) & 1);
+    digitalWrite(MUXB_S2, (ch >> 2) & 1);
+    digitalWrite(MUXB_S3, (ch >> 3) & 1);
 }
