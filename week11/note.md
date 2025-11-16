@@ -61,7 +61,7 @@ loop() {
 }
 ```
 
-## Testing (friday Tea hour)
+## Testing (during Friday Studcom Social Tea hour)
 
 - In Media Lab tea party with about 40 people, the device can experience 3 seconds+ delays
 - The WXYZ quaternion takes 12+ seconds to stablize
@@ -137,7 +137,7 @@ Matti also found out how to serial connect two MUX board by soldering the addres
 We found out that rapidly sending BLE messages would the connection to drop.
 Matti suggested we use different tx characteristic for namespaced communication, saving bandwidth from command names
 
-## Systemic testing of BLE in Web Bluetooth API
+## Systematic testing of BLE in Web Bluetooth API
 
 Sending characters at high frequency triggered error:
 
@@ -161,7 +161,12 @@ SEND ERROR: GATT operation already in progress.
 
 This implies that flow control is needed. On the browser side, we can throttle or buffer the messages.
 
-Solving flow control with a naive queue-based scheduler:
+Reasoning:
+
+- Throttling could help but throughput is environment dependent. We will end up being very conservative and losing performance.
+- Buffering makes sense. We just need to make sure there is only one transmission at a time.
+
+Solving flow control with a naive queue-based scheduler
 
 ```js
 
