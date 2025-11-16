@@ -7,11 +7,20 @@
     <style>
       body {
         margin: 0;
-        padding: 20px;
+        padding: 0;
         font-family:
           system-ui,
           -apple-system,
           sans-serif;
+        height: 100vh;
+        display: grid;
+        grid-template-rows: auto 1fr;
+        grid-template-columns: auto 1fr;
+        grid-template-areas:
+          "header header"
+          "controls log";
+        gap: 20px;
+        padding: 20px;
       }
 
       * {
@@ -19,17 +28,18 @@
         font-size: inherit;
       }
 
-      .container {
-        display: grid;
-        grid-template-columns: auto 1fr;
-        gap: 20px;
-        height: calc(100vh - 120px);
+      h1 {
+        grid-area: header;
+        margin: 0;
       }
 
       .controls {
+        grid-area: controls;
         display: flex;
         flex-direction: column;
         gap: 20px;
+        overflow-y: auto;
+        min-width: 0;
       }
 
       .control-group {
@@ -39,6 +49,7 @@
       }
 
       .log-panel {
+        grid-area: log;
         display: flex;
         flex-direction: column;
         gap: 10px;
@@ -50,6 +61,11 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
+        margin: 0;
+      }
+
+      .log-header h3 {
+        margin: 0;
       }
 
       #log {
@@ -74,13 +90,18 @@
         flex-direction: row;
         align-items: center;
       }
+
+      .stats-label {
+        font-size: 14px;
+        color: #666;
+        margin-top: 8px;
+      }
     </style>
   </head>
   <body>
     <h1>BLE Test Interface</h1>
 
-    <div class="container">
-      <div class="controls">
+    <div class="controls">
         <div class="control-group">
           <h3>Connection</h3>
           <div>
@@ -102,8 +123,8 @@
           </label>
           <label><input type="checkbox" id="useSchedulerCheckbox" /> Scheduler </label>
           <button id="browserSendBtn" disabled>Start Browser Sending</button>
-          <div id="browserStats" style="font-size: 12px; color: #666; margin-top: 8px">
-            Messages/sec: <span id="browserMsgPerSec">0</span> | Queue: <span id="browserQueueLength">0</span>
+          <div id="browserStats" class="stats-label">
+            Msg/s: <span id="browserMsgPerSec">0</span> | Queue: <span id="browserQueueLength">0</span>
           </div>
         </div>
 
@@ -118,30 +139,30 @@
             <input type="number" id="esp32IntervalInput" value="1000" min="1" max="10000" />
           </label>
           <button id="esp32SendBtn" disabled>Start ESP32 Sending</button>
-          <div id="esp32Stats" style="font-size: 12px; color: #666; margin-top: 8px">
-            Messages/sec: <span id="esp32MsgPerSec">0</span> | Total: <span id="esp32TotalMsg">0</span>
+          <div id="esp32Stats" class="stats-label">
+            Msg/s: <span id="esp32MsgPerSec">0</span> | Total: <span id="esp32TotalMsg">0</span>
           </div>
         </div>
 
         <div class="control-group">
           <h3>Test 3: Round Trip Latency</h3>
           <button id="latencySendBtn" disabled>Start Latency Test</button>
-          <div id="latencyStats" style="font-size: 12px; color: #666; margin-top: 8px">
-            <div>Messages/sec: <span id="latencyMsgPerSec">0</span></div>
+          <div id="latencyStats" class="stats-label">
+            <div>Msg/s: <span id="latencyMsgPerSec">0</span></div>
             <div>Avg Latency: <span id="latencyAvg">0</span>ms</div>
             <div>Min: <span id="latencyMin">0</span>ms</div>
             <div>Max: <span id="latencyMax">0</span>ms</div>
           </div>
         </div>
       </div>
+    </div>
 
-      <div class="log-panel">
-        <div class="log-header">
-          <h3>Log</h3>
-          <button id="clearLogBtn">Clear Log</button>
-        </div>
-        <pre id="log"></pre>
+    <div class="log-panel">
+      <div class="log-header">
+        <h3>Log</h3>
+        <button id="clearLogBtn">Clear Log</button>
       </div>
+      <pre id="log"></pre>
     </div>
 
     <script type="module">
