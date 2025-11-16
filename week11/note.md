@@ -122,3 +122,8 @@ void sendSensorDataIfReady() {
 }
 
 ```
+
+## Debugging MUX issue
+
+Matti directed us to run the adafruit official MUX PWM PCA9685 library code.
+We confirmed that the board wiring is correct, all servo motors are functional

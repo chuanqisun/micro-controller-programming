@@ -1,5 +1,5 @@
 // ============================================
-// SERVO CONTROL - Full Arduino Program
+// SERVO CONTROL - Simplified Direct Control
 // ============================================
 
 #include <Adafruit_PWMServoDriver.h>
@@ -8,34 +8,11 @@
 // Tuned for SunFounder Digital Servo
 #define SERVO_MIN 100
 #define SERVO_MAX 580
-
-// PCA9685 CHANNELS
-#define PWM_SERVO_A 0   // physical servo (face 1)
-#define PWM_SERVO_B 1   // physical servo (face 2)
-#define PWM_MUX_A   2   // MUX A common
-#define PWM_MUX_B   3   // MUX B common (future)
-
-// MUX PINS
-#define MUXA_S0 2
-#define MUXA_S1 3
-#define MUXA_S2 4
-#define MUXA_S3 5
-
-#define MUXB_S0 6
-#define MUXB_S1 7
-#define MUXB_S2 8
-#define MUXB_S3 9
-
-// Output type enum
-enum OutputType {
-    OUT_NONE,
-    OUT_PHYSICAL,
-    OUT_MUX_A,
-    OUT_MUX_B
-};
+#define SERVO_FREQ 50
 
 // Global servo state
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(0x40);
+Adafruit_PWMServoDriver pwm2 = Adafruit_PWMServoDriver(0x41);
 
 // Movement state
 bool servo_active = false;
@@ -43,12 +20,8 @@ int servo_phase = 0;            // 0 = forward, 1 = back
 int servo_stepAngle = 0;
 unsigned long servo_lastStep = 0;
 
-// Face ID being moved
-int servo_faceID = -1;
-
-// Routed output target
-OutputType servo_outputType = OUT_NONE;
-int servo_outputChannel = -1;
+// Servo channel being moved (0-6)
+int servo_channel = 0;
 
 // Movement config
 const int servo_stepDeg = 4;         // 0→180 in 45 steps
@@ -56,7 +29,7 @@ const int servo_stepIntervalMs = 12; // ~180ms total
 
 // Movement counter
 int movementCount = 0;
-const int maxMovements = 5;
+const int maxMovements = 20;  // Test all 20 servos
 
 
 // ============================================
@@ -70,8 +43,8 @@ void setup() {
     Serial.println("\n=== Servo Test Program ===");
     setupServo();
     
-    // Start with servo 1
-    servo_startMovement(1);
+    // Start with servo 0
+    servo_startMovement(0);
 }
 
 void loop() {
@@ -103,10 +76,11 @@ void loop() {
             return;
         }
         
-        static int currentServo = 1;
+        static int currentServo = 0;
         
-        // Toggle between servo 1 and 2
-        currentServo = (currentServo == 1) ? 2 : 1;
+        // Cycle through servos 0-19
+        currentServo++;
+        if (currentServo > 19) currentServo = 0;
         
         Serial.print("Starting servo ");
         Serial.println(currentServo);
@@ -126,37 +100,31 @@ void loop() {
 void setupServo() {
     Wire.begin();
 
-    // MUX A
-    pinMode(MUXA_S0, OUTPUT);
-    pinMode(MUXA_S1, OUTPUT);
-    pinMode(MUXA_S2, OUTPUT);
-    pinMode(MUXA_S3, OUTPUT);
-
-    // MUX B
-    pinMode(MUXB_S0, OUTPUT);
-    pinMode(MUXB_S1, OUTPUT);
-    pinMode(MUXB_S2, OUTPUT);
-    pinMode(MUXB_S3, OUTPUT);
-
+    // Initialize first PWM controller (servos 0-9)
     pwm.begin();
-    pwm.setPWMFreq(50);
-    delay(20);
+    pwm.setOscillatorFrequency(27000000);
+    pwm.setPWMFreq(SERVO_FREQ);
+    delay(10);
     
-    Serial.println("Servo system initialized");
+    // Initialize second PWM controller (servos 10-19)
+    pwm2.begin();
+    pwm2.setOscillatorFrequency(27000000);
+    pwm2.setPWMFreq(SERVO_FREQ);
+    delay(10);
+    
+    Serial.println("Servo system initialized (2 PWM controllers)");
 }
 
-void servo_startMovement(int faceID) {
-    servo_faceID = faceID;
-
-    servo_resolveFace(servo_faceID, servo_outputType, servo_outputChannel);
+void servo_startMovement(int channel) {
+    servo_channel = constrain(channel, 0, 19);  // 0-19 for 20 servos
 
     servo_active = true;
     servo_phase = 0;        // 0 → going up
     servo_stepAngle = 0;    // start at 0°
     servo_lastStep = millis();
 
-    Serial.print("[Servo] Start movement face ");
-    Serial.println(servo_faceID);
+    Serial.print("[Servo] Start movement channel ");
+    Serial.println(servo_channel);
 }
 
 void updateServo() {
@@ -168,7 +136,7 @@ void updateServo() {
 
     // Forward phase: 0 → 180
     if (servo_phase == 0) {
-        servo_write(servo_outputType, servo_outputChannel, servo_stepAngle);
+        servo_write(servo_channel, servo_stepAngle);
 
         servo_stepAngle += servo_stepDeg;
         if (servo_stepAngle >= 180) {
@@ -179,7 +147,7 @@ void updateServo() {
     }
     // Backward phase: 180 → 0
     else if (servo_phase == 1) {
-        servo_write(servo_outputType, servo_outputChannel, servo_stepAngle);
+        servo_write(servo_channel, servo_stepAngle);
 
         servo_stepAngle -= servo_stepDeg;
         if (servo_stepAngle <= 0) {
@@ -198,62 +166,14 @@ bool servo_isActive() {
 // SERVO HELPER FUNCTIONS
 // ============================================
 
-
-void servo_resolveFace(int faceID, OutputType &type, int &outChannel) {
-    type = OUT_NONE;
-    outChannel = -1;
-
-    // Test board: faces 1–2 = direct servos
-    if (faceID == 1) {
-        type = OUT_PHYSICAL;
-        outChannel = PWM_SERVO_A;
-        return;
-    }
-    if (faceID == 2) {
-        type = OUT_PHYSICAL;
-        outChannel = PWM_SERVO_B;
-        return;
-    }
-
-    // Faces 3–10 → MUX A, channels 2–9
-    if (faceID >= 3 && faceID <= 10) {
-        type = OUT_MUX_A;
-        outChannel = faceID - 1;
-        return;
-    }
-
-    // Faces 11–20 → MUX B, channels 0–9
-    if (faceID >= 11 && faceID <= 20) {
-        type = OUT_MUX_B;
-        outChannel = faceID - 11;
-        return;
-    }
-}
-
-void servo_write(OutputType type, int channel, int angle) {
+void servo_write(int channel, int angle) {
     int pwmVal = servo_angleToPWM(angle);
-
-    switch (type) {
-        case OUT_PHYSICAL:
-            pwm.setPWM(channel, 0, pwmVal);
-            break;
-
-        case OUT_MUX_A:
-            if (channel >= 0 && channel <= 15) {
-                servo_selectMuxA(channel);
-                pwm.setPWM(PWM_MUX_A, 0, pwmVal);
-            }
-            break;
-
-        case OUT_MUX_B:
-            if (channel >= 0 && channel <= 15) {
-                servo_selectMuxB(channel);
-                pwm.setPWM(PWM_MUX_B, 0, pwmVal);
-            }
-            break;
-
-        default:
-            break;
+    
+    // Use pwm for channels 0-9, pwm2 for channels 10-19
+    if (channel < 10) {
+        pwm.setPWM(channel, 0, pwmVal);
+    } else {
+        pwm2.setPWM(channel - 10, 0, pwmVal);  // Map 10-19 to 0-9 on second controller
     }
 }
 
@@ -261,18 +181,4 @@ int servo_angleToPWM(int angle) {
     angle = constrain(angle, 0, 180);
     int pwmVal = map(angle, 0, 180, SERVO_MIN, SERVO_MAX);
     return pwmVal;
-}
-
-void servo_selectMuxA(int ch) {
-    digitalWrite(MUXA_S0, (ch >> 0) & 1);
-    digitalWrite(MUXA_S1, (ch >> 1) & 1);
-    digitalWrite(MUXA_S2, (ch >> 2) & 1);
-    digitalWrite(MUXA_S3, (ch >> 3) & 1);
-}
-
-void servo_selectMuxB(int ch) {
-    digitalWrite(MUXB_S0, (ch >> 0) & 1);
-    digitalWrite(MUXB_S1, (ch >> 1) & 1);
-    digitalWrite(MUXB_S2, (ch >> 2) & 1);
-    digitalWrite(MUXB_S3, (ch >> 3) & 1);
 }
