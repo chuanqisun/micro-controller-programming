@@ -136,3 +136,27 @@ Matti also found out how to serial connect two MUX board by soldering the addres
 
 We found out that rapidly sending BLE messages would the connection to drop.
 Matti suggested we use different tx characteristic for namespaced communication, saving bandwidth from command names
+
+## Systemic testing of BLE in Web Bluetooth API
+
+Sending characters at high frequency triggered error:
+
+```js
+sendInterval = setInterval(async () => {
+  try {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(message);
+    await charTx.writeValue(data);
+    log(`TX: ${message}`);
+  } catch (error) {
+    log(`SEND ERROR: ${error.message}`);
+    stopSending();
+  }
+}, interval);
+```
+
+```txt
+SEND ERROR: GATT operation already in progress.
+```
+
+This implies that flow control is needed. On the browser side, we can throttle or buffer the messages.

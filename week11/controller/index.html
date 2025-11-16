@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BLE Test - Developer UI</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 20px;
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+        font-size: inherit;
+      }
+
+      .container {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 20px;
+        height: calc(100vh - 120px);
+      }
+
+      .controls {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .control-group {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .log-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        min-width: 0;
+      }
+
+      .log-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      #log {
+        flex: 1;
+        overflow-y: auto;
+        background: #f5f5f5;
+        padding: 10px;
+        margin: 0;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-family: "Courier New", monospace;
+        font-size: 12px;
+      }
+
+      label {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>BLE Test Interface</h1>
+
+    <div class="container">
+      <div class="controls">
+        <div class="control-group">
+          <h3>Connection</h3>
+          <div>
+            <button id="connectBtn">Connect BLE</button>
+            <button id="disconnectBtn" disabled>Disconnect</button>
+          </div>
+          <div>Status: <span id="status">Not connected</span></div>
+        </div>
+
+        <div class="control-group">
+          <h3>Test 1: Browser → ESP32</h3>
+          <label>
+            Message:
+            <input type="text" id="browserMessageInput" value="hello" />
+          </label>
+          <label>
+            Interval (ms):
+            <input type="number" id="browserIntervalInput" value="1000" min="1" max="10000" />
+          </label>
+          <button id="browserSendBtn" disabled>Start Browser Sending</button>
+        </div>
+
+        <div class="control-group">
+          <h3>Test 2: ESP32 → Browser</h3>
+          <label>
+            Message:
+            <input type="text" id="esp32MessageInput" value="test" />
+          </label>
+          <label>
+            Interval (ms):
+            <input type="number" id="esp32IntervalInput" value="1000" min="1" max="10000" />
+          </label>
+          <button id="esp32SendBtn" disabled>Start ESP32 Sending</button>
+        </div>
+      </div>
+
+      <div class="log-panel">
+        <div class="log-header">
+          <h3>Log</h3>
+          <button id="clearLogBtn">Clear Log</button>
+        </div>
+        <pre id="log"></pre>
+      </div>
+    </div>
+
+    <script>
+      // Nordic UART Service UUIDs
+      const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+      const TX_CHAR_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"; // ESP32 -> browser
+      const RX_CHAR_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"; // browser -> ESP32
+
+      let device = null;
+      let charTx = null; // for sending to ESP32
+      let charRx = null; // for receiving from ESP32
+
+      // Test 1: Browser sending
+      let browserSendInterval = null;
+      let isBrowserSending = false;
+
+      // Test 2: ESP32 sending
+      let isEsp32Sending = false;
+
+      const connectBtn = document.getElementById("connectBtn");
+      const disconnectBtn = document.getElementById("disconnectBtn");
+      const statusSpan = document.getElementById("status");
+      const logPre = document.getElementById("log");
+      const clearLogBtn = document.getElementById("clearLogBtn");
+
+      // Test 1 controls
+      const browserMessageInput = document.getElementById("browserMessageInput");
+      const browserIntervalInput = document.getElementById("browserIntervalInput");
+      const browserSendBtn = document.getElementById("browserSendBtn");
+
+      // Test 2 controls
+      const esp32MessageInput = document.getElementById("esp32MessageInput");
+      const esp32IntervalInput = document.getElementById("esp32IntervalInput");
+      const esp32SendBtn = document.getElementById("esp32SendBtn");
+
+      function log(msg) {
+        const timestamp = new Date().toISOString();
+        logPre.textContent += `[${timestamp}] ${msg}\n`;
+        logPre.scrollTop = logPre.scrollHeight;
+      }
+
+      clearLogBtn.addEventListener("click", () => {
+        logPre.textContent = "";
+        log("Log cleared");
+      });
+
+      connectBtn.addEventListener("click", async () => {
+        try {
+          if (!navigator.bluetooth) {
+            throw new Error("Web Bluetooth not supported");
+          }
+
+          log("Requesting BLE device...");
+          device = await navigator.bluetooth.requestDevice({
+            filters: [{ services: [SERVICE_UUID] }],
+          });
+
+          log(`Connecting to ${device.name || "device"}...`);
+          const server = await device.gatt.connect();
+          const service = await server.getPrimaryService(SERVICE_UUID);
+
+          charRx = await service.getCharacteristic(TX_CHAR_UUID);
+          charTx = await service.getCharacteristic(RX_CHAR_UUID);
+
+          await charRx.startNotifications();
+          charRx.addEventListener("characteristicvaluechanged", (e) => {
+            const text = new TextDecoder().decode(e.target.value.buffer);
+            log(`RX: ${text}`);
+          });
+
+          device.addEventListener("gattserverdisconnected", () => {
+            log("Device disconnected");
+            statusSpan.textContent = "Disconnected";
+            connectBtn.disabled = false;
+            disconnectBtn.disabled = true;
+            browserSendBtn.disabled = true;
+            esp32SendBtn.disabled = true;
+            stopBrowserSending();
+            stopEsp32Sending();
+          });
+
+          log("Connected");
+          statusSpan.textContent = "Connected";
+          connectBtn.disabled = true;
+          disconnectBtn.disabled = false;
+          browserSendBtn.disabled = false;
+          esp32SendBtn.disabled = false;
+        } catch (error) {
+          log(`ERROR: ${error.message}`);
+          console.error(error);
+        }
+      });
+
+      disconnectBtn.addEventListener("click", () => {
+        if (device && device.gatt.connected) {
+          device.gatt.disconnect();
+          log("Disconnected by user");
+          statusSpan.textContent = "Disconnected";
+          connectBtn.disabled = false;
+          disconnectBtn.disabled = true;
+          browserSendBtn.disabled = true;
+          esp32SendBtn.disabled = true;
+          stopBrowserSending();
+          stopEsp32Sending();
+        }
+      });
+
+      // Test 1: Browser → ESP32
+      browserSendBtn.addEventListener("click", () => {
+        if (!isBrowserSending) {
+          startBrowserSending();
+        } else {
+          stopBrowserSending();
+        }
+      });
+
+      function startBrowserSending() {
+        const message = browserMessageInput.value;
+        const interval = parseInt(browserIntervalInput.value);
+
+        if (!message) {
+          log("ERROR: Message is empty");
+          return;
+        }
+
+        if (interval < 1 || interval > 10000) {
+          log("ERROR: Interval must be between 1 and 10000 ms");
+          return;
+        }
+
+        isBrowserSending = true;
+        browserSendBtn.textContent = "Stop Browser Sending";
+        log(`[Test 1] Started browser sending: "${message}" every ${interval}ms`);
+
+        browserSendInterval = setInterval(async () => {
+          try {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(message);
+            await charTx.writeValue(data);
+            log(`[Test 1] TX: ${message}`);
+          } catch (error) {
+            log(`[Test 1] SEND ERROR: ${error.message}`);
+            stopBrowserSending();
+          }
+        }, interval);
+      }
+
+      function stopBrowserSending() {
+        if (browserSendInterval) {
+          clearInterval(browserSendInterval);
+          browserSendInterval = null;
+        }
+        isBrowserSending = false;
+        browserSendBtn.textContent = "Start Browser Sending";
+        if (device && device.gatt.connected) {
+          log("[Test 1] Stopped browser sending");
+        }
+      }
+
+      // Test 2: ESP32 → Browser
+      esp32SendBtn.addEventListener("click", async () => {
+        if (!isEsp32Sending) {
+          await startEsp32Sending();
+        } else {
+          await stopEsp32Sending();
+        }
+      });
+
+      async function startEsp32Sending() {
+        const message = esp32MessageInput.value;
+        const interval = parseInt(esp32IntervalInput.value);
+
+        if (!message) {
+          log("ERROR: Message is empty");
+          return;
+        }
+
+        if (interval < 1 || interval > 10000) {
+          log("ERROR: Interval must be between 1 and 10000 ms");
+          return;
+        }
+
+        try {
+          // Send START command to ESP32: "START:message:interval"
+          const command = `START:${message}:${interval}`;
+          const encoder = new TextEncoder();
+          const data = encoder.encode(command);
+          await charTx.writeValue(data);
+
+          isEsp32Sending = true;
+          esp32SendBtn.textContent = "Stop ESP32 Sending";
+          log(`[Test 2] TX: ${command}`);
+          log(`[Test 2] Started ESP32 sending: "${message}" every ${interval}ms`);
+        } catch (error) {
+          log(`[Test 2] ERROR: ${error.message}`);
+        }
+      }
+
+      async function stopEsp32Sending() {
+        if (!isEsp32Sending) return;
+
+        try {
+          // Send STOP command to ESP32
+          const command = "STOP";
+          const encoder = new TextEncoder();
+          const data = encoder.encode(command);
+          await charTx.writeValue(data);
+
+          isEsp32Sending = false;
+          esp32SendBtn.textContent = "Start ESP32 Sending";
+          log(`[Test 2] TX: ${command}`);
+          log("[Test 2] Stopped ESP32 sending");
+        } catch (error) {
+          log(`[Test 2] ERROR: ${error.message}`);
+        }
+      }
+    </script>
+  </body>
+</html>
