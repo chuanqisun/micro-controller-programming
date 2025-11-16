@@ -160,3 +160,8 @@ SEND ERROR: GATT operation already in progress.
 ```
 
 This implies that flow control is needed. On the browser side, we can throttle or buffer the messages.
+
+Characterize the performance:
+
+- Latency: 60ms round trip
+-
