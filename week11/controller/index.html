@@ -69,6 +69,11 @@
         flex-direction: column;
         gap: 4px;
       }
+
+      label:has(input[type="checkbox"]) {
+        flex-direction: row;
+        align-items: center;
+      }
     </style>
   </head>
   <body>
@@ -95,7 +100,11 @@
             Interval (ms)
             <input type="number" id="browserIntervalInput" value="1000" min="1" max="10000" />
           </label>
+          <label><input type="checkbox" id="useSchedulerCheckbox" /> Scheduler </label>
           <button id="browserSendBtn" disabled>Start Browser Sending</button>
+          <div id="browserStats" style="font-size: 12px; color: #666; margin-top: 8px">
+            Messages/sec: <span id="browserMsgPerSec">0</span> | Queue: <span id="browserQueueLength">0</span>
+          </div>
         </div>
 
         <div class="control-group">
@@ -109,6 +118,9 @@
             <input type="number" id="esp32IntervalInput" value="1000" min="1" max="10000" />
           </label>
           <button id="esp32SendBtn" disabled>Start ESP32 Sending</button>
+          <div id="esp32Stats" style="font-size: 12px; color: #666; margin-top: 8px">
+            Messages/sec: <span id="esp32MsgPerSec">0</span> | Total: <span id="esp32TotalMsg">0</span>
+          </div>
         </div>
       </div>
 
@@ -122,21 +134,28 @@
     </div>
 
     <script type="module">
-      // Nordic UART Service UUIDs
+      import { fromEvent, interval, Subject, EMPTY } from "https://esm.sh/rxjs@7.8.2";
+      import { mergeMap, takeUntil, tap, scan, map, throttleTime, share } from "https://esm.sh/rxjs@7.8.2/operators";
+
       const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
-      const TX_CHAR_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"; // ESP32 -> browser
-      const RX_CHAR_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"; // browser -> ESP32
+      const TX_CHAR_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
+      const RX_CHAR_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+
+      const RATE_WINDOW_MS = 2000;
+      const STATS_UPDATE_INTERVAL_MS = 100;
 
       let device = null;
-      let charTx = null; // for sending to ESP32
-      let charRx = null; // for receiving from ESP32
+      let charTx = null;
+      let charRx = null;
 
-      // Test 1: Browser sending
-      let browserSendInterval = null;
+      let browserSendSubscription = null;
+      let stopBrowserSend$ = new Subject();
       let isBrowserSending = false;
+      let browserQueueSize = 0;
 
-      // Test 2: ESP32 sending
       let isEsp32Sending = false;
+      let esp32RxSubscription = null;
+      let esp32Message$ = new Subject();
 
       const connectBtn = document.getElementById("connectBtn");
       const disconnectBtn = document.getElementById("disconnectBtn");
@@ -148,19 +167,37 @@
       const browserMessageInput = document.getElementById("browserMessageInput");
       const browserIntervalInput = document.getElementById("browserIntervalInput");
       const browserSendBtn = document.getElementById("browserSendBtn");
+      const useSchedulerCheckbox = document.getElementById("useSchedulerCheckbox");
+      const browserMsgPerSecSpan = document.getElementById("browserMsgPerSec");
+      const browserQueueLengthSpan = document.getElementById("browserQueueLength");
 
       // Test 2 controls
       const esp32MessageInput = document.getElementById("esp32MessageInput");
       const esp32IntervalInput = document.getElementById("esp32IntervalInput");
       const esp32SendBtn = document.getElementById("esp32SendBtn");
+      const esp32MsgPerSecSpan = document.getElementById("esp32MsgPerSec");
+      const esp32TotalMsgSpan = document.getElementById("esp32TotalMsg");
 
       function log(msg) {
         const timestamp = new Date().toISOString();
         logPre.textContent += `[${timestamp}] ${msg}\n`;
-        // Use requestAnimationFrame to ensure DOM is updated before scrolling
         requestAnimationFrame(() => {
           logPre.scrollTop = logPre.scrollHeight;
         });
+      }
+
+      function createRateCalculator(windowMs = RATE_WINDOW_MS) {
+        return scan((acc, timestamp) => {
+          const cutoff = timestamp - windowMs;
+          const recentMessages = [...acc, timestamp].filter((t) => t >= cutoff);
+          return recentMessages;
+        }, []);
+      }
+
+      function calculateRate(timestamps) {
+        if (timestamps.length === 0) return 0;
+        const span = timestamps[timestamps.length - 1] - timestamps[0];
+        return span > 0 ? ((timestamps.length - 1) / span) * 1000 : 0;
       }
 
       clearLogBtn.addEventListener("click", () => {
@@ -190,6 +227,10 @@
           charRx.addEventListener("characteristicvaluechanged", (e) => {
             const text = new TextDecoder().decode(e.target.value.buffer);
             log(`RX: ${text}`);
+
+            if (isEsp32Sending) {
+              esp32Message$.next(Date.now());
+            }
           });
 
           device.addEventListener("gattserverdisconnected", () => {
@@ -229,7 +270,6 @@
         }
       });
 
-      // Test 1: Browser → ESP32
       browserSendBtn.addEventListener("click", () => {
         if (!isBrowserSending) {
           startBrowserSending();
@@ -240,48 +280,100 @@
 
       function startBrowserSending() {
         const message = browserMessageInput.value;
-        const interval = parseInt(browserIntervalInput.value);
+        const intervalMs = parseInt(browserIntervalInput.value);
+        const useScheduler = useSchedulerCheckbox.checked;
 
         if (!message) {
           log("ERROR: Message is empty");
           return;
         }
 
-        if (interval < 1 || interval > 10000) {
+        if (intervalMs < 1 || intervalMs > 10000) {
           log("ERROR: Interval must be between 1 and 10000 ms");
           return;
         }
 
         isBrowserSending = true;
         browserSendBtn.textContent = "Stop Browser Sending";
-        log(`[Test 1] Started browser sending: "${message}" every ${interval}ms`);
+        browserQueueSize = 0;
 
-        browserSendInterval = setInterval(async () => {
-          try {
-            const encoder = new TextEncoder();
-            const data = encoder.encode(message);
-            await charTx.writeValue(data);
-            log(`[Test 1] TX: ${message}`);
-          } catch (error) {
-            log(`[Test 1] SEND ERROR: ${error.message}`);
+        const concurrency = useScheduler ? 1 : undefined;
+        const modeText = useScheduler ? "scheduled (single thread)" : "unscheduled (unlimited concurrency)";
+        log(`[Test 1] Started browser sending in ${modeText} mode: "${message}" every ${intervalMs}ms`);
+
+        const messageSent$ = new Subject();
+
+        const rate$ = messageSent$.pipe(
+          map(() => Date.now()),
+          createRateCalculator(),
+          map(calculateRate),
+          share()
+        );
+
+        const statsUpdate$ = interval(STATS_UPDATE_INTERVAL_MS)
+          .pipe(
+            takeUntil(stopBrowserSend$),
+            tap(() => (browserQueueLengthSpan.textContent = browserQueueSize))
+          )
+          .subscribe();
+
+        const rateDisplay$ = rate$
+          .pipe(
+            throttleTime(STATS_UPDATE_INTERVAL_MS),
+            tap((rate) => (browserMsgPerSecSpan.textContent = rate.toFixed(2)))
+          )
+          .subscribe();
+
+        const send$ = interval(intervalMs).pipe(
+          takeUntil(stopBrowserSend$),
+          tap(() => browserQueueSize++),
+          mergeMap(async () => {
+            try {
+              const encoder = new TextEncoder();
+              const data = encoder.encode(message);
+              await charTx.writeValue(data);
+
+              browserQueueSize--;
+              messageSent$.next();
+              log(`[Test 1] TX: ${message}`);
+            } catch (error) {
+              log(`[Test 1] SEND ERROR: ${error.message}`);
+              stopBrowserSending();
+              throw error;
+            }
+          }, concurrency)
+        );
+
+        browserSendSubscription = send$.subscribe({
+          error: (err) => {
+            log(`[Test 1] Stream error: ${err.message}`);
             stopBrowserSending();
-          }
-        }, interval);
+          },
+        });
+
+        browserSendSubscription.add(statsUpdate$);
+        browserSendSubscription.add(rateDisplay$);
       }
 
       function stopBrowserSending() {
-        if (browserSendInterval) {
-          clearInterval(browserSendInterval);
-          browserSendInterval = null;
+        if (browserSendSubscription) {
+          stopBrowserSend$.next();
+          browserSendSubscription.unsubscribe();
+          browserSendSubscription = null;
+          stopBrowserSend$ = new Subject();
         }
+
         isBrowserSending = false;
         browserSendBtn.textContent = "Start Browser Sending";
+        browserQueueSize = 0;
+        browserQueueLengthSpan.textContent = "0";
+        browserMsgPerSecSpan.textContent = "0";
+
         if (device && device.gatt.connected) {
           log("[Test 1] Stopped browser sending");
         }
       }
 
-      // Test 2: ESP32 → Browser
       esp32SendBtn.addEventListener("click", async () => {
         if (!isEsp32Sending) {
           await startEsp32Sending();
@@ -305,7 +397,6 @@
         }
 
         try {
-          // Send START command to ESP32: "START:message:interval"
           const command = `START:${message}:${interval}`;
           const encoder = new TextEncoder();
           const data = encoder.encode(command);
@@ -315,6 +406,28 @@
           esp32SendBtn.textContent = "Stop ESP32 Sending";
           log(`[Test 2] TX: ${command}`);
           log(`[Test 2] Started ESP32 sending: "${message}" every ${interval}ms`);
+
+          const stopEsp32$ = new Subject();
+
+          const rate$ = esp32Message$.pipe(takeUntil(stopEsp32$), createRateCalculator(), share());
+
+          const rateDisplay$ = rate$
+            .pipe(
+              map(calculateRate),
+              throttleTime(STATS_UPDATE_INTERVAL_MS),
+              tap((rate) => (esp32MsgPerSecSpan.textContent = rate.toFixed(2)))
+            )
+            .subscribe();
+
+          const totalDisplay$ = rate$
+            .pipe(
+              map((timestamps) => timestamps.length),
+              throttleTime(STATS_UPDATE_INTERVAL_MS),
+              tap((total) => (esp32TotalMsgSpan.textContent = total))
+            )
+            .subscribe();
+
+          esp32RxSubscription = { stopEsp32$, rateDisplay$, totalDisplay$ };
         } catch (error) {
           log(`[Test 2] ERROR: ${error.message}`);
         }
@@ -324,7 +437,6 @@
         if (!isEsp32Sending) return;
 
         try {
-          // Send STOP command to ESP32
           const command = "STOP";
           const encoder = new TextEncoder();
           const data = encoder.encode(command);
@@ -332,6 +444,14 @@
 
           isEsp32Sending = false;
           esp32SendBtn.textContent = "Start ESP32 Sending";
+
+          if (esp32RxSubscription) {
+            esp32RxSubscription.stopEsp32$.next();
+            esp32RxSubscription.rateDisplay$.unsubscribe();
+            esp32RxSubscription.totalDisplay$.unsubscribe();
+            esp32RxSubscription = null;
+          }
+
           log(`[Test 2] TX: ${command}`);
           log("[Test 2] Stopped ESP32 sending");
         } catch (error) {
