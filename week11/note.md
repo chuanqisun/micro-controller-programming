@@ -86,3 +86,39 @@ Keep the ESP32 organized by files, similar to existing structure lib-xx-name.ino
 
 Make sure to carefully map out the migration and execute it with a checklist.
 ```
+
+## Integrating servo
+
+```
+  if (isBLEConnected()) {
+    String sensorData = getSensorJSON();
+    sendBLEMessage(sensorData); <-- need to disable this line in order to send any command to the ESP32, why?
+  }
+```
+
+Solution, instead of blocking the main loop, we use a timer to send sensor data every 20ms.
+
+```cpp
+static unsigned long lastSendTime = 0;
+const unsigned long SEND_INTERVAL_MS = 20;
+
+void setupSensorTransmission() {
+  lastSendTime = 0;
+  Serial.println("Sensor transmission initialized");
+}
+
+void sendSensorDataIfReady() {
+  if (!isBLEConnected()) {
+    return;
+  }
+
+  unsigned long currentTime = millis();
+
+  if (currentTime - lastSendTime >= SEND_INTERVAL_MS) {
+    String sensorData = getSensorJSON();
+    sendBLEMessage(sensorData);
+    lastSendTime = currentTime;
+  }
+}
+
+```

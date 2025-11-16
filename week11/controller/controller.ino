@@ -215,62 +215,35 @@ void servo_update() {
 // MAIN PROGRAM
 // ============================================================================
 
-bool started = false;
+int currentServo = 1;
+unsigned long lastMoveTime = 0;
+const unsigned long MOVE_INTERVAL = 1000; // 1 second
 
 void setup() {
   Serial.begin(115200);
   Wire.begin();
   servo_begin();
 
-  Serial.println("\n=== SERVO TEST MODE ===");
-  Serial.println("Faces 1–2 = REAL servos");
-  Serial.println("Faces 3–10 = MUX A (print only)");
-  Serial.println("Faces 11–20 = MUX B (print only)\n");
-}
-
-void processJson(const String &jsonMsg) {
-  StaticJsonDocument<128> doc;
-  auto err = deserializeJson(doc, jsonMsg);
-  if (err) {
-    Serial.print("JSON parse error: ");
-    Serial.println(err.c_str());
-    return;
-  }
-
-  String cmd  = doc["cmd"] | "";
-  String args = doc["args"] | "";
-
-  if (cmd != "move_servo") {
-    Serial.println("Unknown cmd");
-    return;
-  }
-
-  int comma = args.indexOf(',');
-  if (comma < 0) {
-    Serial.println("Bad args format, expected 'X,Y'");
-    return;
-  }
-
-  int f1 = args.substring(0, comma).toInt();
-  int f2 = args.substring(comma + 1).toInt();
-
-  Serial.print("Commanded faces: ");
-  Serial.print(f1);
-  Serial.print(", ");
-  Serial.println(f2);
-
-  servo_startMovement(f1, f2);
+  Serial.println("\n=== SERVO ALTERNATING DEMO ===");
+  Serial.println("Alternating servo 1 and 2 once per second\n");
 }
 
 void loop() {
-  // Send a fake JSON command once at boot.
-  if (!started) {
-    String testJson = R"({"cmd":"move_servo","args":"1,14"})";
-    processJson(testJson);
-    started = true;
-  }
-
-  // In real project, call servo_update()
-  // and call processJson(...) from your network callbacks.
+  // Always call servo_update() to handle ongoing movements
   servo_update();
+
+  // Check if movement is complete and enough time has passed
+  if (!servo_active) {
+    unsigned long now = millis();
+    if (now - lastMoveTime >= MOVE_INTERVAL) {
+      // Start movement on current servo (move with itself for single servo movement)
+      Serial.print("Moving servo ");
+      Serial.println(currentServo);
+      servo_startMovement(currentServo, currentServo);
+      
+      // Alternate to the other servo
+      currentServo = (currentServo == 1) ? 2 : 1;
+      lastMoveTime = now;
+    }
+  }
 }
