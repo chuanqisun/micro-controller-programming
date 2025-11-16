@@ -161,6 +161,12 @@ SEND ERROR: GATT operation already in progress.
 
 This implies that flow control is needed. On the browser side, we can throttle or buffer the messages.
 
+Solving flow control with a naive queue-based scheduler:
+
+```js
+
+```
+
 Characterize the performance:
 
 ### Best case, side by side same room
