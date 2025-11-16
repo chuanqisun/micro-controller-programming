@@ -44,8 +44,16 @@ class MyRxCallbacks: public BLECharacteristicCallbacks {
             Serial.print("Received: ");
             Serial.println(rxValue);
             
+            // Check if this is a latency test message (Test 3)
+            if (rxValue.startsWith("t:")) {
+                // Echo back immediately for latency measurement
+                pTxCharacteristic->setValue((uint8_t*)rxValue.c_str(), rxValue.length());
+                pTxCharacteristic->notify();
+                Serial.print("[Test 3] Echoed: ");
+                Serial.println(rxValue);
+            }
             // Check if this is a command for Test 2 (START/STOP)
-            if (rxValue.startsWith("START:")) {
+            else if (rxValue.startsWith("START:")) {
                 // Format: START:message:interval
                 int firstColon = rxValue.indexOf(':');
                 int secondColon = rxValue.indexOf(':', firstColon + 1);

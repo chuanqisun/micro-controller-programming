@@ -122,6 +122,17 @@
             Messages/sec: <span id="esp32MsgPerSec">0</span> | Total: <span id="esp32TotalMsg">0</span>
           </div>
         </div>
+
+        <div class="control-group">
+          <h3>Test 3: Round Trip Latency</h3>
+          <button id="latencySendBtn" disabled>Start Latency Test</button>
+          <div id="latencyStats" style="font-size: 12px; color: #666; margin-top: 8px">
+            <div>Messages/sec: <span id="latencyMsgPerSec">0</span></div>
+            <div>Avg Latency: <span id="latencyAvg">0</span>ms</div>
+            <div>Min: <span id="latencyMin">0</span>ms</div>
+            <div>Max: <span id="latencyMax">0</span>ms</div>
+          </div>
+        </div>
       </div>
 
       <div class="log-panel">
@@ -157,6 +168,12 @@
       let esp32RxSubscription = null;
       let esp32Message$ = new Subject();
 
+      let isLatencyTesting = false;
+      let latencySubscription = null;
+      let stopLatency$ = new Subject();
+      let latencyCounter = 0;
+      let pendingLatencyMessages = new Map();
+
       const connectBtn = document.getElementById("connectBtn");
       const disconnectBtn = document.getElementById("disconnectBtn");
       const statusSpan = document.getElementById("status");
@@ -177,6 +194,13 @@
       const esp32SendBtn = document.getElementById("esp32SendBtn");
       const esp32MsgPerSecSpan = document.getElementById("esp32MsgPerSec");
       const esp32TotalMsgSpan = document.getElementById("esp32TotalMsg");
+
+      // Test 3 controls
+      const latencySendBtn = document.getElementById("latencySendBtn");
+      const latencyMsgPerSecSpan = document.getElementById("latencyMsgPerSec");
+      const latencyAvgSpan = document.getElementById("latencyAvg");
+      const latencyMinSpan = document.getElementById("latencyMin");
+      const latencyMaxSpan = document.getElementById("latencyMax");
 
       function log(msg) {
         const timestamp = new Date().toISOString();
@@ -231,6 +255,19 @@
             if (isEsp32Sending) {
               esp32Message$.next(Date.now());
             }
+
+            // Handle latency test responses
+            if (isLatencyTesting && text.startsWith("t:")) {
+              const msgId = parseInt(text.substring(2));
+              const sendTime = pendingLatencyMessages.get(msgId);
+              if (sendTime !== undefined) {
+                const latency = Date.now() - sendTime;
+                pendingLatencyMessages.delete(msgId);
+
+                // Emit latency measurement
+                latencyMessage$.next(latency);
+              }
+            }
           });
 
           device.addEventListener("gattserverdisconnected", () => {
@@ -240,8 +277,10 @@
             disconnectBtn.disabled = true;
             browserSendBtn.disabled = true;
             esp32SendBtn.disabled = true;
+            latencySendBtn.disabled = true;
             stopBrowserSending();
             stopEsp32Sending();
+            stopLatencyTest();
           });
 
           log("Connected");
@@ -250,6 +289,7 @@
           disconnectBtn.disabled = false;
           browserSendBtn.disabled = false;
           esp32SendBtn.disabled = false;
+          latencySendBtn.disabled = false;
         } catch (error) {
           log(`ERROR: ${error.message}`);
           console.error(error);
@@ -265,8 +305,10 @@
           disconnectBtn.disabled = true;
           browserSendBtn.disabled = true;
           esp32SendBtn.disabled = true;
+          latencySendBtn.disabled = true;
           stopBrowserSending();
           stopEsp32Sending();
+          stopLatencyTest();
         }
       });
 
@@ -456,6 +498,124 @@
           log("[Test 2] Stopped ESP32 sending");
         } catch (error) {
           log(`[Test 2] ERROR: ${error.message}`);
+        }
+      }
+
+      // Test 3: Round Trip Latency
+      const latencyMessage$ = new Subject();
+
+      latencySendBtn.addEventListener("click", () => {
+        if (!isLatencyTesting) {
+          startLatencyTest();
+        } else {
+          stopLatencyTest();
+        }
+      });
+
+      function startLatencyTest() {
+        isLatencyTesting = true;
+        latencySendBtn.textContent = "Stop Latency Test";
+        latencyCounter = 0;
+        pendingLatencyMessages.clear();
+
+        log("[Test 3] Started round trip latency test");
+
+        const latencySent$ = new Subject();
+
+        // Calculate message rate
+        const sentRate$ = latencySent$.pipe(
+          map(() => Date.now()),
+          createRateCalculator(),
+          map(calculateRate),
+          share()
+        );
+
+        // Track latency statistics
+        const latencyStats$ = latencyMessage$.pipe(
+          takeUntil(stopLatency$),
+          scan(
+            (acc, latency) => {
+              return {
+                sum: acc.sum + latency,
+                count: acc.count + 1,
+                min: Math.min(acc.min, latency),
+                max: Math.max(acc.max, latency),
+              };
+            },
+            { sum: 0, count: 0, min: Infinity, max: -Infinity }
+          ),
+          share()
+        );
+
+        const sentRateDisplay$ = sentRate$
+          .pipe(
+            throttleTime(STATS_UPDATE_INTERVAL_MS),
+            tap((rate) => (latencyMsgPerSecSpan.textContent = rate.toFixed(2)))
+          )
+          .subscribe();
+
+        const latencyDisplay$ = latencyStats$
+          .pipe(
+            throttleTime(STATS_UPDATE_INTERVAL_MS),
+            tap((stats) => {
+              if (stats.count > 0) {
+                latencyAvgSpan.textContent = (stats.sum / stats.count).toFixed(2);
+                latencyMinSpan.textContent = stats.min.toFixed(2);
+                latencyMaxSpan.textContent = stats.max.toFixed(2);
+              }
+            })
+          )
+          .subscribe();
+
+        // Send messages as fast as possible with scheduler (concurrency = 1)
+        const send$ = interval(0).pipe(
+          takeUntil(stopLatency$),
+          mergeMap(async () => {
+            try {
+              const msgId = latencyCounter++;
+              const message = `t:${msgId}`;
+              const encoder = new TextEncoder();
+              const data = encoder.encode(message);
+
+              pendingLatencyMessages.set(msgId, Date.now());
+              await charTx.writeValue(data);
+
+              latencySent$.next();
+              log(`[Test 3] TX: ${message}`);
+            } catch (error) {
+              log(`[Test 3] SEND ERROR: ${error.message}`);
+              stopLatencyTest();
+              throw error;
+            }
+          }, 1) // Concurrency = 1 for scheduler mode
+        );
+
+        latencySubscription = send$.subscribe({
+          error: (err) => {
+            log(`[Test 3] Stream error: ${err.message}`);
+            stopLatencyTest();
+          },
+        });
+
+        latencySubscription.add(sentRateDisplay$);
+        latencySubscription.add(latencyDisplay$);
+      }
+
+      function stopLatencyTest() {
+        if (latencySubscription) {
+          stopLatency$.next();
+          latencySubscription.unsubscribe();
+          latencySubscription = null;
+          stopLatency$ = new Subject();
+        }
+
+        isLatencyTesting = false;
+        latencySendBtn.textContent = "Start Latency Test";
+        pendingLatencyMessages.clear();
+        latencyCounter = 0;
+
+        if (device && device.gatt.connected) {
+          log("[Test 3] Stopped latency test");
         }
       }
     </script>
