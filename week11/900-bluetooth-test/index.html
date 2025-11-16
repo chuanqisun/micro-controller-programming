@@ -1,0 +1,623 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BLE Test - Developer UI</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 20px;
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+        font-size: inherit;
+      }
+
+      .container {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 20px;
+        height: calc(100vh - 120px);
+      }
+
+      .controls {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .control-group {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .log-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        min-width: 0;
+        min-height: 0;
+      }
+
+      .log-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      #log {
+        flex: 1;
+        overflow-y: auto;
+        background: #f5f5f5;
+        padding: 10px;
+        margin: 0;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-family: "Courier New", monospace;
+        font-size: 12px;
+      }
+
+      label {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      label:has(input[type="checkbox"]) {
+        flex-direction: row;
+        align-items: center;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>BLE Test Interface</h1>
+
+    <div class="container">
+      <div class="controls">
+        <div class="control-group">
+          <h3>Connection</h3>
+          <div>
+            <button id="connectBtn">Connect BLE</button>
+            <button id="disconnectBtn" disabled>Disconnect</button>
+          </div>
+          <div>Status: <span id="status">Not connected</span></div>
+        </div>
+
+        <div class="control-group">
+          <h3>Test 1: Browser → ESP32</h3>
+          <label>
+            Message
+            <input type="text" id="browserMessageInput" value="hello" />
+          </label>
+          <label>
+            Interval (ms)
+            <input type="number" id="browserIntervalInput" value="1000" min="1" max="10000" />
+          </label>
+          <label><input type="checkbox" id="useSchedulerCheckbox" /> Scheduler </label>
+          <button id="browserSendBtn" disabled>Start Browser Sending</button>
+          <div id="browserStats" style="font-size: 12px; color: #666; margin-top: 8px">
+            Messages/sec: <span id="browserMsgPerSec">0</span> | Queue: <span id="browserQueueLength">0</span>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <h3>Test 2: ESP32 → Browser</h3>
+          <label>
+            Message
+            <input type="text" id="esp32MessageInput" value="test" />
+          </label>
+          <label>
+            Interval (ms)
+            <input type="number" id="esp32IntervalInput" value="1000" min="1" max="10000" />
+          </label>
+          <button id="esp32SendBtn" disabled>Start ESP32 Sending</button>
+          <div id="esp32Stats" style="font-size: 12px; color: #666; margin-top: 8px">
+            Messages/sec: <span id="esp32MsgPerSec">0</span> | Total: <span id="esp32TotalMsg">0</span>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <h3>Test 3: Round Trip Latency</h3>
+          <button id="latencySendBtn" disabled>Start Latency Test</button>
+          <div id="latencyStats" style="font-size: 12px; color: #666; margin-top: 8px">
+            <div>Messages/sec: <span id="latencyMsgPerSec">0</span></div>
+            <div>Avg Latency: <span id="latencyAvg">0</span>ms</div>
+            <div>Min: <span id="latencyMin">0</span>ms</div>
+            <div>Max: <span id="latencyMax">0</span>ms</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="log-panel">
+        <div class="log-header">
+          <h3>Log</h3>
+          <button id="clearLogBtn">Clear Log</button>
+        </div>
+        <pre id="log"></pre>
+      </div>
+    </div>
+
+    <script type="module">
+      import { fromEvent, interval, Subject, EMPTY } from "https://esm.sh/rxjs@7.8.2";
+      import { mergeMap, takeUntil, tap, scan, map, throttleTime, share } from "https://esm.sh/rxjs@7.8.2/operators";
+
+      const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+      const TX_CHAR_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
+      const RX_CHAR_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+
+      const RATE_WINDOW_MS = 2000;
+      const STATS_UPDATE_INTERVAL_MS = 100;
+
+      let device = null;
+      let charTx = null;
+      let charRx = null;
+
+      let browserSendSubscription = null;
+      let stopBrowserSend$ = new Subject();
+      let isBrowserSending = false;
+      let browserQueueSize = 0;
+
+      let isEsp32Sending = false;
+      let esp32RxSubscription = null;
+      let esp32Message$ = new Subject();
+
+      let isLatencyTesting = false;
+      let latencySubscription = null;
+      let stopLatency$ = new Subject();
+      let latencyCounter = 0;
+      let pendingLatencyMessages = new Map();
+
+      const connectBtn = document.getElementById("connectBtn");
+      const disconnectBtn = document.getElementById("disconnectBtn");
+      const statusSpan = document.getElementById("status");
+      const logPre = document.getElementById("log");
+      const clearLogBtn = document.getElementById("clearLogBtn");
+
+      // Test 1 controls
+      const browserMessageInput = document.getElementById("browserMessageInput");
+      const browserIntervalInput = document.getElementById("browserIntervalInput");
+      const browserSendBtn = document.getElementById("browserSendBtn");
+      const useSchedulerCheckbox = document.getElementById("useSchedulerCheckbox");
+      const browserMsgPerSecSpan = document.getElementById("browserMsgPerSec");
+      const browserQueueLengthSpan = document.getElementById("browserQueueLength");
+
+      // Test 2 controls
+      const esp32MessageInput = document.getElementById("esp32MessageInput");
+      const esp32IntervalInput = document.getElementById("esp32IntervalInput");
+      const esp32SendBtn = document.getElementById("esp32SendBtn");
+      const esp32MsgPerSecSpan = document.getElementById("esp32MsgPerSec");
+      const esp32TotalMsgSpan = document.getElementById("esp32TotalMsg");
+
+      // Test 3 controls
+      const latencySendBtn = document.getElementById("latencySendBtn");
+      const latencyMsgPerSecSpan = document.getElementById("latencyMsgPerSec");
+      const latencyAvgSpan = document.getElementById("latencyAvg");
+      const latencyMinSpan = document.getElementById("latencyMin");
+      const latencyMaxSpan = document.getElementById("latencyMax");
+
+      function log(msg) {
+        const timestamp = new Date().toISOString();
+        logPre.textContent += `[${timestamp}] ${msg}\n`;
+        requestAnimationFrame(() => {
+          logPre.scrollTop = logPre.scrollHeight;
+        });
+      }
+
+      function createRateCalculator(windowMs = RATE_WINDOW_MS) {
+        return scan((acc, timestamp) => {
+          const cutoff = timestamp - windowMs;
+          const recentMessages = [...acc, timestamp].filter((t) => t >= cutoff);
+          return recentMessages;
+        }, []);
+      }
+
+      function calculateRate(timestamps) {
+        if (timestamps.length === 0) return 0;
+        const span = timestamps[timestamps.length - 1] - timestamps[0];
+        return span > 0 ? ((timestamps.length - 1) / span) * 1000 : 0;
+      }
+
+      clearLogBtn.addEventListener("click", () => {
+        logPre.textContent = "";
+        log("Log cleared");
+      });
+
+      connectBtn.addEventListener("click", async () => {
+        try {
+          if (!navigator.bluetooth) {
+            throw new Error("Web Bluetooth not supported");
+          }
+
+          log("Requesting BLE device...");
+          device = await navigator.bluetooth.requestDevice({
+            filters: [{ services: [SERVICE_UUID] }],
+          });
+
+          log(`Connecting to ${device.name || "device"}...`);
+          const server = await device.gatt.connect();
+          const service = await server.getPrimaryService(SERVICE_UUID);
+
+          charRx = await service.getCharacteristic(TX_CHAR_UUID);
+          charTx = await service.getCharacteristic(RX_CHAR_UUID);
+
+          await charRx.startNotifications();
+          charRx.addEventListener("characteristicvaluechanged", (e) => {
+            const text = new TextDecoder().decode(e.target.value.buffer);
+            log(`RX: ${text}`);
+
+            if (isEsp32Sending) {
+              esp32Message$.next(Date.now());
+            }
+
+            // Handle latency test responses
+            if (isLatencyTesting && text.startsWith("t:")) {
+              const msgId = parseInt(text.substring(2));
+              const sendTime = pendingLatencyMessages.get(msgId);
+              if (sendTime !== undefined) {
+                const latency = Date.now() - sendTime;
+                pendingLatencyMessages.delete(msgId);
+
+                // Emit latency measurement
+                latencyMessage$.next(latency);
+              }
+            }
+          });
+
+          device.addEventListener("gattserverdisconnected", () => {
+            log("Device disconnected");
+            statusSpan.textContent = "Disconnected";
+            connectBtn.disabled = false;
+            disconnectBtn.disabled = true;
+            browserSendBtn.disabled = true;
+            esp32SendBtn.disabled = true;
+            latencySendBtn.disabled = true;
+            stopBrowserSending();
+            stopEsp32Sending();
+            stopLatencyTest();
+          });
+
+          log("Connected");
+          statusSpan.textContent = "Connected";
+          connectBtn.disabled = true;
+          disconnectBtn.disabled = false;
+          browserSendBtn.disabled = false;
+          esp32SendBtn.disabled = false;
+          latencySendBtn.disabled = false;
+        } catch (error) {
+          log(`ERROR: ${error.message}`);
+          console.error(error);
+        }
+      });
+
+      disconnectBtn.addEventListener("click", () => {
+        if (device && device.gatt.connected) {
+          device.gatt.disconnect();
+          log("Disconnected by user");
+          statusSpan.textContent = "Disconnected";
+          connectBtn.disabled = false;
+          disconnectBtn.disabled = true;
+          browserSendBtn.disabled = true;
+          esp32SendBtn.disabled = true;
+          latencySendBtn.disabled = true;
+          stopBrowserSending();
+          stopEsp32Sending();
+          stopLatencyTest();
+        }
+      });
+
+      browserSendBtn.addEventListener("click", () => {
+        if (!isBrowserSending) {
+          startBrowserSending();
+        } else {
+          stopBrowserSending();
+        }
+      });
+
+      function startBrowserSending() {
+        const message = browserMessageInput.value;
+        const intervalMs = parseInt(browserIntervalInput.value);
+        const useScheduler = useSchedulerCheckbox.checked;
+
+        if (!message) {
+          log("ERROR: Message is empty");
+          return;
+        }
+
+        if (intervalMs < 1 || intervalMs > 10000) {
+          log("ERROR: Interval must be between 1 and 10000 ms");
+          return;
+        }
+
+        isBrowserSending = true;
+        browserSendBtn.textContent = "Stop Browser Sending";
+        browserQueueSize = 0;
+
+        const concurrency = useScheduler ? 1 : undefined;
+        const modeText = useScheduler ? "scheduled (single thread)" : "unscheduled (unlimited concurrency)";
+        log(`[Test 1] Started browser sending in ${modeText} mode: "${message}" every ${intervalMs}ms`);
+
+        const messageSent$ = new Subject();
+
+        const rate$ = messageSent$.pipe(
+          map(() => Date.now()),
+          createRateCalculator(),
+          map(calculateRate),
+          share()
+        );
+
+        const statsUpdate$ = interval(STATS_UPDATE_INTERVAL_MS)
+          .pipe(
+            takeUntil(stopBrowserSend$),
+            tap(() => (browserQueueLengthSpan.textContent = browserQueueSize))
+          )
+          .subscribe();
+
+        const rateDisplay$ = rate$
+          .pipe(
+            throttleTime(STATS_UPDATE_INTERVAL_MS),
+            tap((rate) => (browserMsgPerSecSpan.textContent = rate.toFixed(2)))
+          )
+          .subscribe();
+
+        const send$ = interval(intervalMs).pipe(
+          takeUntil(stopBrowserSend$),
+          tap(() => browserQueueSize++),
+          mergeMap(async () => {
+            try {
+              const encoder = new TextEncoder();
+              const data = encoder.encode(message);
+              await charTx.writeValue(data);
+
+              browserQueueSize--;
+              messageSent$.next();
+              log(`[Test 1] TX: ${message}`);
+            } catch (error) {
+              log(`[Test 1] SEND ERROR: ${error.message}`);
+              stopBrowserSending();
+              throw error;
+            }
+          }, concurrency)
+        );
+
+        browserSendSubscription = send$.subscribe({
+          error: (err) => {
+            log(`[Test 1] Stream error: ${err.message}`);
+            stopBrowserSending();
+          },
+        });
+
+        browserSendSubscription.add(statsUpdate$);
+        browserSendSubscription.add(rateDisplay$);
+      }
+
+      function stopBrowserSending() {
+        if (browserSendSubscription) {
+          stopBrowserSend$.next();
+          browserSendSubscription.unsubscribe();
+          browserSendSubscription = null;
+          stopBrowserSend$ = new Subject();
+        }
+
+        isBrowserSending = false;
+        browserSendBtn.textContent = "Start Browser Sending";
+        browserQueueSize = 0;
+        browserQueueLengthSpan.textContent = "0";
+        browserMsgPerSecSpan.textContent = "0";
+
+        if (device && device.gatt.connected) {
+          log("[Test 1] Stopped browser sending");
+        }
+      }
+
+      esp32SendBtn.addEventListener("click", async () => {
+        if (!isEsp32Sending) {
+          await startEsp32Sending();
+        } else {
+          await stopEsp32Sending();
+        }
+      });
+
+      async function startEsp32Sending() {
+        const message = esp32MessageInput.value;
+        const interval = parseInt(esp32IntervalInput.value);
+
+        if (!message) {
+          log("ERROR: Message is empty");
+          return;
+        }
+
+        if (interval < 1 || interval > 10000) {
+          log("ERROR: Interval must be between 1 and 10000 ms");
+          return;
+        }
+
+        try {
+          const command = `START:${message}:${interval}`;
+          const encoder = new TextEncoder();
+          const data = encoder.encode(command);
+          await charTx.writeValue(data);
+
+          isEsp32Sending = true;
+          esp32SendBtn.textContent = "Stop ESP32 Sending";
+          log(`[Test 2] TX: ${command}`);
+          log(`[Test 2] Started ESP32 sending: "${message}" every ${interval}ms`);
+
+          const stopEsp32$ = new Subject();
+
+          const rate$ = esp32Message$.pipe(takeUntil(stopEsp32$), createRateCalculator(), share());
+
+          const rateDisplay$ = rate$
+            .pipe(
+              map(calculateRate),
+              throttleTime(STATS_UPDATE_INTERVAL_MS),
+              tap((rate) => (esp32MsgPerSecSpan.textContent = rate.toFixed(2)))
+            )
+            .subscribe();
+
+          const totalDisplay$ = rate$
+            .pipe(
+              map((timestamps) => timestamps.length),
+              throttleTime(STATS_UPDATE_INTERVAL_MS),
+              tap((total) => (esp32TotalMsgSpan.textContent = total))
+            )
+            .subscribe();
+
+          esp32RxSubscription = { stopEsp32$, rateDisplay$, totalDisplay$ };
+        } catch (error) {
+          log(`[Test 2] ERROR: ${error.message}`);
+        }
+      }
+
+      async function stopEsp32Sending() {
+        if (!isEsp32Sending) return;
+
+        try {
+          const command = "STOP";
+          const encoder = new TextEncoder();
+          const data = encoder.encode(command);
+          await charTx.writeValue(data);
+
+          isEsp32Sending = false;
+          esp32SendBtn.textContent = "Start ESP32 Sending";
+
+          if (esp32RxSubscription) {
+            esp32RxSubscription.stopEsp32$.next();
+            esp32RxSubscription.rateDisplay$.unsubscribe();
+            esp32RxSubscription.totalDisplay$.unsubscribe();
+            esp32RxSubscription = null;
+          }
+
+          log(`[Test 2] TX: ${command}`);
+          log("[Test 2] Stopped ESP32 sending");
+        } catch (error) {
+          log(`[Test 2] ERROR: ${error.message}`);
+        }
+      }
+
+      // Test 3: Round Trip Latency
+      const latencyMessage$ = new Subject();
+
+      latencySendBtn.addEventListener("click", () => {
+        if (!isLatencyTesting) {
+          startLatencyTest();
+        } else {
+          stopLatencyTest();
+        }
+      });
+
+      function startLatencyTest() {
+        isLatencyTesting = true;
+        latencySendBtn.textContent = "Stop Latency Test";
+        latencyCounter = 0;
+        pendingLatencyMessages.clear();
+
+        log("[Test 3] Started round trip latency test");
+
+        const latencySent$ = new Subject();
+
+        // Calculate message rate
+        const sentRate$ = latencySent$.pipe(
+          map(() => Date.now()),
+          createRateCalculator(),
+          map(calculateRate),
+          share()
+        );
+
+        // Track latency statistics
+        const latencyStats$ = latencyMessage$.pipe(
+          takeUntil(stopLatency$),
+          scan(
+            (acc, latency) => {
+              return {
+                sum: acc.sum + latency,
+                count: acc.count + 1,
+                min: Math.min(acc.min, latency),
+                max: Math.max(acc.max, latency),
+              };
+            },
+            { sum: 0, count: 0, min: Infinity, max: -Infinity }
+          ),
+          share()
+        );
+
+        const sentRateDisplay$ = sentRate$
+          .pipe(
+            throttleTime(STATS_UPDATE_INTERVAL_MS),
+            tap((rate) => (latencyMsgPerSecSpan.textContent = rate.toFixed(2)))
+          )
+          .subscribe();
+
+        const latencyDisplay$ = latencyStats$
+          .pipe(
+            throttleTime(STATS_UPDATE_INTERVAL_MS),
+            tap((stats) => {
+              if (stats.count > 0) {
+                latencyAvgSpan.textContent = (stats.sum / stats.count).toFixed(2);
+                latencyMinSpan.textContent = stats.min.toFixed(2);
+                latencyMaxSpan.textContent = stats.max.toFixed(2);
+              }
+            })
+          )
+          .subscribe();
+
+        // Send messages as fast as possible with scheduler (concurrency = 1)
+        const send$ = interval(0).pipe(
+          takeUntil(stopLatency$),
+          mergeMap(async () => {
+            try {
+              const msgId = latencyCounter++;
+              const message = `t:${msgId}`;
+              const encoder = new TextEncoder();
+              const data = encoder.encode(message);
+
+              pendingLatencyMessages.set(msgId, Date.now());
+              await charTx.writeValue(data);
+
+              latencySent$.next();
+              log(`[Test 3] TX: ${message}`);
+            } catch (error) {
+              log(`[Test 3] SEND ERROR: ${error.message}`);
+              stopLatencyTest();
+              throw error;
+            }
+          }, 1) // Concurrency = 1 for scheduler mode
+        );
+
+        latencySubscription = send$.subscribe({
+          error: (err) => {
+            log(`[Test 3] Stream error: ${err.message}`);
+            stopLatencyTest();
+          },
+        });
+
+        latencySubscription.add(sentRateDisplay$);
+        latencySubscription.add(latencyDisplay$);
+      }
+
+      function stopLatencyTest() {
+        if (latencySubscription) {
+          stopLatency$.next();
+          latencySubscription.unsubscribe();
+          latencySubscription = null;
+          stopLatency$ = new Subject();
+        }
+
+        isLatencyTesting = false;
+        latencySendBtn.textContent = "Start Latency Test";
+        pendingLatencyMessages.clear();
+        latencyCounter = 0;
+
+        if (device && device.gatt.connected) {
+          log("[Test 3] Stopped latency test");
+        }
+      }
+    </script>
+  </body>
+</html>
