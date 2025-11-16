@@ -43,6 +43,7 @@
         flex-direction: column;
         gap: 10px;
         min-width: 0;
+        min-height: 0;
       }
 
       .log-header {
@@ -87,11 +88,11 @@
         <div class="control-group">
           <h3>Test 1: Browser → ESP32</h3>
           <label>
-            Message:
+            Message
             <input type="text" id="browserMessageInput" value="hello" />
           </label>
           <label>
-            Interval (ms):
+            Interval (ms)
             <input type="number" id="browserIntervalInput" value="1000" min="1" max="10000" />
           </label>
           <button id="browserSendBtn" disabled>Start Browser Sending</button>
@@ -100,11 +101,11 @@
         <div class="control-group">
           <h3>Test 2: ESP32 → Browser</h3>
           <label>
-            Message:
+            Message
             <input type="text" id="esp32MessageInput" value="test" />
           </label>
           <label>
-            Interval (ms):
+            Interval (ms)
             <input type="number" id="esp32IntervalInput" value="1000" min="1" max="10000" />
           </label>
           <button id="esp32SendBtn" disabled>Start ESP32 Sending</button>
@@ -156,7 +157,10 @@
       function log(msg) {
         const timestamp = new Date().toISOString();
         logPre.textContent += `[${timestamp}] ${msg}\n`;
-        logPre.scrollTop = logPre.scrollHeight;
+        // Use requestAnimationFrame to ensure DOM is updated before scrolling
+        requestAnimationFrame(() => {
+          logPre.scrollTop = logPre.scrollHeight;
+        });
       }
 
       clearLogBtn.addEventListener("click", () => {
