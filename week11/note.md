@@ -169,6 +169,7 @@ Characterize the performance:
   - Browser to ESP32: 14 messages/sec
   - ESP32 to Browser: 100 messages/sec
 - Latency: 92 ms average, min: 84 ms, max: 140 ms
+- Removing antenna did not reduce performance at close range, but as I walk away, performance drops quickly. Connection lost at 5 meters.
 
 ### At distance of 30 meters, through one glass wall
 
@@ -178,3 +179,9 @@ Unable to establish new connection at distance, but can tether previous connecti
   - Browser to ESP32: 8 messages/sec
   - ESP32 to Browser: 50 messages/sec
 - Latency: 250 ms, min 89 ms, max 540 ms
+
+### Realistic usage: inside metal icosahedron structure, at 10 meters distance
+
+Browser -> ESP32: 14 messages per second
+ESP32 -> Browser: 100 messages per second
+Latency: 230 ms, min 157 ms, max 332 ms
