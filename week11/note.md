@@ -404,3 +404,13 @@ Core implementation:
 ```
 
 With the scheduler in place, I was able to dispatch the command at the high speed without causing BLE transmission errors.
+
+## Servo doesn't move
+
+EE team shared their production board. Observations:
+
+- They arbitrarily set the I2C address, mismatching with our assumptions
+- The channel numbers are not what we expected. Possible issues:
+  - Our command is flawed
+  - EE team gave us the wrong map
+  - Our MUX logic is flawed
