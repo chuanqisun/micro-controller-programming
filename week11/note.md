@@ -414,3 +414,9 @@ EE team shared their production board. Observations:
   - Our command is flawed
   - EE team gave us the wrong map
   - Our MUX logic is flawed
+
+## Servo change needed
+
+1. Servo init to 0
+2. Get servo to 270 (our code currently can't move to the full range)
+3. (Low priority) use direct target value, don't step
