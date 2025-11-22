@@ -27,3 +27,7 @@ TODO
 - Move jack to center for visual balance
 - PCB: move ESP32 away from the wall by 0.5mm
 - move all female headers away from wall
+
+## LED test
+
+I found out I can't power on all 8 LEDs at the same time due to Xiao's limit
