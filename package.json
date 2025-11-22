@@ -4,8 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "npm run build:talkie-only && npm run upload:talkie-only && concurrently \"npm run monitor\"",
+    "dev": "npm run build:led-test && npm run upload:led-test && concurrently \"npm run monitor\"",
     "serve": "node --env-file .env ./sketches/talkie-only/server.js",
+    "build:led-test": "arduino-cli compile -b esp32:esp32:XIAO_ESP32C3 ./sketches/led-test",
+    "upload:led-test": "arduino-cli upload -p /dev/ttyACM0 -b esp32:esp32:XIAO_ESP32C3 ./sketches/led-test",
+    "dev:led-test": "npm run build:led-test && npm run upload:led-test && npm run monitor",
     "build:talkie-only": "arduino-cli compile -b esp32:esp32:XIAO_ESP32C3 ./sketches/talkie-only",
     "upload:talkie-only": "arduino-cli upload -p /dev/ttyACM0 -b esp32:esp32:XIAO_ESP32C3 ./sketches/talkie-only",
     "dev:talkie-only": "npm run build:talkie-only && npm run upload:talkie-only && npm run monitor",
