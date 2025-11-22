@@ -25,3 +25,5 @@ TODO
 - Thumbgap too narrow. Increase to 1.5cm
 - Need mid point lid support
 - Move jack to center for visual balance
+- PCB: move ESP32 away from the wall by 0.5mm
+- move all female headers away from wall
