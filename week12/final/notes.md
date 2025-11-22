@@ -14,6 +14,8 @@ TODO
 - Lid too tight, need chamfer
 - Thumbgap too narrow. Increase to 1.5cm
 - Need mid point lid support
+- PCB: move amp and bottom right header closer to center
+- Move speaker closer to wall, and move push button away from PCB
 
 ## Switchboard Mk5
 
