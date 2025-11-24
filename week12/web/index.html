@@ -59,6 +59,18 @@
   <body>
     <h1>ESP32 LED Control & Probe Display</h1>
 
+    <h2>Operator (Probe Display)</h2>
+    <div class="status">Status: <span id="statusOp">Not connected</span></div>
+
+    <button id="connectBtnOp">Connect Operator BLE</button>
+    <button id="disconnectBtnOp" disabled>Disconnect</button>
+
+    <div id="probeDisplay">Probe: <span id="rawProbe">---</span> Debounce: <span id="debouncedProbe">---</span> LED: <span id="ledNumber">---</span></div>
+
+    <div>Target LED: <span id="targetLed">3</span></div>
+
+    <div>Score: <span id="score">0</span></div>
+
     <h2>Switchboard (LED Control)</h2>
     <div class="status">Status: <span id="statusSw">Not connected</span></div>
 
@@ -74,18 +86,6 @@
       <button id="led5" disabled>Blink LED 5</button>
       <button id="led6" disabled>Blink LED 6</button>
     </div>
-
-    <h2>Operator (Probe Display)</h2>
-    <div class="status">Status: <span id="statusOp">Not connected</span></div>
-
-    <button id="connectBtnOp">Connect Operator BLE</button>
-    <button id="disconnectBtnOp" disabled>Disconnect</button>
-
-    <div id="probeDisplay">Probe: <span id="rawProbe">---</span> Debounce: <span id="debouncedProbe">---</span> LED: <span id="ledNumber">---</span></div>
-
-    <div>Target LED: <span id="targetLed">3</span></div>
-
-    <div>Score: <span id="score">0</span></div>
 
     <div class="log" id="log"></div>
 
