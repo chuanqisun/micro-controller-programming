@@ -6,53 +6,34 @@
     <title>ESP32 LED Control</title>
     <style>
       body {
-        font-family:
-          system-ui,
-          -apple-system,
-          sans-serif;
-        padding: 20px;
         max-width: 600px;
         margin: 0 auto;
+        padding: 1em;
+        font-family: system-ui, sans-serif;
       }
       .controls {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
-        gap: 10px;
-        margin: 20px 0;
-      }
-      button {
-        padding: 15px;
-        font-size: 16px;
-        border: none;
-        border-radius: 5px;
-        background: #007bff;
-        color: white;
-        cursor: pointer;
-      }
-      button:hover {
-        background: #0056b3;
-      }
-      button:disabled {
-        background: #ccc;
-        cursor: not-allowed;
+        gap: 0.5em;
+        margin: 1em 0;
       }
       .status {
-        margin: 20px 0;
-        padding: 10px;
-        border-radius: 5px;
-        background: #f8f9fa;
+        margin: 1em 0;
+        padding: 0.5em;
       }
       .log {
-        margin-top: 20px;
-        padding: 10px;
-        background: #f5f5f5;
+        margin-top: 1em;
+        padding: 0.5em;
         border: 1px solid #ccc;
-        border-radius: 4px;
         font-family: monospace;
-        font-size: 12px;
+        font-size: 0.8em;
         max-height: 200px;
         overflow-y: auto;
         white-space: pre-wrap;
+      }
+      #apiKey {
+        width: 100%;
+        margin: 0.5em 0;
       }
     </style>
   </head>
@@ -70,6 +51,8 @@
     <div>Target LED: <span id="targetLed">3</span></div>
 
     <div>Score: <span id="score">0</span></div>
+
+    <input type="password" id="apiKey" placeholder="Enter API Key for HTMAA" />
 
     <h2>Switchboard (LED Control)</h2>
     <div class="status">Status: <span id="statusSw">Not connected</span></div>
@@ -260,7 +243,20 @@
             }
           });
 
-          scoreSubject.subscribe((score) => (document.getElementById("score").textContent = score));
+          scoreSubject.subscribe((score) => {
+            document.getElementById("score").textContent = score;
+            const apiKey = document.getElementById("apiKey").value;
+            if (apiKey) {
+              fetch("https://api.mistermatti.com/htmaa-final/text", {
+                method: "POST",
+                headers: {
+                  "X-API-Key": apiKey,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ text: score.toString() }),
+              }).catch(() => {});
+            }
+          });
 
           deviceOp.addEventListener("gattserverdisconnected", () => {
             log("Operator disconnected");
@@ -317,6 +313,18 @@
           }
         });
       }
+
+      // Load API key from localStorage
+      const apiKeyInput = document.getElementById("apiKey");
+      const storedKey = localStorage.getItem("htmaa-matti-key");
+      if (storedKey) {
+        apiKeyInput.value = storedKey;
+      }
+
+      // Save API key to localStorage on change
+      apiKeyInput.addEventListener("input", () => {
+        localStorage.setItem("htmaa-matti-key", apiKeyInput.value);
+      });
     </script>
   </body>
 </html>
