@@ -159,6 +159,13 @@
           connectBtnSw.disabled = true;
           disconnectBtnSw.disabled = false;
           enableLedButtons();
+
+          // Start game: turn on LED3
+          const command = "on:3";
+          const encoder = new TextEncoder();
+          const data = encoder.encode(command);
+          await charTxSw.writeValue(data);
+          log(`Switchboard TX: ${command}`);
         } catch (error) {
           log(`ERROR: ${error.message}`);
           console.error(error);
@@ -210,6 +217,31 @@
             document.getElementById("debouncedProbe").textContent = value;
             const num = parseInt(value, 2);
             document.getElementById("ledNumber").textContent = num === 7 ? "None" : num;
+
+            // Game logic: when probing LED3, turn off 3 and turn on a random other LED
+            if (num === 3 && deviceSw && deviceSw.gatt.connected) {
+              const encoder = new TextEncoder();
+              const offCommand = "off:3";
+              const offData = encoder.encode(offCommand);
+              charTxSw
+                .writeValue(offData)
+                .then(() => {
+                  log(`Switchboard TX: ${offCommand}`);
+                  let randomLed = Math.floor(Math.random() * 8);
+                  while (randomLed === 3) {
+                    randomLed = Math.floor(Math.random() * 8);
+                  }
+                  const onCommand = `on:${randomLed}`;
+                  const onData = encoder.encode(onCommand);
+                  return charTxSw.writeValue(onData);
+                })
+                .then(() => {
+                  log(`Switchboard TX: ${onCommand}`);
+                })
+                .catch((error) => {
+                  log(`ERROR: ${error.message}`);
+                });
+            }
           });
 
           deviceOp.addEventListener("gattserverdisconnected", () => {

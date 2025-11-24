@@ -57,6 +57,45 @@ class MyRxCallbacks: public BLECharacteristicCallbacks {
                 } else {
                     Serial.println("Invalid LED index");
                 }
+            } else if (rxValue.startsWith("on:")) {
+                int ledIndex = rxValue.substring(3).toInt();
+                if (ledIndex >= 0 && ledIndex < numLeds) {
+                    Serial.print("Turning on LED ");
+                    Serial.println(ledIndex);
+                    digitalWrite(ledPins[ledIndex], HIGH);
+                    
+                    // Send acknowledgment
+                    String ack = "ACK:on " + String(ledIndex);
+                    pTxCharacteristic->setValue((uint8_t*)ack.c_str(), ack.length());
+                    pTxCharacteristic->notify();
+                } else {
+                    Serial.println("Invalid LED index");
+                }
+            } else if (rxValue.startsWith("off:")) {
+                String sub = rxValue.substring(4);
+                if (sub == "all") {
+                    Serial.println("Turning off all LEDs");
+                    for (int i = 0; i < numLeds; i++) {
+                        digitalWrite(ledPins[i], LOW);
+                    }
+                    String ack = "ACK:off all";
+                    pTxCharacteristic->setValue((uint8_t*)ack.c_str(), ack.length());
+                    pTxCharacteristic->notify();
+                } else {
+                    int ledIndex = sub.toInt();
+                    if (ledIndex >= 0 && ledIndex < numLeds) {
+                        Serial.print("Turning off LED ");
+                        Serial.println(ledIndex);
+                        digitalWrite(ledPins[ledIndex], LOW);
+                        
+                        // Send acknowledgment
+                        String ack = "ACK:off " + String(ledIndex);
+                        pTxCharacteristic->setValue((uint8_t*)ack.c_str(), ack.length());
+                        pTxCharacteristic->notify();
+                    } else {
+                        Serial.println("Invalid LED index");
+                    }
+                }
             } else {
                 Serial.println("Unknown command");
             }
@@ -114,7 +153,7 @@ void setup() {
     BLEDevice::startAdvertising();
     
     Serial.println("BLE advertising started");
-    Serial.println("Device name: ESP32-BLE-LED");
+    Serial.println("Device name: Switchboard");
 }
 
 void loop() {
