@@ -73,7 +73,6 @@
       <button id="led4" disabled>Blink LED 4</button>
       <button id="led5" disabled>Blink LED 5</button>
       <button id="led6" disabled>Blink LED 6</button>
-      <button id="led7" disabled>Blink LED 7</button>
     </div>
 
     <h2>Operator (Probe Display)</h2>
@@ -83,6 +82,8 @@
     <button id="disconnectBtnOp" disabled>Disconnect</button>
 
     <div id="probeDisplay">Probe: <span id="rawProbe">---</span> Debounce: <span id="debouncedProbe">---</span> LED: <span id="ledNumber">---</span></div>
+
+    <div>Target LED: <span id="targetLed">3</span></div>
 
     <div class="log" id="log"></div>
 
@@ -103,6 +104,7 @@
       let charTxOp = null;
       let charRxOp = null;
       let probeSubject = new Subject();
+      let currentTarget = 3;
 
       const connectBtnSw = document.getElementById("connectBtnSw");
       const disconnectBtnSw = document.getElementById("disconnectBtnSw");
@@ -160,12 +162,17 @@
           disconnectBtnSw.disabled = false;
           enableLedButtons();
 
-          // Start game: turn on LED3
-          const command = "on:3";
+          // Start game: turn off all LEDs first, then turn on LED3
           const encoder = new TextEncoder();
+          const offAllCommand = "off:all";
+          const offAllData = encoder.encode(offAllCommand);
+          await charTxSw.writeValue(offAllData);
+          log(`Switchboard TX: ${offAllCommand}`);
+          const command = "on:3";
           const data = encoder.encode(command);
           await charTxSw.writeValue(data);
           log(`Switchboard TX: ${command}`);
+          document.getElementById("targetLed").textContent = currentTarget;
         } catch (error) {
           log(`ERROR: ${error.message}`);
           console.error(error);
@@ -208,7 +215,7 @@
           await charRxOp.startNotifications();
           charRxOp.addEventListener("characteristicvaluechanged", (e) => {
             const text = new TextDecoder().decode(e.target.value.buffer);
-            log(`Operator RX: ${text}`);
+            // log(`Operator RX: ${text}`);
             probeSubject.next(text.trim());
             document.getElementById("rawProbe").textContent = text.trim();
           });
@@ -218,25 +225,29 @@
             const num = parseInt(value, 2);
             document.getElementById("ledNumber").textContent = num === 7 ? "None" : num;
 
-            // Game logic: when probing LED3, turn off 3 and turn on a random other LED
-            if (num === 3 && deviceSw && deviceSw.gatt.connected) {
+            // Game logic: when probing the current target LED, turn it off and turn on a random other LED
+            if (num === currentTarget && deviceSw && deviceSw.gatt.connected) {
               const encoder = new TextEncoder();
-              const offCommand = "off:3";
+              const offCommand = "off:" + currentTarget;
               const offData = encoder.encode(offCommand);
+              let randomLed;
+              let onCommand;
               charTxSw
                 .writeValue(offData)
                 .then(() => {
                   log(`Switchboard TX: ${offCommand}`);
-                  let randomLed = Math.floor(Math.random() * 8);
-                  while (randomLed === 3) {
-                    randomLed = Math.floor(Math.random() * 8);
+                  randomLed = Math.floor(Math.random() * 7);
+                  while (randomLed === currentTarget) {
+                    randomLed = Math.floor(Math.random() * 7);
                   }
-                  const onCommand = `on:${randomLed}`;
+                  onCommand = `on:${randomLed}`;
                   const onData = encoder.encode(onCommand);
                   return charTxSw.writeValue(onData);
                 })
                 .then(() => {
                   log(`Switchboard TX: ${onCommand}`);
+                  currentTarget = randomLed;
+                  document.getElementById("targetLed").textContent = currentTarget;
                 })
                 .catch((error) => {
                   log(`ERROR: ${error.message}`);
@@ -275,18 +286,18 @@
       });
 
       function enableLedButtons() {
-        for (let i = 0; i < 8; i++) {
+        for (let i = 0; i < 7; i++) {
           document.getElementById(`led${i}`).disabled = false;
         }
       }
 
       function disableLedButtons() {
-        for (let i = 0; i < 8; i++) {
+        for (let i = 0; i < 7; i++) {
           document.getElementById(`led${i}`).disabled = true;
         }
       }
 
-      for (let i = 0; i < 8; i++) {
+      for (let i = 0; i < 7; i++) {
         document.getElementById(`led${i}`).addEventListener("click", async () => {
           try {
             const command = `blink:${i}`;

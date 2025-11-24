@@ -2,36 +2,43 @@
   {
     "led": 0,
     "ledBin": "000",
-    "position": "NE"
+    "position": "NE",
+    "pin": "D0"
   },
   {
     "led": 1,
     "ledBin": "001",
-    "position": "SE"
+    "position": "SE",
+    "pin": "D7"
   },
   {
     "led": 2,
     "ledBin": "010",
-    "position": "W"
+    "position": "W",
+    "pin": "D2"
   },
   {
     "led": 3,
     "ledBin": "011",
-    "position": "C"
+    "position": "C",
+    "pin": "D9"
   },
   {
     "led": 4,
     "ledBin": "100",
-    "position": "NW"
+    "position": "NW",
+    "pin": "D1"
   },
   {
     "led": 5,
     "ledBin": "101",
-    "position": "E"
+    "position": "E",
+    "pin": "D8"
   },
   {
     "led": 6,
     "ledBin": "110",
-    "position": "SW"
+    "position": "SW",
+    "pin": "D3"
   }
 ]

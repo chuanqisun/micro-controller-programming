@@ -17,8 +17,8 @@ BLECharacteristic* pRxCharacteristic = NULL;
 bool deviceConnected = false;
 bool oldDeviceConnected = false;
 
-const int ledPins[] = {D0, D1, D2, D3, D7, D8, D9, D10};
-const int numLeds = 8;
+const int ledPins[] = {D0, D7, D2, D9, D1, D8, D3};
+const int numLeds = 7;
 
 // Server callbacks
 class MyServerCallbacks: public BLEServerCallbacks {
