@@ -56,12 +56,13 @@
     </style>
   </head>
   <body>
-    <h1>ESP32 LED Control</h1>
+    <h1>ESP32 LED Control & Probe Display</h1>
 
-    <div class="status">Status: <span id="status">Not connected</span></div>
+    <h2>Switchboard (LED Control)</h2>
+    <div class="status">Status: <span id="statusSw">Not connected</span></div>
 
-    <button id="connectBtn">Connect BLE</button>
-    <button id="disconnectBtn" disabled>Disconnect</button>
+    <button id="connectBtnSw">Connect Switchboard BLE</button>
+    <button id="disconnectBtnSw" disabled>Disconnect</button>
 
     <div class="controls">
       <button id="led0" disabled>Blink LED 0</button>
@@ -74,6 +75,14 @@
       <button id="led7" disabled>Blink LED 7</button>
     </div>
 
+    <h2>Operator (Probe Display)</h2>
+    <div class="status">Status: <span id="statusOp">Not connected</span></div>
+
+    <button id="connectBtnOp">Connect Operator BLE</button>
+    <button id="disconnectBtnOp" disabled>Disconnect</button>
+
+    <div id="probeDisplay">Probe: <span id="probeValue">---</span></div>
+
     <div class="log" id="log"></div>
 
     <script>
@@ -81,13 +90,24 @@
       const TX_CHAR_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
       const RX_CHAR_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
 
-      let device = null;
-      let charTx = null;
-      let charRx = null;
+      // Switchboard variables
+      let deviceSw = null;
+      let charTxSw = null;
+      let charRxSw = null;
 
-      const connectBtn = document.getElementById("connectBtn");
-      const disconnectBtn = document.getElementById("disconnectBtn");
-      const statusSpan = document.getElementById("status");
+      // Operator variables
+      let deviceOp = null;
+      let charTxOp = null;
+      let charRxOp = null;
+
+      const connectBtnSw = document.getElementById("connectBtnSw");
+      const disconnectBtnSw = document.getElementById("disconnectBtnSw");
+      const statusSpanSw = document.getElementById("statusSw");
+
+      const connectBtnOp = document.getElementById("connectBtnOp");
+      const disconnectBtnOp = document.getElementById("disconnectBtnOp");
+      const statusSpanOp = document.getElementById("statusOp");
+
       const logDiv = document.getElementById("log");
 
       function log(msg) {
@@ -96,42 +116,43 @@
         logDiv.scrollTop = logDiv.scrollHeight;
       }
 
-      connectBtn.addEventListener("click", async () => {
+      // Connect Switchboard
+      connectBtnSw.addEventListener("click", async () => {
         try {
           if (!navigator.bluetooth) {
             throw new Error("Web Bluetooth not supported");
           }
 
-          log("Requesting BLE device...");
-          device = await navigator.bluetooth.requestDevice({
-            filters: [{ services: [SERVICE_UUID] }],
+          log("Requesting Switchboard BLE device...");
+          deviceSw = await navigator.bluetooth.requestDevice({
+            filters: [{ name: "Switchboard" }],
           });
 
-          log(`Connecting to ${device.name || "device"}...`);
-          const server = await device.gatt.connect();
+          log(`Connecting to ${deviceSw.name || "device"}...`);
+          const server = await deviceSw.gatt.connect();
           const service = await server.getPrimaryService(SERVICE_UUID);
 
-          charRx = await service.getCharacteristic(TX_CHAR_UUID);
-          charTx = await service.getCharacteristic(RX_CHAR_UUID);
+          charRxSw = await service.getCharacteristic(TX_CHAR_UUID);
+          charTxSw = await service.getCharacteristic(RX_CHAR_UUID);
 
-          await charRx.startNotifications();
-          charRx.addEventListener("characteristicvaluechanged", (e) => {
+          await charRxSw.startNotifications();
+          charRxSw.addEventListener("characteristicvaluechanged", (e) => {
             const text = new TextDecoder().decode(e.target.value.buffer);
-            log(`RX: ${text}`);
+            log(`Switchboard RX: ${text}`);
           });
 
-          device.addEventListener("gattserverdisconnected", () => {
-            log("Device disconnected");
-            statusSpan.textContent = "Disconnected";
-            connectBtn.disabled = false;
-            disconnectBtn.disabled = true;
+          deviceSw.addEventListener("gattserverdisconnected", () => {
+            log("Switchboard disconnected");
+            statusSpanSw.textContent = "Disconnected";
+            connectBtnSw.disabled = false;
+            disconnectBtnSw.disabled = true;
             disableLedButtons();
           });
 
-          log("Connected");
-          statusSpan.textContent = "Connected";
-          connectBtn.disabled = true;
-          disconnectBtn.disabled = false;
+          log("Switchboard connected");
+          statusSpanSw.textContent = "Connected";
+          connectBtnSw.disabled = true;
+          disconnectBtnSw.disabled = false;
           enableLedButtons();
         } catch (error) {
           log(`ERROR: ${error.message}`);
@@ -139,14 +160,68 @@
         }
       });
 
-      disconnectBtn.addEventListener("click", () => {
-        if (device && device.gatt.connected) {
-          device.gatt.disconnect();
-          log("Disconnected by user");
-          statusSpan.textContent = "Disconnected";
-          connectBtn.disabled = false;
-          disconnectBtn.disabled = true;
+      // Disconnect Switchboard
+      disconnectBtnSw.addEventListener("click", () => {
+        if (deviceSw && deviceSw.gatt.connected) {
+          deviceSw.gatt.disconnect();
+          log("Switchboard disconnected by user");
+          statusSpanSw.textContent = "Disconnected";
+          connectBtnSw.disabled = false;
+          disconnectBtnSw.disabled = true;
           disableLedButtons();
+        }
+      });
+
+      // Connect Operator
+      connectBtnOp.addEventListener("click", async () => {
+        try {
+          if (!navigator.bluetooth) {
+            throw new Error("Web Bluetooth not supported");
+          }
+
+          log("Requesting Operator BLE device...");
+          deviceOp = await navigator.bluetooth.requestDevice({
+            filters: [{ name: "Operator" }],
+          });
+
+          log(`Connecting to ${deviceOp.name || "device"}...`);
+          const server = await deviceOp.gatt.connect();
+          const service = await server.getPrimaryService(SERVICE_UUID);
+
+          charRxOp = await service.getCharacteristic(TX_CHAR_UUID);
+
+          await charRxOp.startNotifications();
+          charRxOp.addEventListener("characteristicvaluechanged", (e) => {
+            const text = new TextDecoder().decode(e.target.value.buffer);
+            log(`Operator RX: ${text}`);
+            document.getElementById("probeValue").textContent = text.trim();
+          });
+
+          deviceOp.addEventListener("gattserverdisconnected", () => {
+            log("Operator disconnected");
+            statusSpanOp.textContent = "Disconnected";
+            connectBtnOp.disabled = false;
+            disconnectBtnOp.disabled = true;
+          });
+
+          log("Operator connected");
+          statusSpanOp.textContent = "Connected";
+          connectBtnOp.disabled = true;
+          disconnectBtnOp.disabled = false;
+        } catch (error) {
+          log(`ERROR: ${error.message}`);
+          console.error(error);
+        }
+      });
+
+      // Disconnect Operator
+      disconnectBtnOp.addEventListener("click", () => {
+        if (deviceOp && deviceOp.gatt.connected) {
+          deviceOp.gatt.disconnect();
+          log("Operator disconnected by user");
+          statusSpanOp.textContent = "Disconnected";
+          connectBtnOp.disabled = false;
+          disconnectBtnOp.disabled = true;
         }
       });
 
@@ -168,8 +243,8 @@
             const command = `blink:${i}`;
             const encoder = new TextEncoder();
             const data = encoder.encode(command);
-            await charTx.writeValue(data);
-            log(`TX: ${command}`);
+            await charTxSw.writeValue(data);
+            log(`Switchboard TX: ${command}`);
           } catch (error) {
             log(`ERROR: ${error.message}`);
           }
