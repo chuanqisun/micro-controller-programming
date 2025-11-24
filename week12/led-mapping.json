@@ -1,0 +1,37 @@
+[
+  {
+    "led": 0,
+    "ledBin": "000",
+    "position": "NE"
+  },
+  {
+    "led": 1,
+    "ledBin": "001",
+    "position": "SE"
+  },
+  {
+    "led": 2,
+    "ledBin": "010",
+    "position": "W"
+  },
+  {
+    "led": 3,
+    "ledBin": "011",
+    "position": "C"
+  },
+  {
+    "led": 4,
+    "ledBin": "100",
+    "position": "NW"
+  },
+  {
+    "led": 5,
+    "ledBin": "101",
+    "position": "E"
+  },
+  {
+    "led": 6,
+    "ledBin": "110",
+    "position": "SW"
+  }
+]
