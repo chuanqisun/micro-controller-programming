@@ -82,7 +82,7 @@
     <button id="connectBtnOp">Connect Operator BLE</button>
     <button id="disconnectBtnOp" disabled>Disconnect</button>
 
-    <div id="probeDisplay">Probe: <span id="rawProbe">---</span> Debounce: <span id="debouncedProbe">---</span> LED: <span id="ledNumber">---</span></div>
+    <div id="probeDisplay">Probe: <span id="rawProbe">---</span> Debounce: <span id="debouncedProbe">---</span></div>
 
     <div class="log" id="log"></div>
 
@@ -206,10 +206,8 @@
             document.getElementById("rawProbe").textContent = text.trim();
           });
 
-          probeSubject.pipe(distinctUntilChanged(), debounceTime(500)).subscribe((value) => {
+          probeSubject.pipe(distinctUntilChanged(), debounceTime(200)).subscribe((value) => {
             document.getElementById("debouncedProbe").textContent = value;
-            const num = parseInt(value, 2);
-            document.getElementById("ledNumber").textContent = num === 7 ? "None" : num;
           });
 
           deviceOp.addEventListener("gattserverdisconnected", () => {
