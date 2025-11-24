@@ -45,7 +45,7 @@ void setup() {
   Serial.println("Starting ESP32 BLE Operator...");
   
   // Initialize BLE
-  BLEDevice::init("Operator");
+  BLEDevice::init("op");
 
   // Create server
   pServer = BLEDevice::createServer();
@@ -72,7 +72,7 @@ void setup() {
   BLEDevice::startAdvertising();
   
   Serial.println("BLE advertising started");
-  Serial.println("Device name: Operator");
+  Serial.println("Device name: op");
 }
 
 void loop() {

@@ -119,7 +119,7 @@ void setup() {
     }
 
     // Initialize BLE
-    BLEDevice::init("Switchboard");
+    BLEDevice::init("sw");
 
     // Create server
     pServer = BLEDevice::createServer();
@@ -153,7 +153,7 @@ void setup() {
     BLEDevice::startAdvertising();
     
     Serial.println("BLE advertising started");
-    Serial.println("Device name: Switchboard");
+    Serial.println("Device name: sw");
 }
 
 void loop() {

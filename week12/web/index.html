@@ -129,7 +129,7 @@
 
           log("Requesting Switchboard BLE device...");
           deviceSw = await navigator.bluetooth.requestDevice({
-            filters: [{ name: "Switchboard" }],
+            filters: [{ name: "sw" }],
             optionalServices: [SERVICE_UUID],
           });
 
@@ -195,7 +195,7 @@
 
           log("Requesting Operator BLE device...");
           deviceOp = await navigator.bluetooth.requestDevice({
-            filters: [{ name: "Operator" }],
+            filters: [{ name: "op" }],
             optionalServices: [SERVICE_UUID],
           });
 
