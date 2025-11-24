@@ -85,10 +85,12 @@
 
     <div>Target LED: <span id="targetLed">3</span></div>
 
+    <div>Score: <span id="score">0</span></div>
+
     <div class="log" id="log"></div>
 
     <script type="module">
-      import { Subject, debounceTime, distinctUntilChanged } from "https://esm.sh/rxjs";
+      import { Subject, debounceTime, distinctUntilChanged, BehaviorSubject } from "https://esm.sh/rxjs";
 
       const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
       const TX_CHAR_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
@@ -105,6 +107,7 @@
       let charRxOp = null;
       let probeSubject = new Subject();
       let currentTarget = 3;
+      let scoreSubject = new BehaviorSubject(0);
 
       const connectBtnSw = document.getElementById("connectBtnSw");
       const disconnectBtnSw = document.getElementById("disconnectBtnSw");
@@ -199,6 +202,7 @@
           }
 
           probeSubject = new Subject();
+          scoreSubject = new BehaviorSubject(0);
 
           log("Requesting Operator BLE device...");
           deviceOp = await navigator.bluetooth.requestDevice({
@@ -248,12 +252,15 @@
                   log(`Switchboard TX: ${onCommand}`);
                   currentTarget = randomLed;
                   document.getElementById("targetLed").textContent = currentTarget;
+                  scoreSubject.next(scoreSubject.value + 1);
                 })
                 .catch((error) => {
                   log(`ERROR: ${error.message}`);
                 });
             }
           });
+
+          scoreSubject.subscribe((score) => (document.getElementById("score").textContent = score));
 
           deviceOp.addEventListener("gattserverdisconnected", () => {
             log("Operator disconnected");
