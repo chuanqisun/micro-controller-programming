@@ -1,5 +1,5 @@
 ---
-title: Networking ^ 3
+title: Networking^3
 ---
 
 - I accidentally satisfied the networking requirement twice during the Input device and Machine building week
