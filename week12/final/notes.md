@@ -8,14 +8,14 @@
 - Add 1 mm wall clearance for USB
 - Lack lid pressure: Added 0.2mm to both width and length of lid
 - Raised spkeaker support wall by 2.5mm to 10.5mm
+- Move speaker closer to wall, and move push button away from PCB
+- Lid too tight, need chamfer, added 0.5mm chamfer
+- Thumbgap too narrow. Increase to 1.5cm
 
 TODO
 
-- Lid too tight, need chamfer
-- Thumbgap too narrow. Increase to 1.5cm
 - Need mid point lid support
 - PCB: move amp and bottom right header closer to center
-- Move speaker closer to wall, and move push button away from PCB
 
 ## Switchboard Mk5
 
