@@ -1,0 +1,25 @@
+{
+  "name": "demo",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "dev": "npm run dev:test",
+    "dev:test": "npm run build:test && npm run upload:test && concurrently \"npm run monitor\"",
+    "build:test": "arduino-cli compile -b esp32:esp32:XIAO_ESP32C3 ./throughput-test",
+    "upload:test": "arduino-cli upload -p /dev/ttyACM0 -b esp32:esp32:XIAO_ESP32C3 ./throughput-test",
+    "monitor": "arduino-cli monitor -p /dev/ttyACM0 -c baudrate=115200",
+    "serve": "node server/server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  },
+  "dependencies": {
+    "openai": "^6.7.0",
+    "ws": "^8.18.3"
+  }
+}

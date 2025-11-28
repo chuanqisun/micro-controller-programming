@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ESP32 Counter Test</title>
+    <style>
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .status {
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 4px;
+      }
+      .connected {
+        background: #d4edda;
+        color: #155724;
+      }
+      .disconnected {
+        background: #f8d7da;
+        color: #721c24;
+      }
+      .counter {
+        font-size: 48px;
+        text-align: center;
+        margin: 40px 0;
+        padding: 20px;
+        border: 2px solid #ccc;
+        border-radius: 8px;
+      }
+      button {
+        padding: 10px 20px;
+        margin: 5px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      #connectBtn {
+        background: #007bff;
+        color: white;
+      }
+      #disconnectBtn {
+        background: #dc3545;
+        color: white;
+      }
+      #connectBtn:disabled {
+        background: #6c757d;
+        cursor: not-allowed;
+      }
+      #disconnectBtn:disabled {
+        background: #6c757d;
+        cursor: not-allowed;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>ESP32 Counter Test</h1>
+
+    <div>
+      <button id="connectBtn">Connect BLE</button>
+      <button id="disconnectBtn" disabled>Disconnect</button>
+    </div>
+
+    <div id="status" class="status disconnected">Not connected</div>
+
+    <div class="counter">
+      <div>Received Data:</div>
+      <div id="numberDisplay">-</div>
+    </div>
+
+    <div style="margin-top: 20px">
+      <label for="setlInput">Set Level:</label>
+      <input id="setlInput" type="number" placeholder="Enter number" style="margin-left: 10px; padding: 5px" />
+      <button id="sendBtn" style="margin-left: 10px; padding: 5px 10px">Send setl</button>
+    </div>
+
+    <script>
+      const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+      const TX_CHAR_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
+      const RX_CHAR_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+
+      let device = null;
+      let charTx = null;
+      let charRx = null;
+
+      const connectBtn = document.getElementById("connectBtn");
+      const disconnectBtn = document.getElementById("disconnectBtn");
+      const statusDiv = document.getElementById("status");
+      const numberDisplay = document.getElementById("numberDisplay");
+
+      connectBtn.addEventListener("click", async () => {
+        try {
+          if (!navigator.bluetooth) {
+            throw new Error("Web Bluetooth not supported");
+          }
+
+          console.log("Requesting BLE device...");
+          device = await navigator.bluetooth.requestDevice({
+            filters: [{ services: [SERVICE_UUID] }],
+          });
+
+          console.log(`Connecting to ${device.name || "device"}...`);
+          const server = await device.gatt.connect();
+          const service = await server.getPrimaryService(SERVICE_UUID);
+
+          charRx = await service.getCharacteristic(TX_CHAR_UUID);
+          charTx = await service.getCharacteristic(RX_CHAR_UUID);
+
+          await charRx.startNotifications();
+          charRx.addEventListener("characteristicvaluechanged", (e) => {
+            const text = new TextDecoder().decode(e.target.value.buffer);
+            console.log(`Received valid message: ${text.length} chars`);
+            numberDisplay.textContent = text.length + " chars";
+          });
+
+          device.addEventListener("gattserverdisconnected", () => {
+            console.log("Device disconnected");
+            statusDiv.textContent = "Disconnected";
+            statusDiv.className = "status disconnected";
+            connectBtn.disabled = false;
+            disconnectBtn.disabled = true;
+            numberDisplay.textContent = "-";
+          });
+
+          console.log("Connected");
+          statusDiv.textContent = "Connected";
+          statusDiv.className = "status connected";
+          connectBtn.disabled = true;
+          disconnectBtn.disabled = false;
+        } catch (error) {
+          console.error(`ERROR: ${error.message}`);
+          alert(`Connection failed: ${error.message}`);
+        }
+      });
+
+      disconnectBtn.addEventListener("click", () => {
+        if (device && device.gatt.connected) {
+          device.gatt.disconnect();
+          console.log("Disconnected by user");
+          statusDiv.textContent = "Disconnected";
+          statusDiv.className = "status disconnected";
+          connectBtn.disabled = false;
+          disconnectBtn.disabled = true;
+          numberDisplay.textContent = "-";
+        }
+      });
+
+      const sendBtn = document.getElementById("sendBtn");
+      const setlInput = document.getElementById("setlInput");
+
+      sendBtn.addEventListener("click", () => {
+        const num = setlInput.value;
+        if (num && device && device.gatt.connected) {
+          const command = `setl: ${num}`;
+          charTx.writeValue(new TextEncoder().encode(command));
+          console.log(`Sent command: ${command}`);
+        } else {
+          alert("Please enter a number and ensure device is connected");
+        }
+      });
+    </script>
+  </body>
+</html>

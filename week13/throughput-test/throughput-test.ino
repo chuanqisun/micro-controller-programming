@@ -1,0 +1,117 @@
+// Simple ESP32 BLE counter test
+// Sends incrementing numbers 1,2,3... to connected browser
+
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLEUtils.h>
+#include <BLE2902.h>
+
+// Nordic UART Service UUIDs
+#define UART_SERVICE_UUID "6e400001-b5a3-f393-e0a9-e50e24dcca9e"
+#define UART_TX_UUID      "6e400003-b5a3-f393-e0a9-e50e24dcca9e"  // notify: ESP32 -> browser
+#define UART_RX_UUID      "6e400002-b5a3-f393-e0a9-e50e24dcca9e"  // write: browser -> ESP32
+
+BLEServer* pServer = NULL;
+BLECharacteristic* pTxCharacteristic = NULL;
+BLECharacteristic* pRxCharacteristic = NULL;
+bool deviceConnected = false;
+bool oldDeviceConnected = false;
+
+// Counter state
+unsigned long counter = 0;
+
+// Server callbacks
+class MyServerCallbacks: public BLEServerCallbacks {
+    void onConnect(BLEServer* pServer) {
+        deviceConnected = true;
+        Serial.println("Client connected");
+        counter = 0;  // Reset counter on connect
+    }
+
+    void onDisconnect(BLEServer* pServer) {
+        deviceConnected = false;
+        Serial.println("Client disconnected");
+    }
+};
+
+// RX characteristic callback (receives from browser)
+class MyRxCallbacks: public BLECharacteristicCallbacks {
+    void onWrite(BLECharacteristic* pCharacteristic) {
+        String rxValue = pCharacteristic->getValue();
+        if (rxValue.length() > 0) {
+            Serial.print("Received: ");
+            Serial.println(rxValue);
+            // For this simple test, we don't need to handle incoming messages
+        }
+    }
+};
+
+void setup() {
+    Serial.begin(115200);
+    Serial.println("Starting ESP32 BLE Counter Test...");
+
+    // Initialize BLE
+    BLEDevice::init("ESP32-Counter-Test");
+
+    // Create server
+    pServer = BLEDevice::createServer();
+    pServer->setCallbacks(new MyServerCallbacks());
+
+    // Create service
+    BLEService* pService = pServer->createService(UART_SERVICE_UUID);
+
+    // Create TX characteristic (notify from ESP32 to browser)
+    pTxCharacteristic = pService->createCharacteristic(
+        UART_TX_UUID,
+        BLECharacteristic::PROPERTY_NOTIFY
+    );
+    pTxCharacteristic->addDescriptor(new BLE2902());
+
+    // Create RX characteristic (write from browser to ESP32)
+    pRxCharacteristic = pService->createCharacteristic(
+        UART_RX_UUID,
+        BLECharacteristic::PROPERTY_WRITE
+    );
+    pRxCharacteristic->setCallbacks(new MyRxCallbacks());
+
+    // Start service
+    pService->start();
+
+    // Start advertising
+    BLEAdvertising* pAdvertising = BLEDevice::getAdvertising();
+    pAdvertising->addServiceUUID(UART_SERVICE_UUID);
+    pAdvertising->setScanResponse(false);
+    pAdvertising->setMinPreferred(0x0);
+    BLEDevice::startAdvertising();
+    
+    Serial.println("BLE advertising started");
+    Serial.println("Device name: ESP32-Counter-Test");
+}
+
+void loop() {
+    // Handle connection state changes
+    if (!deviceConnected && oldDeviceConnected) {
+        delay(500);
+        pServer->startAdvertising();
+        Serial.println("Restarting advertising");
+        oldDeviceConnected = deviceConnected;
+    }
+    
+    if (deviceConnected && !oldDeviceConnected) {
+        oldDeviceConnected = deviceConnected;
+    }
+
+    // Send incrementing counter when connected
+    if (deviceConnected) {
+        counter++;
+        String message = String('1', 128);
+        pTxCharacteristic->setValue((uint8_t*)message.c_str(), message.length());
+        pTxCharacteristic->notify();
+        if (counter % 1000 == 0) {
+            Serial.print("Sent: ");
+            Serial.println(message);
+        }
+    }
+    
+    delay(20);
+}
