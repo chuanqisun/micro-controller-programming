@@ -1,6 +1,6 @@
 import * as http from "http";
 import * as os from "os";
-import { HTTP_PORT, UDP_RECEIVE_PORT } from "../config.mjs";
+import { HTTP_PORT, LAPTOP_UDP_RX_PORT } from "../config.mjs";
 
 let httpServer;
 
@@ -29,7 +29,7 @@ function handleHttpRequest(req, res) {
 
   if (req.method === "GET" && req.url === "/api/origin") {
     const localIp = getLocalNetworkIp();
-    const host = `http://${localIp}:${UDP_RECEIVE_PORT}`;
+    const host = `http://${localIp}:${LAPTOP_UDP_RX_PORT}`;
     res.writeHead(200);
     res.end(JSON.stringify({ host }));
   } else {

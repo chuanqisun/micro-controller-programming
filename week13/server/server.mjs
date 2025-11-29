@@ -1,5 +1,5 @@
 import * as dgram from "dgram";
-import { SILENCE_CHECK_INTERVAL_MS, SILENCE_TIMEOUT_MS, UDP_RECEIVE_PORT } from "./config.mjs";
+import { LAPTOP_UDP_RX_PORT, SILENCE_CHECK_INTERVAL_MS, SILENCE_TIMEOUT_MS } from "./config.mjs";
 import { playAudioThroughSpeakers, streamAudioToUDP } from "./features/audio.mjs";
 import { initializeDiagnostics, logReceiverError, logServerClosed, logServerStartup, logShutdown } from "./features/diagnostics.mjs";
 import { closeHttpServer, createHttpServer } from "./features/http-server.mjs";
@@ -32,7 +32,7 @@ function startServer() {
 }
 
 function setupUDPReceiver() {
-  udpReceiver.bind(UDP_RECEIVE_PORT);
+  udpReceiver.bind(LAPTOP_UDP_RX_PORT);
   udpReceiver.on("listening", handleReceiverListening);
   udpReceiver.on("message", handleIncomingAudioPacket);
   udpReceiver.on("error", handleReceiverError);
