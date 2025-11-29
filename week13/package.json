@@ -5,6 +5,7 @@
   "main": "server.js",
   "scripts": {
     "dev": "npm run dev:test",
+    "dev:app": "concurrently \"npm run dev:web\" \"npm run serve\"",
     "dev:web": "vite ./web",
     "build:web": "tsc -p ./web && vite build ./web",
     "dev:op": "npm run build:op && npm run upload:op && concurrently \"npm run monitor:a\"",
