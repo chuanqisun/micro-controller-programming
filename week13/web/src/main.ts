@@ -15,6 +15,7 @@ const disconnectBtn = document.getElementById("disconnectBtn") as HTMLButtonElem
 const logDiv = document.getElementById("log") as HTMLDivElement;
 const ipInput = document.getElementById("ipInput") as HTMLInputElement;
 const fetchButton = document.getElementById("fetchButton") as HTMLButtonElement;
+const pushButton = document.getElementById("pushButton") as HTMLButtonElement;
 const rawProbeSpan = document.getElementById("rawProbe") as HTMLSpanElement;
 const debouncedProbeSpan = document.getElementById("debouncedProbe") as HTMLSpanElement;
 const ledNumberSpan = document.getElementById("ledNumber") as HTMLSpanElement;
@@ -27,6 +28,16 @@ function log(msg: string) {
   const timestamp = new Date().toISOString().substring(11, 23);
   logDiv.textContent += `[${timestamp}] ${msg}\n`;
   logDiv.scrollTop = logDiv.scrollHeight;
+}
+
+function sendMessage(message: string) {
+  if (!charRx) {
+    log("ERROR: Not connected");
+    return;
+  }
+  const encoder = new TextEncoder();
+  charRx.writeValue(encoder.encode(message));
+  log(`TX: ${message}`);
 }
 
 function handleRxMessage(message: string) {
@@ -110,5 +121,22 @@ fetchButton.addEventListener("click", async () => {
   } catch (error) {
     console.error("Failed to fetch origin:", error);
     ipInput.value = "Error fetching origin";
+  }
+});
+
+pushButton.addEventListener("click", () => {
+  const address = ipInput.value.trim();
+  if (!address) {
+    log("ERROR: No address to push");
+    return;
+  }
+
+  // Parse the URL to extract IP and port
+  try {
+    const url = new URL(address);
+    const message = `setorigin:${url.hostname}:${url.port || "80"}`;
+    sendMessage(message);
+  } catch (error) {
+    log("ERROR: Invalid URL format");
   }
 });
