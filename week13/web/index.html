@@ -7,8 +7,22 @@
     <title>web</title>
   </head>
   <body>
+    <h1>Operator</h1>
+
+    <button id="connectBtn">Connect</button>
+    <button id="disconnectBtn" disabled>Disconnect</button>
+
+    <div id="probeDisplay" style="margin-top: 1em">
+      <p>Raw Probe: <span id="rawProbe">---</span></p>
+      <p>Debounced: <span id="debouncedProbe">---</span></p>
+      <p>LED Number: <span id="ledNumber">---</span></p>
+    </div>
+
     <input type="text" id="ipInput" placeholder="http://192.168.0.1:8080" />
     <button id="fetchButton">Fetch IP</button>
+
+    <div class="log" id="log"></div>
+
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
