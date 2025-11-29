@@ -1,6 +1,6 @@
 import { spawn } from "child_process";
 import dgram from "dgram";
-import { CHANNELS, PACKET_SIZE, SAMPLE_RATE, TARGET_IP } from "../config.mjs";
+import { CHANNELS, PACKET_SIZE, SAMPLE_RATE, UDP_SEND_PORT } from "../config.mjs";
 
 export async function convertWavToPCM16(wavBuffer) {
   return new Promise((resolve, reject) => {
@@ -47,8 +47,13 @@ export async function playAudioThroughSpeakers(wavBuffer) {
   });
 }
 
-export async function streamAudioToUDP(pcmBuffer, socket) {
-  console.log("📡 Streaming audio to ESP32...");
+export async function streamAudioToUDP(pcmBuffer, socket, targetIp) {
+  if (!targetIp) {
+    console.warn("⚠️  No target IP provided for UDP streaming");
+    return;
+  }
+
+  console.log(`📡 Streaming audio to ESP32 at ${targetIp}:${UDP_SEND_PORT}...`);
 
   const totalPackets = Math.ceil(pcmBuffer.length / PACKET_SIZE);
 
@@ -57,7 +62,7 @@ export async function streamAudioToUDP(pcmBuffer, socket) {
     const end = Math.min(start + PACKET_SIZE, pcmBuffer.length);
     const packet = pcmBuffer.slice(start, end);
 
-    await sendAudioPacketToESP32(packet, socket);
+    await sendAudioPacketToESP32(packet, socket, targetIp);
 
     const delayMs = (PACKET_SIZE / 2 / SAMPLE_RATE) * 1000;
     await sleep(delayMs);
@@ -67,14 +72,14 @@ export async function streamAudioToUDP(pcmBuffer, socket) {
 }
 
 /**
- *
  * @param {Buffer} buffer
  * @param {dgram.Socket} socket
- * @returns
+ * @param {string} targetIp - Target IP address to send the packet to
+ * @returns {Promise}
  */
-export function sendAudioPacketToESP32(buffer, socket) {
+function sendAudioPacketToESP32(buffer, socket, targetIp) {
   return new Promise((resolve, reject) => {
-    socket.send(buffer, UDP_SEND_PORT, TARGET_IP, (err) => {
+    socket.send(buffer, UDP_SEND_PORT, targetIp, (err) => {
       if (err) {
         console.error("❌ Error sending UDP packet:", err.message);
         reject(err);

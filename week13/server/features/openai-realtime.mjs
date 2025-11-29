@@ -1,19 +1,48 @@
 import { WebSocket } from "ws";
 import { convertWavToPCM16 } from "./audio.mjs";
+import { logStatisticsIfIntervalElapsed, updateStatistics } from "./diagnostics.mjs";
 
 let realtimeWs = null;
 let sessionReady = false;
 let isProcessing = false;
+let lastSenderIp = null;
 
 // Callbacks for state management
 let onSessionReady = null;
 let onResponseComplete = null;
 let onAudioStream = null;
 
+// Speech receiver state management
+const STATE = {
+  SILENT: "silent",
+  SPEAKING: "speaking",
+};
+
+let currentState = STATE.SILENT;
+let audioBuffer = [];
+let lastPacketTime = null;
+let silenceCheckInterval = null;
+let SILENCE_TIMEOUT_MS = 2000; // default, can be configured
+let SILENCE_CHECK_INTERVAL_MS = 100; // default, can be configured
+
 export function initializeRealtimeAPI(callbacks) {
   if (callbacks.onSessionReady) onSessionReady = callbacks.onSessionReady;
   if (callbacks.onResponseComplete) onResponseComplete = callbacks.onResponseComplete;
   if (callbacks.onAudioStream) onAudioStream = callbacks.onAudioStream;
+}
+
+export function setAudioStreamCallbacks(playAudioFn, streamAudioFn) {
+  initializeRealtimeAPI({
+    onSessionReady: () => {
+      // Session is ready to receive audio
+    },
+    onResponseComplete: () => {
+      // Response processing complete
+    },
+    onAudioStream: async (wavBuffer, pcmBuffer) => {
+      await Promise.all([playAudioFn(wavBuffer), streamAudioFn(pcmBuffer, lastSenderIp)]);
+    },
+  });
 }
 
 export function connectToRealtimeAPI() {
@@ -235,4 +264,88 @@ export function validateEnvironment() {
     console.error("⚠️  OPENAI_API_KEY not set. Cannot connect to Realtime API.");
     process.exit(1);
   }
+}
+
+// Speech receiver configuration
+export function configureSilenceDetection(timeoutMs, checkIntervalMs) {
+  SILENCE_TIMEOUT_MS = timeoutMs;
+  SILENCE_CHECK_INTERVAL_MS = checkIntervalMs;
+}
+
+/**
+ * Handles incoming UDP audio packets from the ESP32
+ * @param {Buffer} msg - The audio data buffer received from UDP
+ * @param {Object} rinfo - Remote address information
+ * @param {string} rinfo.address - IP address of the sender
+ * @param {number} rinfo.port - Port number of the sender
+ * @param {string} rinfo.family - Address family ('IPv4' or 'IPv6')
+ * @param {number} rinfo.size - Size of the received message
+ */
+export function handleIncomingAudioPacket(msg, rinfo) {
+  lastSenderIp = rinfo.address;
+  console.log(`📍 Sender IP: ${lastSenderIp}:${rinfo.port}`);
+
+  beginSpeakingStateIfNeeded();
+  lastPacketTime = Date.now();
+  audioBuffer.push(Buffer.from(msg));
+
+  if (isSessionReady()) {
+    streamAudioChunkToRealtime(msg);
+  }
+
+  updateStatistics(msg.length);
+  logStatisticsIfIntervalElapsed(audioBuffer);
+}
+
+export function startSilenceDetection() {
+  silenceCheckInterval = setInterval(detectSilence, SILENCE_CHECK_INTERVAL_MS);
+}
+
+export function stopSilenceDetection() {
+  if (silenceCheckInterval) {
+    clearInterval(silenceCheckInterval);
+    silenceCheckInterval = null;
+  }
+}
+
+function detectSilence() {
+  if (currentState === STATE.SPEAKING && lastPacketTime) {
+    const timeSinceLastPacket = Date.now() - lastPacketTime;
+    if (timeSinceLastPacket > SILENCE_TIMEOUT_MS) {
+      transitionToSilentAndProcessAudio();
+    }
+  }
+}
+
+function beginSpeakingStateIfNeeded() {
+  if (currentState !== STATE.SPEAKING) {
+    currentState = STATE.SPEAKING;
+    audioBuffer = [];
+  }
+}
+
+async function transitionToSilentAndProcessAudio() {
+  if (currentState !== STATE.SILENT) {
+    currentState = STATE.SILENT;
+
+    if (audioBuffer.length > 0 && !getIsProcessing() && isSessionReady()) {
+      setIsProcessing(true);
+      audioBuffer = [];
+      await commitAudioAndRequestResponse();
+    }
+  }
+}
+
+export function getSpeechReceiverState() {
+  return {
+    currentState,
+    audioBufferLength: audioBuffer.length,
+    lastPacketTime,
+    isProcessing,
+    sessionReady,
+  };
+}
+
+export function getLastSenderIp() {
+  return lastSenderIp;
 }
