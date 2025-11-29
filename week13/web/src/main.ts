@@ -12,6 +12,7 @@ const RX_CHAR_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"; // write: browser -
 
 const connectBtn = document.getElementById("connectBtn") as HTMLButtonElement;
 const disconnectBtn = document.getElementById("disconnectBtn") as HTMLButtonElement;
+const resetBtn = document.getElementById("reset") as HTMLButtonElement;
 const logDiv = document.getElementById("log") as HTMLDivElement;
 const ipInput = document.getElementById("ipInput") as HTMLInputElement;
 const fetchButton = document.getElementById("fetchButton") as HTMLButtonElement;
@@ -139,4 +140,8 @@ pushButton.addEventListener("click", () => {
   } catch (error) {
     log("ERROR: Invalid URL format");
   }
+});
+
+resetBtn.addEventListener("click", () => {
+  sendMessage("reset:");
 });

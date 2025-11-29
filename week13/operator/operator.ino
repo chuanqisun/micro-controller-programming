@@ -20,7 +20,6 @@
 const int SAMPLE_RATE = 24000;
 const int CHANNELS = 1;
 const int BITS_PER_SAMPLE = 16;
-const int UDP_SEND_PORT = 8888;
 const int UDP_RECEIVE_PORT = 8889;
 
 const int BTN_PTT1 = D8;
@@ -36,7 +35,10 @@ const int I2S_LRC = D2;
 const int TRRS_PINS[] = { D3, D4, D5 };
 const int NUM_TRRS_PINS = 3;
 
-IPAddress laptopAddress(10, 0, 0, 33);
+// UDP configuration (set via BLE)
+IPAddress laptopAddress;
+int udpSendPort = 0;
+bool udpConfigured = false;
 
 // BLE Variables
 BLEServer* pServer = NULL;
@@ -50,42 +52,70 @@ AudioInfo audioInfo(SAMPLE_RATE, CHANNELS, BITS_PER_SAMPLE);
 
 I2SStream i2sMic;
 I2SStream i2sSpeaker;
-UDPStream udpSend(WIFI_SSID, WIFI_PASSWORD);
-UDPStream udpReceive(WIFI_SSID, WIFI_PASSWORD);
-Throttle throttle(udpSend);
+UDPStream* udpSend = nullptr;
+UDPStream* udpReceive = nullptr;
+Throttle* throttle = nullptr;
 
-StreamCopy transmitCopier(throttle, i2sMic);
-StreamCopy receiveCopier(i2sSpeaker, udpReceive, 1024);
+StreamCopy* transmitCopier = nullptr;
+StreamCopy* receiveCopier = nullptr;
 
 int debounceCounter = 0;
 bool isTransmitting = false;
 bool lastTransmitState = false;
 
-// BLE Server Callbacks
-class MyServerCallbacks: public BLEServerCallbacks {
-    void onConnect(BLEServer* pServer) {
-        deviceConnected = true;
-        Serial.println("BLE Client connected");
-    }
+// Forward declarations
+void handleBleMessage(String message);
+void handleSetOriginMessage(String message);
+void initializeUdp();
+void cleanupUdp();
+void initializeBleUart();
+void connectToWiFi();
+void handleBleConnectionStateChange();
+String readProbeValue();
+void sendProbeToBLE(String probeValue);
+void processAudioStreams(bool isTransmitting);
 
-    void onDisconnect(BLEServer* pServer) {
-        deviceConnected = false;
-        Serial.println("BLE Client disconnected");
-    }
-};
+// =============================================================================
+// BLE Message Handler - Routes incoming messages based on type
+// =============================================================================
 
-// RX Characteristic Callbacks
-class MyCharacteristicCallbacks: public BLECharacteristicCallbacks {
-    void onWrite(BLECharacteristic *pCharacteristic) {
-      String rxValue = pCharacteristic->getValue();
+void handleBleMessage(String message) {
+  if (message.startsWith("setorigin:")) {
+    handleSetOriginMessage(message);
+  }
+  if (message.startsWith("reset:")) {
+    handleReset();
+  }
+}
+
+void handleSetOriginMessage(String message) {
+  // Parse: setorigin:192.168.1.100:8888
+  String params = message.substring(10);
+  int colonPos = params.indexOf(':');
+  
+  if (colonPos > 0) {
+    String ipStr = params.substring(0, colonPos);
+    String portStr = params.substring(colonPos + 1);
+    
+    // Parse IP address
+    int ip1, ip2, ip3, ip4;
+    if (sscanf(ipStr.c_str(), "%d.%d.%d.%d", &ip1, &ip2, &ip3, &ip4) == 4) {
+      laptopAddress = IPAddress(ip1, ip2, ip3, ip4);
+      udpSendPort = portStr.toInt();
       
-      if (rxValue.length() > 0) {
-        // TODO: implement message handling logic
-        Serial.print("RX: ");
-        Serial.println(rxValue);
-      }
+      Serial.print("Laptop address set to: ");
+      Serial.print(laptopAddress);
+      Serial.print(":");
+      Serial.println(udpSendPort);
+      
+      initializeUdp();
+    } else {
+      Serial.println("ERROR: Invalid IP format");
     }
-};
+  } else {
+    Serial.println("ERROR: Invalid setorigin format");
+  }
+}
 
 void setup() {
   Serial.begin(115200);
@@ -102,125 +132,30 @@ void setup() {
   pinMode(BTN_PTT2, INPUT_PULLUP);
 
   // Initialize BLE
-  Serial.println("Starting BLE...");
-  BLEDevice::init("op");
+  initializeBleUart();
   
-  pServer = BLEDevice::createServer();
-  pServer->setCallbacks(new MyServerCallbacks());
+  connectToWiFi();
 
-  BLEService* pService = pServer->createService(UART_SERVICE_UUID);
-
-  pTxCharacteristic = pService->createCharacteristic(
-      UART_TX_UUID,
-      BLECharacteristic::PROPERTY_NOTIFY
-  );
-  pTxCharacteristic->addDescriptor(new BLE2902());
-
-  pRxCharacteristic = pService->createCharacteristic(
-      UART_RX_UUID,
-      BLECharacteristic::PROPERTY_WRITE
-  );
-  pRxCharacteristic->setCallbacks(new MyCharacteristicCallbacks());
-
-  pService->start();
-
-  BLEAdvertising* pAdvertising = BLEDevice::getAdvertising();
-  pAdvertising->addServiceUUID(UART_SERVICE_UUID);
-  pAdvertising->setScanResponse(false);
-  pAdvertising->setMinPreferred(0x0);
-  BLEDevice::startAdvertising();
-  
-  Serial.println("BLE advertising started");
-
-  Serial.println("\nConnecting to WiFi...");
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-
-  int attempts = 0;
-  while (WiFi.status() != WL_CONNECTED && attempts < 20) {
-    delay(500);
-    Serial.print(".");
-    attempts++;
-  }
-
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("\nFailed to connect to WiFi");
-    return;
-  }
-
-  Serial.println("\nWiFi connected!");
-  Serial.print("Device IP: ");
-  Serial.println(WiFi.localIP());
-
-  Serial.println("Starting I2S microphone...");
-  auto micConfig = i2sMic.defaultConfig(RX_MODE);
-  micConfig.copyFrom(audioInfo);
-  micConfig.pin_bck = I2S_BCLK;
-  micConfig.pin_data = I2S_MIC_DATA;
-  micConfig.pin_ws = I2S_LRC;
-  micConfig.i2s_format = I2S_STD_FORMAT;
-
-  if (!i2sMic.begin(micConfig)) {
-    Serial.println("Failed to initialize I2S microphone");
-    return;
-  }
-
-  Serial.println("Starting I2S speaker...");
-  auto speakerConfig = i2sSpeaker.defaultConfig(TX_MODE);
-  speakerConfig.copyFrom(audioInfo);
-  speakerConfig.pin_bck = I2S_BCLK;
-  speakerConfig.pin_data = I2S_SPEAKER_DATA;
-  speakerConfig.pin_ws = I2S_LRC;
-  speakerConfig.i2s_format = I2S_STD_FORMAT;
-
-  if (!i2sSpeaker.begin(speakerConfig)) {
-    Serial.println("Failed to initialize I2S speaker");
-    return;
-  }
-
-  Serial.println("I2S initialized successfully");
-
-  Serial.println("Starting UDP streams...");
-  udpSend.begin(laptopAddress, UDP_SEND_PORT);
-  udpReceive.begin(UDP_RECEIVE_PORT);
-
-  auto throttleConfig = throttle.defaultConfig();
-  throttleConfig.copyFrom(audioInfo);
-  throttle.begin(throttleConfig);
+  // Initialize audio I/O
+  initializeMicrophone();
+  initializeSpeaker();
 
   Serial.println("Walkie-talkie + BLE ready!");
-  Serial.print("Transmit target: ");
-  Serial.print(laptopAddress);
-  Serial.print(":");
-  Serial.println(UDP_SEND_PORT);
-  Serial.print("Receive on port: ");
-  Serial.println(UDP_RECEIVE_PORT);
+  Serial.println("Waiting for laptop address via BLE...");
 }
 
 void loop() {
-  // Handle BLE connection state changes
-  if (!deviceConnected && oldDeviceConnected) {
-    delay(500);
-    pServer->startAdvertising();
-    Serial.println("Restarting BLE advertising");
-    oldDeviceConnected = deviceConnected;
-  }
-  
-  if (deviceConnected && !oldDeviceConnected) {
-    oldDeviceConnected = deviceConnected;
+  // Handle BLE connection state
+  handleBleConnectionStateChange();
+
+  // Only proceed if UDP is configured
+  if (!udpConfigured) {
+    delay(100);
+    return;
   }
 
   // Read TRRS probe and send over BLE
-  String probeValue = "";
-  for (int i = 0; i < NUM_TRRS_PINS; ++i) {
-    int v = digitalRead(TRRS_PINS[i]);
-    probeValue += (v == HIGH) ? "1" : "0";
-  }
-  
-  if (deviceConnected) {
-    String probe = "probe:" + probeValue;
-    pTxCharacteristic->setValue((uint8_t*)probe.c_str(), probe.length());
-    pTxCharacteristic->notify();
-  }
+  sendProbeToBLE(readProbeValue());
 
   // Handle PTT button with debounce
   bool buttonPressed = (digitalRead(BTN_PTT1) == LOW || digitalRead(BTN_PTT2) == LOW);
@@ -248,13 +183,8 @@ void loop() {
     lastTransmitState = isTransmitting;
   }
 
-  // Full-duplex: always handle both transmit and receive
-  if (isTransmitting) {
-    transmitCopier.copy();
-  }
-  
-  // Always listen for incoming audio
-  receiveCopier.copy();
+  // Process audio streams
+  processAudioStreams(isTransmitting);
   
   delay(10);
 }

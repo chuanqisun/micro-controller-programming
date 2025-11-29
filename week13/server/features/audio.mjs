@@ -1,6 +1,6 @@
 import { spawn } from "child_process";
 import dgram from "dgram";
-import { CHANNELS, PACKET_SIZE, SAMPLE_RATE, UDP_SEND_PORT } from "../config.mjs";
+import { CHANNELS, ESP32_UDP_RX_PORT, PACKET_SIZE, SAMPLE_RATE } from "../config.mjs";
 
 export async function convertWavToPCM16(wavBuffer) {
   return new Promise((resolve, reject) => {
@@ -53,7 +53,7 @@ export async function streamAudioToUDP(pcmBuffer, socket, targetIp) {
     return;
   }
 
-  console.log(`📡 Streaming audio to ESP32 at ${targetIp}:${UDP_SEND_PORT}...`);
+  console.log(`📡 Streaming audio to ESP32 at ${targetIp}:${ESP32_UDP_RX_PORT}...`);
 
   const totalPackets = Math.ceil(pcmBuffer.length / PACKET_SIZE);
 
@@ -79,7 +79,7 @@ export async function streamAudioToUDP(pcmBuffer, socket, targetIp) {
  */
 function sendAudioPacketToESP32(buffer, socket, targetIp) {
   return new Promise((resolve, reject) => {
-    socket.send(buffer, UDP_SEND_PORT, targetIp, (err) => {
+    socket.send(buffer, ESP32_UDP_RX_PORT, targetIp, (err) => {
       if (err) {
         console.error("❌ Error sending UDP packet:", err.message);
         reject(err);

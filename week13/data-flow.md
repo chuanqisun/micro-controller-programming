@@ -1,0 +1,6 @@
+- Web connects to ESP32 via Bluetooth
+- Web query node.js for server address (IP + Port)
+- Web send server address to ESP32 via Bluetooth
+- ESP32 streams audio to server using server address via UDP
+- Server gets ESP32 IP address from UDP packet
+- Server streams audio to ESP using the IP address + fixed port 8889
