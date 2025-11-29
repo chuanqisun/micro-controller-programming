@@ -6,7 +6,7 @@
 #include "AudioTools.h"
 #include "AudioTools/Communication/UDPStream.h"
 
-const char *WIFI_SSID = "MLDEV";
+const char *WIFI_SSID = "NETGEAR56";
 const char *WIFI_PASSWORD = "";
 
 const int SAMPLE_RATE = 24000;
@@ -24,7 +24,7 @@ const int I2S_MIC_DATA = D1;
 const int I2S_SPEAKER_DATA = D10;
 const int I2S_LRC = D2;
 
-IPAddress laptopAddress(192, 168, 41, 104);
+IPAddress laptopAddress(10, 0, 0, 33);
 
 AudioInfo audioInfo(SAMPLE_RATE, CHANNELS, BITS_PER_SAMPLE);
 
