@@ -12,7 +12,6 @@ const RX_CHAR_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"; // write: browser -
 
 const connectBtn = document.getElementById("connectBtn") as HTMLButtonElement;
 const disconnectBtn = document.getElementById("disconnectBtn") as HTMLButtonElement;
-const statusSpan = document.getElementById("statusOp") as HTMLSpanElement;
 const logDiv = document.getElementById("log") as HTMLDivElement;
 const ipInput = document.getElementById("ipInput") as HTMLInputElement;
 const fetchButton = document.getElementById("fetchButton") as HTMLButtonElement;
@@ -75,7 +74,6 @@ connectBtn.addEventListener("click", async () => {
 
     device.addEventListener("gattserverdisconnected", () => {
       log("Operator disconnected");
-      statusSpan.textContent = "Disconnected";
       connectBtn.disabled = false;
       disconnectBtn.disabled = true;
       device = null;
@@ -84,7 +82,6 @@ connectBtn.addEventListener("click", async () => {
     });
 
     log("Operator connected");
-    statusSpan.textContent = "Connected";
     connectBtn.disabled = true;
     disconnectBtn.disabled = false;
   } catch (error: any) {
@@ -97,7 +94,6 @@ disconnectBtn.addEventListener("click", () => {
   if (device && device.gatt.connected) {
     device.gatt.disconnect();
     log("Operator disconnected by user");
-    statusSpan.textContent = "Disconnected";
     connectBtn.disabled = false;
     disconnectBtn.disabled = true;
     device = null;
