@@ -41,6 +41,8 @@ function sendMessage(message: string) {
   log(`TX: ${message}`);
 }
 
+let lastLedNumber: number | null = null;
+
 function handleRxMessage(message: string) {
   // Handle incoming messages from Operator device
   if (message.startsWith("probe:")) {
@@ -49,6 +51,16 @@ function handleRxMessage(message: string) {
     debouncedProbeSpan.textContent = probeValue;
     const num = parseInt(probeValue, 2);
     ledNumberSpan.textContent = isNaN(num) ? "---" : num.toString();
+
+    // POST to server when LED number changes
+    if (!isNaN(num) && num !== lastLedNumber) {
+      lastLedNumber = num;
+      fetch(`http://localhost:3000/api/probe?id=${num}`, {
+        method: "POST",
+      }).catch((error) => {
+        console.error("Failed to POST probe:", error);
+      });
+    }
   }
   log(`RX: ${message}`);
 }

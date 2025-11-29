@@ -32,6 +32,12 @@ function handleHttpRequest(req, res) {
     const host = `http://${localIp}:${LAPTOP_UDP_RX_PORT}`;
     res.writeHead(200);
     res.end(JSON.stringify({ host }));
+  } else if (req.method === "POST" && req.url.startsWith("/api/probe")) {
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const id = url.searchParams.get("id");
+    console.log(`Probe received: id=${id}`);
+    res.writeHead(200);
+    res.end(JSON.stringify({ success: true, id }));
   } else {
     res.writeHead(404);
     res.end(JSON.stringify({ error: "Not found" }));
