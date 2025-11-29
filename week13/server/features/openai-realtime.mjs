@@ -170,7 +170,22 @@ export async function commitAudioAndRequestResponse() {
 export async function requestDirectResponse(text) {
   console.log(`💬 Requesting direct response for text: "${text}"`);
   try {
-    realtimeWs.send(JSON.stringify({ type: "response.create", response: { modalities: ["text"], prompt: text } }));
+    realtimeWs.send(
+      JSON.stringify({
+        type: "conversation.item.create",
+        item: {
+          type: "message",
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text,
+            },
+          ],
+        },
+      })
+    );
+    realtimeWs.send(JSON.stringify({ type: "response.create", response: { modalities: ["text"] } }));
   } catch (error) {
     console.error("❌ Error requesting direct response:", error.message);
   }

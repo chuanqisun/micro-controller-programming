@@ -1,3 +1,4 @@
+import { Subject, debounceTime, distinctUntilChanged } from "rxjs";
 import "./style.css";
 
 declare global {
@@ -24,6 +25,7 @@ const ledNumberSpan = document.getElementById("ledNumber") as HTMLSpanElement;
 let device: any = null;
 let charTx: any = null;
 let charRx: any = null;
+let probeSubject: Subject<string> | null = null;
 
 function log(msg: string) {
   const timestamp = new Date().toISOString().substring(11, 23);
@@ -41,25 +43,13 @@ function sendMessage(message: string) {
   log(`TX: ${message}`);
 }
 
-let lastLedNumber: number | null = null;
-
 function handleRxMessage(message: string) {
   // Handle incoming messages from Operator device
   if (message.startsWith("probe:")) {
     const probeValue = message.substring(6);
     rawProbeSpan.textContent = probeValue;
-    debouncedProbeSpan.textContent = probeValue;
-    const num = parseInt(probeValue, 2);
-    ledNumberSpan.textContent = isNaN(num) ? "---" : num.toString();
-
-    // POST to server when LED number changes
-    if (!isNaN(num) && num !== lastLedNumber) {
-      lastLedNumber = num;
-      fetch(`http://localhost:3000/api/probe?id=${num}`, {
-        method: "POST",
-      }).catch((error) => {
-        console.error("Failed to POST probe:", error);
-      });
+    if (probeSubject) {
+      probeSubject.next(probeValue);
     }
   }
   log(`RX: ${message}`);
@@ -70,6 +60,30 @@ connectBtn.addEventListener("click", async () => {
     if (!navigator.bluetooth) {
       throw new Error("Web Bluetooth not supported");
     }
+
+    // Initialize probe subject with debouncing
+    probeSubject = new Subject<string>();
+    probeSubject.pipe(distinctUntilChanged(), debounceTime(500)).subscribe((probeValue) => {
+      debouncedProbeSpan.textContent = probeValue;
+      const num = parseInt(probeValue, 2);
+
+      ledNumberSpan.textContent = isNaN(num) ? "---" : num.toString();
+
+      // POST to server when LED number changes
+      if (num === 7) {
+        fetch(`http://localhost:3000/api/unplug`, {
+          method: "POST",
+        }).catch((error) => {
+          console.error("Failed to POST unplug:", error);
+        });
+      } else if (!isNaN(num)) {
+        fetch(`http://localhost:3000/api/probe?id=${num}`, {
+          method: "POST",
+        }).catch((error) => {
+          console.error("Failed to POST probe:", error);
+        });
+      }
+    });
 
     log("Requesting Operator BLE device...");
     device = await navigator.bluetooth.requestDevice({
@@ -103,6 +117,10 @@ connectBtn.addEventListener("click", async () => {
       device = null;
       charTx = null;
       charRx = null;
+      if (probeSubject) {
+        probeSubject.complete();
+        probeSubject = null;
+      }
     });
 
     log("Operator connected");
@@ -123,6 +141,10 @@ disconnectBtn.addEventListener("click", () => {
     device = null;
     charTx = null;
     charRx = null;
+    if (probeSubject) {
+      probeSubject.complete();
+      probeSubject = null;
+    }
   }
 });
 
