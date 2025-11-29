@@ -1,5 +1,4 @@
 import * as dgram from "dgram";
-import { WebSocket } from "ws";
 import {
   BITS_PER_SAMPLE,
   CHANNELS,
@@ -11,8 +10,19 @@ import {
   UDP_RECEIVE_PORT,
   UDP_SEND_PORT,
 } from "./config.mjs";
-import { convertWavToPCM16, playAudioThroughSpeakers, streamAudioToUDP } from "./features/audio.mjs";
+import { playAudioThroughSpeakers, streamAudioToUDP } from "./features/audio.mjs";
 import { getNetworkAddresses } from "./features/ip-discovery.mjs";
+import {
+  closeRealtimeConnection,
+  commitAudioAndRequestResponse,
+  connectToRealtimeAPI,
+  getIsProcessing,
+  initializeRealtimeAPI,
+  isSessionReady,
+  setIsProcessing,
+  streamAudioChunkToRealtime,
+  validateEnvironment,
+} from "./features/openai-realtime.mjs";
 
 const STATE = {
   SILENT: "silent",
@@ -26,20 +36,32 @@ let currentState = STATE.SILENT;
 let audioBuffer = [];
 let lastPacketTime = null;
 let silenceCheckInterval = null;
-let isProcessing = false;
 let packetsReceived = 0;
 let bytesReceived = 0;
 let lastStatsTime = Date.now();
-let realtimeWs = null;
-let sessionReady = false;
 
 startServer();
 
 function startServer() {
   validateEnvironment();
+  initializeRealtimeCallbacks();
   connectToRealtimeAPI();
   setupUDPReceiver();
   process.on("SIGINT", handleGracefulShutdown);
+}
+
+function initializeRealtimeCallbacks() {
+  initializeRealtimeAPI({
+    onSessionReady: () => {
+      // Session is ready to receive audio
+    },
+    onResponseComplete: () => {
+      // Response processing complete
+    },
+    onAudioStream: async (wavBuffer, pcmBuffer) => {
+      await Promise.all([playAudioThroughSpeakers(wavBuffer), streamAudioToUDP(pcmBuffer, udpSender)]);
+    },
+  });
 }
 
 function setupUDPReceiver() {
@@ -60,7 +82,7 @@ function handleIncomingAudioPacket(msg, rinfo) {
   lastPacketTime = Date.now();
   audioBuffer.push(Buffer.from(msg));
 
-  if (sessionReady && realtimeWs && realtimeWs.readyState === WebSocket.OPEN) {
+  if (isSessionReady()) {
     streamAudioChunkToRealtime(msg);
   }
 
@@ -95,178 +117,12 @@ async function transitionToSilentAndProcessAudio() {
     console.log("📤 Sent");
     currentState = STATE.SILENT;
 
-    if (audioBuffer.length > 0 && !isProcessing && sessionReady) {
-      isProcessing = true;
+    if (audioBuffer.length > 0 && !getIsProcessing() && isSessionReady()) {
+      setIsProcessing(true);
       audioBuffer = [];
       await commitAudioAndRequestResponse();
     }
   }
-}
-
-function connectToRealtimeAPI() {
-  const url = "wss://api.openai.com/v1/realtime?model=gpt-realtime";
-  const headers = {
-    Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-    "OpenAI-Beta": "realtime=v1",
-  };
-
-  console.log("🔌 Connecting to OpenAI Realtime API...");
-  realtimeWs = new WebSocket(url, { headers });
-
-  realtimeWs.on("open", handleRealtimeOpen);
-  realtimeWs.on("message", handleRealtimeMessage);
-  realtimeWs.on("error", handleRealtimeError);
-  realtimeWs.on("close", handleRealtimeClose);
-}
-
-function handleRealtimeOpen() {
-  console.log("✓ Connected to Realtime API");
-}
-
-function handleRealtimeMessage(data) {
-  try {
-    const event = JSON.parse(data.toString());
-
-    switch (event.type) {
-      case "session.created":
-        console.log("✓ Session created");
-        configureSession();
-        break;
-
-      case "session.updated":
-        console.log("✓ Session configured");
-        sessionReady = true;
-        break;
-
-      case "input_audio_buffer.committed":
-        console.log("✓ Audio buffer committed");
-        break;
-
-      case "input_audio_buffer.cleared":
-        console.log("✓ Audio buffer cleared");
-        break;
-
-      case "response.created":
-        console.log("🤖 Generating response...");
-        break;
-
-      case "response.output_text.delta":
-        process.stdout.write(event.delta);
-        break;
-
-      case "response.output_text.done":
-        console.log(`\n📝 Response text: "${event.text}"`);
-        break;
-
-      case "response.done":
-        console.log("✓ Response complete");
-        handleResponseComplete(event);
-        break;
-
-      case "error":
-        console.error("❌ Realtime API error:", event.error);
-        break;
-    }
-  } catch (error) {
-    console.error("❌ Error parsing Realtime message:", error.message);
-  }
-}
-
-function handleRealtimeError(error) {
-  console.error("❌ Realtime WebSocket error:", error.message);
-}
-
-function handleRealtimeClose() {
-  console.log("🔌 Realtime connection closed. Reconnecting...");
-  sessionReady = false;
-  setTimeout(connectToRealtimeAPI, 2000);
-}
-
-function configureSession() {
-  const sessionConfig = {
-    type: "session.update",
-    session: {
-      modalities: ["text"],
-      instructions: "Respond to user speech in the voice of a HAM radio operator. One short spoken phrase response only.",
-      voice: "ash",
-      input_audio_format: "pcm16",
-      output_audio_format: "pcm16",
-      turn_detection: null,
-    },
-  };
-
-  realtimeWs.send(JSON.stringify(sessionConfig));
-}
-
-function streamAudioChunkToRealtime(audioChunk) {
-  const base64Audio = audioChunk.toString("base64");
-  const event = {
-    type: "input_audio_buffer.append",
-    audio: base64Audio,
-  };
-  realtimeWs.send(JSON.stringify(event));
-}
-
-async function commitAudioAndRequestResponse() {
-  console.log(`🔄 Committing audio buffer and requesting response...`);
-
-  try {
-    realtimeWs.send(JSON.stringify({ type: "input_audio_buffer.commit" }));
-    realtimeWs.send(JSON.stringify({ type: "response.create", response: { modalities: ["text"] } }));
-    realtimeWs.send(JSON.stringify({ type: "input_audio_buffer.clear" }));
-  } catch (error) {
-    console.error("❌ Error requesting response:", error.message);
-    isProcessing = false;
-  }
-}
-
-async function handleResponseComplete(event) {
-  const responseText = extractResponseText(event);
-
-  if (responseText) {
-    console.log(`💬 Final response: "${responseText}"`);
-    await synthesizeAndStreamSpeech(responseText);
-  } else {
-    console.log("⚠️  No text response received");
-  }
-
-  isProcessing = false;
-  console.log("✓ Ready for next input");
-}
-
-async function synthesizeAndStreamSpeech(text) {
-  console.log(`🔊 Synthesizing TTS for: "${text}"`);
-
-  try {
-    const response = await fetch("https://api.openai.com/v1/audio/speech", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini-tts",
-        voice: "ash",
-        input: text,
-        instructions: "Low coarse seasoned veteran from war time, military radio operator voice with no emotion. Speak fast with urgency.",
-        response_format: "wav",
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`TTS API error: ${response.status}`);
-    }
-
-    const wavBuffer = Buffer.from(await response.arrayBuffer());
-    await playAndStreamAudio(wavBuffer);
-  } catch (error) {
-    console.error("❌ TTS error:", error.message);
-  }
-}
-
-async function playAndStreamAudio(wavBuffer) {
-  const pcmBuffer = await convertWavToPCM16(wavBuffer);
-  await Promise.all([playAudioThroughSpeakers(wavBuffer), streamAudioToUDP(pcmBuffer, udpSender)]);
 }
 
 function handleGracefulShutdown() {
@@ -274,22 +130,13 @@ function handleGracefulShutdown() {
   if (silenceCheckInterval) {
     clearInterval(silenceCheckInterval);
   }
-  if (realtimeWs) {
-    realtimeWs.close();
-  }
+  closeRealtimeConnection();
   udpReceiver.close(() => {
     udpSender.close(() => {
       console.log("Server closed");
       process.exit(0);
     });
   });
-}
-
-function validateEnvironment() {
-  if (!process.env.OPENAI_API_KEY) {
-    console.error("⚠️  OPENAI_API_KEY not set. Cannot connect to Realtime API.");
-    process.exit(1);
-  }
 }
 
 function extractResponseText(event) {
