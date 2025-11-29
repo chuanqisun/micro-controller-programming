@@ -1,18 +1,18 @@
-import { spawn } from "child_process";
 import * as dgram from "dgram";
-import { networkInterfaces } from "os";
 import { WebSocket } from "ws";
-
-const SAMPLE_RATE = 24000;
-const CHANNELS = 1;
-const BITS_PER_SAMPLE = 16;
-const UDP_RECEIVE_PORT = 8888;
-const UDP_SEND_PORT = 8889;
-const TARGET_IP = "192.168.41.27";
-const PACKET_SIZE = 1024;
-const SILENCE_TIMEOUT_MS = 1000;
-const STATS_INTERVAL_MS = 5000;
-const SILENCE_CHECK_INTERVAL_MS = 100;
+import {
+  BITS_PER_SAMPLE,
+  CHANNELS,
+  SAMPLE_RATE,
+  SILENCE_CHECK_INTERVAL_MS,
+  SILENCE_TIMEOUT_MS,
+  STATS_INTERVAL_MS,
+  TARGET_IP,
+  UDP_RECEIVE_PORT,
+  UDP_SEND_PORT,
+} from "./config.mjs";
+import { convertWavToPCM16, playAudioThroughSpeakers, streamAudioToUDP } from "./features/audio.mjs";
+import { getNetworkAddresses } from "./features/ip-discovery.mjs";
 
 const STATE = {
   SILENT: "silent",
@@ -266,84 +266,7 @@ async function synthesizeAndStreamSpeech(text) {
 
 async function playAndStreamAudio(wavBuffer) {
   const pcmBuffer = await convertWavToPCM16(wavBuffer);
-  await Promise.all([playAudioThroughSpeakers(wavBuffer), streamAudioToUDP(pcmBuffer)]);
-}
-
-async function convertWavToPCM16(wavBuffer) {
-  return new Promise((resolve, reject) => {
-    const ffmpeg = spawn("ffmpeg", ["-i", "pipe:0", "-f", "s16le", "-ar", SAMPLE_RATE.toString(), "-ac", CHANNELS.toString(), "-loglevel", "quiet", "pipe:1"]);
-
-    const chunks = [];
-
-    ffmpeg.stdout.on("data", (chunk) => {
-      chunks.push(chunk);
-    });
-
-    ffmpeg.on("close", (code) => {
-      if (code === 0) {
-        resolve(Buffer.concat(chunks));
-      } else {
-        reject(new Error(`ffmpeg exited with code ${code}`));
-      }
-    });
-
-    ffmpeg.on("error", reject);
-
-    ffmpeg.stdin.write(wavBuffer);
-    ffmpeg.stdin.end();
-  });
-}
-
-async function playAudioThroughSpeakers(wavBuffer) {
-  return new Promise((resolve, reject) => {
-    const ffplay = spawn("ffplay", ["-nodisp", "-autoexit", "-loglevel", "quiet", "-i", "pipe:0"]);
-
-    ffplay.on("error", reject);
-
-    ffplay.on("close", (code) => {
-      if (code === 0) {
-        console.log("✓ Speaker playback completed");
-        resolve();
-      } else {
-        reject(new Error(`ffplay exited with code ${code}`));
-      }
-    });
-
-    ffplay.stdin.write(wavBuffer);
-    ffplay.stdin.end();
-  });
-}
-
-async function streamAudioToUDP(pcmBuffer) {
-  console.log("📡 Streaming audio to ESP32...");
-
-  const totalPackets = Math.ceil(pcmBuffer.length / PACKET_SIZE);
-
-  for (let i = 0; i < totalPackets; i++) {
-    const start = i * PACKET_SIZE;
-    const end = Math.min(start + PACKET_SIZE, pcmBuffer.length);
-    const packet = pcmBuffer.slice(start, end);
-
-    await sendAudioPacketToESP32(packet);
-
-    const delayMs = (PACKET_SIZE / 2 / SAMPLE_RATE) * 1000;
-    await sleep(delayMs);
-  }
-
-  console.log("✓ UDP streaming completed");
-}
-
-function sendAudioPacketToESP32(buffer) {
-  return new Promise((resolve, reject) => {
-    udpSender.send(buffer, UDP_SEND_PORT, TARGET_IP, (err) => {
-      if (err) {
-        console.error("❌ Error sending UDP packet:", err.message);
-        reject(err);
-      } else {
-        resolve();
-      }
-    });
-  });
+  await Promise.all([playAudioThroughSpeakers(wavBuffer), streamAudioToUDP(pcmBuffer, udpSender)]);
 }
 
 function handleGracefulShutdown() {
@@ -432,23 +355,4 @@ function logServerStartup(address) {
   });
   console.log("\nWaiting for ESP32 to send audio...");
   console.log("==============================================\n");
-}
-
-function getNetworkAddresses() {
-  const interfaces = networkInterfaces();
-  const addresses = [];
-
-  for (const name of Object.keys(interfaces)) {
-    for (const iface of interfaces[name]) {
-      if (iface.family === "IPv4" && !iface.internal) {
-        addresses.push(iface.address);
-      }
-    }
-  }
-
-  return addresses;
-}
-
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }

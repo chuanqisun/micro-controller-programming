@@ -5,10 +5,16 @@
   "main": "server.js",
   "scripts": {
     "dev": "npm run dev:test",
-    "dev:test": "npm run build:test && npm run upload:test && concurrently \"npm run monitor\"",
-    "build:test": "arduino-cli compile -b esp32:esp32:XIAO_ESP32C3 ./throughput-test",
-    "upload:test": "arduino-cli upload -p /dev/ttyACM0 -b esp32:esp32:XIAO_ESP32C3 ./throughput-test",
-    "monitor": "arduino-cli monitor -p /dev/ttyACM0 -c baudrate=115200",
+    "dev:web": "vite ./web",
+    "build:web": "tsc -p ./web && vite build ./web",
+    "dev:op": "npm run build:op && npm run upload:op && concurrently \"npm run monitor:a\"",
+    "build:op": "arduino-cli compile -b esp32:esp32:XIAO_ESP32C3 ./operator",
+    "upload:op": "arduino-cli upload -p /dev/ttyACM0 -b esp32:esp32:XIAO_ESP32C3 ./operator",
+    "dev:sw": "npm run build:sw && npm run upload:sw && concurrently \"npm run monitor:a\"",
+    "build:sw": "arduino-cli compile -b esp32:esp32:XIAO_ESP32C3 ./switchboard",
+    "upload:sw": "arduino-cli upload -p /dev/ttyACM0 -b esp32:esp32:XIAO_ESP32C3 ./switchboard",
+    "monitor:a": "arduino-cli monitor -p /dev/ttyACM0 -c baudrate=115200",
+    "monitor:b": "arduino-cli monitor -p /dev/ttyACM1 -c baudrate=115200",
     "serve": "node  --env-file .env server/server.mjs"
   },
   "keywords": [],
@@ -16,7 +22,9 @@
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
-    "concurrently": "^9.2.1"
+    "concurrently": "^9.2.1",
+    "typescript": "~5.9.3",
+    "vite": "^7.2.4"
   },
   "dependencies": {
     "openai": "^6.7.0",

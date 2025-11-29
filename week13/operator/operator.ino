@@ -24,7 +24,7 @@ const int I2S_MIC_DATA = D1;
 const int I2S_SPEAKER_DATA = D10;
 const int I2S_LRC = D2;
 
-IPAddress udpTargetAddress(192, 168, 41, 104);
+IPAddress laptopAddress(192, 168, 41, 104);
 
 AudioInfo audioInfo(SAMPLE_RATE, CHANNELS, BITS_PER_SAMPLE);
 
@@ -97,7 +97,7 @@ void setup() {
   Serial.println("I2S initialized successfully");
 
   Serial.println("Starting UDP streams...");
-  udpSend.begin(udpTargetAddress, UDP_SEND_PORT);
+  udpSend.begin(laptopAddress, UDP_SEND_PORT);
   udpReceive.begin(UDP_RECEIVE_PORT);
 
   auto throttleConfig = throttle.defaultConfig();
@@ -106,7 +106,7 @@ void setup() {
 
   Serial.println("Walkie-talkie ready!");
   Serial.print("Transmit target: ");
-  Serial.print(udpTargetAddress);
+  Serial.print(laptopAddress);
   Serial.print(":");
   Serial.println(UDP_SEND_PORT);
   Serial.print("Receive on port: ");
