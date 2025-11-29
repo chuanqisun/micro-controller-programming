@@ -135,7 +135,7 @@ pushButton.addEventListener("click", () => {
   // Parse the URL to extract IP and port
   try {
     const url = new URL(address);
-    const message = `setorigin:${url.hostname}:${url.port || "80"}`;
+    const message = `setorigin:${url.hostname}:${url.port}`;
     sendMessage(message);
   } catch (error) {
     log("ERROR: Invalid URL format");

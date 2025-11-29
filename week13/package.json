@@ -14,7 +14,7 @@
     "dev:sw": "npm run build:sw && npm run upload:sw && concurrently \"npm run monitor:a\"",
     "build:sw": "arduino-cli compile -b esp32:esp32:XIAO_ESP32C3 ./switchboard",
     "upload:sw": "arduino-cli upload -p /dev/ttyACM0 -b esp32:esp32:XIAO_ESP32C3 ./switchboard",
-    "monitor:a": "arduino-cli monitor -p /dev/ttyACM0 -c baudrate=115200",
+    "monitor": "arduino-cli monitor -p /dev/ttyACM0 -c baudrate=115200",
     "monitor:b": "arduino-cli monitor -p /dev/ttyACM1 -c baudrate=115200",
     "serve": "node  --env-file .env server/server.mjs"
   },

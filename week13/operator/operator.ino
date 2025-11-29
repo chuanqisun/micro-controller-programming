@@ -37,7 +37,7 @@ const int NUM_TRRS_PINS = 3;
 
 // UDP configuration (set via BLE)
 IPAddress laptopAddress;
-int udpSendPort = 0;
+int laptopRxPort = 0;
 bool udpConfigured = false;
 
 // BLE Variables
@@ -89,7 +89,8 @@ void handleBleMessage(String message) {
 }
 
 void handleSetOriginMessage(String message) {
-  // Parse: setorigin:192.168.1.100:8888
+  // Parse example:
+  // setorigin:192.168.1.100:8888
   String params = message.substring(10);
   int colonPos = params.indexOf(':');
   
@@ -101,12 +102,12 @@ void handleSetOriginMessage(String message) {
     int ip1, ip2, ip3, ip4;
     if (sscanf(ipStr.c_str(), "%d.%d.%d.%d", &ip1, &ip2, &ip3, &ip4) == 4) {
       laptopAddress = IPAddress(ip1, ip2, ip3, ip4);
-      udpSendPort = portStr.toInt();
+      laptopRxPort = portStr.toInt();
       
       Serial.print("Laptop address set to: ");
       Serial.print(laptopAddress);
       Serial.print(":");
-      Serial.println(udpSendPort);
+      Serial.println(laptopRxPort);
       
       initializeUdp();
     } else {

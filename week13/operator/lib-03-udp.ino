@@ -45,7 +45,7 @@ void initializeUdp() {
   udpSend = new UDPStream(WIFI_SSID, WIFI_PASSWORD);
   udpReceive = new UDPStream(WIFI_SSID, WIFI_PASSWORD);
   
-  udpSend->begin(laptopAddress, udpSendPort);
+  udpSend->begin(laptopAddress, laptopRxPort);
   udpReceive->begin(UDP_RECEIVE_PORT);
 
   // Create throttle
@@ -61,10 +61,10 @@ void initializeUdp() {
   udpConfigured = true;
   
   Serial.println("UDP initialized!");
-  Serial.print("Laptop address: ");
+  Serial.print("Laptop rx address: ");
   Serial.print(laptopAddress);
   Serial.print(":");
-  Serial.println(udpSendPort);
+  Serial.println(laptopRxPort);
   Serial.print("Receive on port: ");
   Serial.println(UDP_RECEIVE_PORT);
 }

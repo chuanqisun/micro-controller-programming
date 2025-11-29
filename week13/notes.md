@@ -61,3 +61,7 @@ fetchButton.addEventListener("click", async () => {
   }
 });
 ```
+
+## TODO
+
+operator send probe only when changed
