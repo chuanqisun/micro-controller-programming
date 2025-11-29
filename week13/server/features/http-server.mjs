@@ -25,16 +25,16 @@ export function closeHttpServer() {
 
 function handleHttpRequest(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Content-Type", "text/plain");
+  res.setHeader("Content-Type", "application/json");
 
-  if (req.method === "GET" && req.url === "/api/host") {
+  if (req.method === "GET" && req.url === "/api/origin") {
     const localIp = getLocalNetworkIp();
-    const host = `${localIp}:${HTTP_PORT}`;
+    const host = `http://${localIp}:${HTTP_PORT}`;
     res.writeHead(200);
-    res.end(host);
+    res.end(JSON.stringify({ host }));
   } else {
     res.writeHead(404);
-    res.end("Not found");
+    res.end(JSON.stringify({ error: "Not found" }));
   }
 }
 
