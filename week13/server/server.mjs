@@ -1,17 +1,17 @@
 import * as dgram from "dgram";
-import {
-  BITS_PER_SAMPLE,
-  CHANNELS,
-  SAMPLE_RATE,
-  SILENCE_CHECK_INTERVAL_MS,
-  SILENCE_TIMEOUT_MS,
-  STATS_INTERVAL_MS,
-  TARGET_IP,
-  UDP_RECEIVE_PORT,
-  UDP_SEND_PORT,
-} from "./config.mjs";
+import { SILENCE_CHECK_INTERVAL_MS, SILENCE_TIMEOUT_MS, UDP_RECEIVE_PORT } from "./config.mjs";
 import { playAudioThroughSpeakers, streamAudioToUDP } from "./features/audio.mjs";
-import { getNetworkAddresses } from "./features/ip-discovery.mjs";
+import {
+  initializeDiagnostics,
+  logAudioSent,
+  logReceiverError,
+  logServerClosed,
+  logServerStartup,
+  logShutdown,
+  logSpeakingStarted,
+  logStatisticsIfIntervalElapsed,
+  updateStatistics,
+} from "./features/diagnostics.mjs";
 import {
   closeRealtimeConnection,
   commitAudioAndRequestResponse,
@@ -36,14 +36,12 @@ let currentState = STATE.SILENT;
 let audioBuffer = [];
 let lastPacketTime = null;
 let silenceCheckInterval = null;
-let packetsReceived = 0;
-let bytesReceived = 0;
-let lastStatsTime = Date.now();
 
 startServer();
 
 function startServer() {
   validateEnvironment();
+  initializeDiagnostics();
   initializeRealtimeCallbacks();
   connectToRealtimeAPI();
   setupUDPReceiver();
@@ -77,7 +75,17 @@ function handleReceiverListening() {
   silenceCheckInterval = setInterval(detectSilence, SILENCE_CHECK_INTERVAL_MS);
 }
 
+/**
+ * Handles incoming UDP audio packets from the ESP32
+ * @param {Buffer} msg - The audio data buffer received from UDP
+ * @param {Object} rinfo - Remote address information
+ * @param {string} rinfo.address - IP address of the sender
+ * @param {number} rinfo.port - Port number of the sender
+ * @param {string} rinfo.family - Address family ('IPv4' or 'IPv6')
+ * @param {number} rinfo.size - Size of the received message
+ */
 function handleIncomingAudioPacket(msg, rinfo) {
+  const senderIp = rinfo.address;
   beginSpeakingStateIfNeeded();
   lastPacketTime = Date.now();
   audioBuffer.push(Buffer.from(msg));
@@ -87,11 +95,11 @@ function handleIncomingAudioPacket(msg, rinfo) {
   }
 
   updateStatistics(msg.length);
-  logStatisticsIfIntervalElapsed();
+  logStatisticsIfIntervalElapsed(audioBuffer);
 }
 
 function handleReceiverError(err) {
-  console.error(`Receiver error:\n${err.stack}`);
+  logReceiverError(err);
   udpReceiver.close();
 }
 
@@ -106,7 +114,7 @@ function detectSilence() {
 
 function beginSpeakingStateIfNeeded() {
   if (currentState !== STATE.SPEAKING) {
-    console.log("🎤 Speaking...");
+    logSpeakingStarted();
     currentState = STATE.SPEAKING;
     audioBuffer = [];
   }
@@ -114,7 +122,7 @@ function beginSpeakingStateIfNeeded() {
 
 async function transitionToSilentAndProcessAudio() {
   if (currentState !== STATE.SILENT) {
-    console.log("📤 Sent");
+    logAudioSent();
     currentState = STATE.SILENT;
 
     if (audioBuffer.length > 0 && !getIsProcessing() && isSessionReady()) {
@@ -126,80 +134,15 @@ async function transitionToSilentAndProcessAudio() {
 }
 
 function handleGracefulShutdown() {
-  console.log("\n\nShutting down...");
+  logShutdown();
   if (silenceCheckInterval) {
     clearInterval(silenceCheckInterval);
   }
   closeRealtimeConnection();
   udpReceiver.close(() => {
     udpSender.close(() => {
-      console.log("Server closed");
+      logServerClosed();
       process.exit(0);
     });
   });
-}
-
-function extractResponseText(event) {
-  const response = event.response;
-  let responseText = "";
-
-  if (response && response.output) {
-    for (const item of response.output) {
-      if (item.type === "message" && item.content) {
-        for (const content of item.content) {
-          if (content.type === "text") {
-            responseText = content.text;
-            break;
-          }
-        }
-      }
-      if (responseText) break;
-    }
-  }
-
-  return responseText;
-}
-
-function updateStatistics(messageLength) {
-  packetsReceived++;
-  bytesReceived += messageLength;
-}
-
-function logStatisticsIfIntervalElapsed() {
-  const now = Date.now();
-  if (now - lastStatsTime > STATS_INTERVAL_MS) {
-    const elapsed = (now - lastStatsTime) / 1000;
-    const packetsPerSec = (packetsReceived / elapsed).toFixed(1);
-    const kbytesPerSec = (bytesReceived / elapsed / 1024).toFixed(2);
-    const bufferSize = (audioBuffer.reduce((sum, buf) => sum + buf.length, 0) / 1024).toFixed(2);
-
-    console.log(`📊 Stats: ${packetsPerSec} packets/s, ${kbytesPerSec} KB/s, buffer: ${bufferSize} KB`);
-
-    packetsReceived = 0;
-    bytesReceived = 0;
-    lastStatsTime = now;
-  }
-}
-
-function logServerStartup(address) {
-  const networkAddresses = getNetworkAddresses();
-
-  console.log("\n==============================================");
-  console.log("ESP32 Bidirectional Voice with Realtime API");
-  console.log("==============================================");
-  console.log(`UDP Server receiving on port ${address.port}`);
-  console.log(`UDP Server sending to: ${TARGET_IP}:${UDP_SEND_PORT}`);
-  console.log(`Sample Rate: ${SAMPLE_RATE} Hz`);
-  console.log(`Channels: ${CHANNELS} (mono)`);
-  console.log(`Bits per sample: ${BITS_PER_SAMPLE}`);
-  console.log(`Silence timeout: ${SILENCE_TIMEOUT_MS}ms`);
-  console.log(`OpenAI API Key: ${process.env.OPENAI_API_KEY ? "✓ Set" : "✗ Not set"}`);
-  console.log(`Model: gpt-realtime (text mode, no VAD)`);
-  console.log("\nListening on:");
-  console.log(`  Local:   ${address.address}:${address.port}`);
-  networkAddresses.forEach((addr) => {
-    console.log(`  Network: ${addr}:${address.port}`);
-  });
-  console.log("\nWaiting for ESP32 to send audio...");
-  console.log("==============================================\n");
 }

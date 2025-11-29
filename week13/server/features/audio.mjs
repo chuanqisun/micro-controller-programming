@@ -1,6 +1,6 @@
 import { spawn } from "child_process";
 import dgram from "dgram";
-import { CHANNELS, PACKET_SIZE, SAMPLE_RATE } from "../config.mjs";
+import { CHANNELS, PACKET_SIZE, SAMPLE_RATE, TARGET_IP } from "../config.mjs";
 
 export async function convertWavToPCM16(wavBuffer) {
   return new Promise((resolve, reject) => {
