@@ -7,6 +7,8 @@
 // Probe Status - Read and transmit TRRS probe values
 // =============================================================================
 
+String lastProbeValue = "";
+
 String readProbeValue() {
   String probeValue = "";
   for (int i = 0; i < NUM_TRRS_PINS; ++i) {
@@ -21,6 +23,12 @@ void sendProbeToBLE(String probeValue) {
     return;
   }
   
+  // Only send if value has changed
+  if (probeValue == lastProbeValue) {
+    return;
+  }
+  
+  lastProbeValue = probeValue;
   String probe = "probe:" + probeValue;
   pTxCharacteristic->setValue((uint8_t*)probe.c_str(), probe.length());
   pTxCharacteristic->notify();
