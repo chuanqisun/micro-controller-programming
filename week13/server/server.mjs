@@ -2,6 +2,7 @@ import * as dgram from "dgram";
 import { SILENCE_CHECK_INTERVAL_MS, SILENCE_TIMEOUT_MS, UDP_RECEIVE_PORT } from "./config.mjs";
 import { playAudioThroughSpeakers, streamAudioToUDP } from "./features/audio.mjs";
 import { initializeDiagnostics, logReceiverError, logServerClosed, logServerStartup, logShutdown } from "./features/diagnostics.mjs";
+import { closeHttpServer, createHttpServer } from "./features/http-server.mjs";
 import {
   closeRealtimeConnection,
   configureSilenceDetection,
@@ -26,6 +27,7 @@ function startServer() {
   configureSilenceDetection(SILENCE_TIMEOUT_MS, SILENCE_CHECK_INTERVAL_MS);
   connectToRealtimeAPI();
   setupUDPReceiver();
+  createHttpServer();
   process.on("SIGINT", handleGracefulShutdown);
 }
 
@@ -51,10 +53,12 @@ function handleGracefulShutdown() {
   logShutdown();
   stopSilenceDetection();
   closeRealtimeConnection();
-  udpReceiver.close(() => {
-    udpSender.close(() => {
-      logServerClosed();
-      process.exit(0);
+  closeHttpServer().then(() => {
+    udpReceiver.close(() => {
+      udpSender.close(() => {
+        logServerClosed();
+        process.exit(0);
+      });
     });
   });
 }

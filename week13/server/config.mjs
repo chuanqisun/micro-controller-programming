@@ -3,6 +3,7 @@ export const CHANNELS = 1;
 export const BITS_PER_SAMPLE = 16;
 export const UDP_RECEIVE_PORT = 8888;
 export const UDP_SEND_PORT = 8889;
+export const HTTP_PORT = 3000;
 export const PACKET_SIZE = 1024;
 export const SILENCE_TIMEOUT_MS = 1000;
 export const STATS_INTERVAL_MS = 5000;
