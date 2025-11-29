@@ -5,9 +5,7 @@
 
 #include "AudioTools.h"
 #include "AudioTools/Communication/UDPStream.h"
-
-const char *WIFI_SSID = "NETGEAR56";
-const char *WIFI_PASSWORD = "";
+#include "env.h"
 
 const int SAMPLE_RATE = 24000;
 const int CHANNELS = 1;
