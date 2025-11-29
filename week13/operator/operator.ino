@@ -210,13 +210,14 @@ void loop() {
   }
 
   // Read TRRS probe and send over BLE
-  String probe = "";
+  String probeValue = "";
   for (int i = 0; i < NUM_TRRS_PINS; ++i) {
     int v = digitalRead(TRRS_PINS[i]);
-    probe += (v == HIGH) ? "1" : "0";
+    probeValue += (v == HIGH) ? "1" : "0";
   }
   
   if (deviceConnected) {
+    String probe = "probe:" + probeValue;
     pTxCharacteristic->setValue((uint8_t*)probe.c_str(), probe.length());
     pTxCharacteristic->notify();
   }

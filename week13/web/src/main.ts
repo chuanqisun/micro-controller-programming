@@ -31,8 +31,14 @@ function log(msg: string) {
 
 function handleRxMessage(message: string) {
   // Handle incoming messages from Operator device
-  // TODO: implement message handling logic
-  log(`TX: ${message}`);
+  if (message.startsWith("probe:")) {
+    const probeValue = message.substring(6);
+    rawProbeSpan.textContent = probeValue;
+    debouncedProbeSpan.textContent = probeValue;
+    const num = parseInt(probeValue, 2);
+    ledNumberSpan.textContent = isNaN(num) ? "---" : num.toString();
+  }
+  log(`RX: ${message}`);
 }
 
 connectBtn.addEventListener("click", async () => {
@@ -57,13 +63,7 @@ connectBtn.addEventListener("click", async () => {
     await charTx.startNotifications();
     charTx.addEventListener("characteristicvaluechanged", (e: any) => {
       const text = new TextDecoder().decode(e.target.value.buffer);
-      rawProbeSpan.textContent = text.trim();
-      log(`RX: ${text.trim()}`);
-
-      // Debounce: show different value after 500ms of no changes
-      debouncedProbeSpan.textContent = text.trim();
-      const num = parseInt(text.trim(), 2);
-      ledNumberSpan.textContent = isNaN(num) ? "---" : num.toString();
+      handleRxMessage(text.trim());
     });
 
     // Subscribe to RX characteristic for incoming messages
