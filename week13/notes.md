@@ -62,6 +62,15 @@ fetchButton.addEventListener("click", async () => {
 });
 ```
 
+- Updated solution, an automatd protocol to exchange ip between server and operator
+  - A single round of handshake
+    - Web -> Server: request server address
+    - Server -> Web: send self address
+    - Web -> Operator: send server address
+    - Operator -> Web: send self address
+    - Web -> Server: send operator address
+- See screenshot v2
+
 ## TODO
 
 operator send probe only when changed
