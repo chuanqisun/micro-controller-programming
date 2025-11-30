@@ -71,6 +71,10 @@ fetchButton.addEventListener("click", async () => {
     - Web -> Server: send operator address
 - See screenshot v2
 
+- Added Switchboard UI
+  - Basic connection testing features from Networking week
+  - See screenshot v3
+
 ## TODO
 
 operator send probe only when changed
