@@ -1,18 +1,6 @@
 import { Subject, debounceTime, distinctUntilChanged } from "rxjs";
+import { createSSEObservable } from "./features/sse";
 import "./style.css";
-
-// SSE connection
-const eventSource = new EventSource("http://localhost:3000/api/events");
-eventSource.onmessage = (event) => {
-  const timestamp = new Date().toISOString().substring(11, 23);
-  logDiv.textContent += `[${timestamp}] SSE: ${event.data}\n`;
-  logDiv.scrollTop = logDiv.scrollHeight;
-};
-eventSource.onerror = (error) => {
-  const timestamp = new Date().toISOString().substring(11, 23);
-  logDiv.textContent += `[${timestamp}] SSE error: ${error}\n`;
-  logDiv.scrollTop = logDiv.scrollHeight;
-};
 
 declare global {
   interface Navigator {
@@ -342,6 +330,27 @@ async function initializePage() {
     console.error("Failed to fetch origin on page load:", error);
     serverAddressSpan.textContent = "Error";
   }
+}
+
+export const sseEvents$ = createSSEObservable("http://localhost:3000/api/events");
+
+sseEvents$.subscribe({
+  next: (message) => {
+    logDiv.textContent += `[${now()}] SSE: ${JSON.stringify(message)}\n`;
+    logDiv.scrollTop = logDiv.scrollHeight;
+
+    if (message.speak !== undefined) {
+      speakTextarea.value = message.speak;
+    }
+  },
+  error: (error) => {
+    logDiv.textContent += `[${now()}] SSE error: ${error}\n`;
+    logDiv.scrollTop = logDiv.scrollHeight;
+  },
+});
+
+function now() {
+  return new Date().toISOString().substring(11, 23);
 }
 
 document.addEventListener("DOMContentLoaded", initializePage);

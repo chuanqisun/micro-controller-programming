@@ -31,6 +31,10 @@ export function closeHttpServer() {
   });
 }
 
+/**
+ *
+ * @param {string} message
+ */
 export function emitServerEvent(message) {
   sseClients.forEach((client) => {
     client.res.write(`data: ${message}\n\n`);
