@@ -154,3 +154,10 @@ speakBtn.addEventListener("click", async () => {
   });
 });
 ```
+
+- See screenshot v4
+
+## TODO
+
+- LED on means want to say
+- After user probing a agent, other agent may change want they plan to say
