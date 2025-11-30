@@ -3,11 +3,11 @@ import { LAPTOP_UDP_RX_PORT, SILENCE_CHECK_INTERVAL_MS, SILENCE_TIMEOUT_MS } fro
 import { playAudioThroughSpeakers, streamAudioToUDP } from "./features/audio.mjs";
 import { initializeDiagnostics, logReceiverError, logServerClosed, logServerStartup, logShutdown } from "./features/diagnostics.mjs";
 import { closeHttpServer, createHttpServer } from "./features/http-server.mjs";
+import { getLastSenderIp } from "./features/ip-discovery.mjs";
 import {
   closeRealtimeConnection,
   configureSilenceDetection,
   connectToRealtimeAPI,
-  getLastSenderIp,
   handleIncomingAudioPacket,
   setAudioStreamCallbacks,
   startSilenceDetection,

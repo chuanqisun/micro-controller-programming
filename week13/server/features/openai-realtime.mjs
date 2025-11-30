@@ -5,7 +5,6 @@ import { logStatisticsIfIntervalElapsed, updateStatistics } from "./diagnostics.
 let realtimeWs = null;
 let sessionReady = false;
 let isProcessing = false;
-let lastSenderIp = null;
 
 // Callbacks for state management
 let onSessionReady = null;
@@ -306,9 +305,6 @@ export function configureSilenceDetection(timeoutMs, checkIntervalMs) {
  * @param {number} rinfo.size - Size of the received message
  */
 export function handleIncomingAudioPacket(msg, rinfo) {
-  lastSenderIp = rinfo.address;
-  console.log(`📍 Sender IP: ${lastSenderIp}:${rinfo.port}`);
-
   beginSpeakingStateIfNeeded();
   lastPacketTime = Date.now();
   audioBuffer.push(Buffer.from(msg));
@@ -368,8 +364,4 @@ export function getSpeechReceiverState() {
     isProcessing,
     sessionReady,
   };
-}
-
-export function getLastSenderIp() {
-  return lastSenderIp;
 }
