@@ -9,11 +9,13 @@
   <body>
     <h2>Operator</h2>
 
-    <button id="connectBtn">Connect</button>
-    <button id="disconnectBtn" disabled>Disconnect</button>
-    <button id="reset">Reset</button>
+    <div>
+      <button id="connectBtn">Connect</button>
+      <button id="disconnectBtn" disabled>Disconnect</button>
+      <button id="reset">Reset</button>
+    </div>
 
-    <div id="probeDisplay" style="margin-top: 1em">
+    <div class="data-list" id="probeDisplay">
       <p>Server Address: <span id="serverAddress">---</span></p>
       <p>Operator Address: <span id="operatorAddress">---</span></p>
       <p>Raw Probe: <span id="rawProbe">---</span></p>
@@ -23,10 +25,13 @@
 
     <h2>Switchboard</h2>
 
-    <button id="connectBtnSw">Connect</button>
-    <button id="disconnectBtnSw" disabled>Disconnect</button>
+    <div>
+      <button id="connectBtnSw">Connect</button>
+      <button id="disconnectBtnSw" disabled>Disconnect</button>
+    </div>
 
-    <div id="ledControls" style="margin-top: 1em">
+    <div id="ledControls">
+      <button id="offAll" disabled>Turn Off All</button>
       <button id="led0" disabled>Blink LED 0</button>
       <button id="led1" disabled>Blink LED 1</button>
       <button id="led2" disabled>Blink LED 2</button>
@@ -36,8 +41,9 @@
       <button id="led6" disabled>Blink LED 6</button>
     </div>
 
-    <div style="margin-top: 1em">
-      <button id="offAll" disabled>Turn Off All</button>
+    <div>
+      <textarea id="speakTextarea"></textarea>
+      <button id="speakBtn">Speak</button>
     </div>
 
     <div class="log" id="log"></div>

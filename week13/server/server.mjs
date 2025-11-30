@@ -1,9 +1,8 @@
 import * as dgram from "dgram";
 import { LAPTOP_UDP_RX_PORT, SILENCE_CHECK_INTERVAL_MS, SILENCE_TIMEOUT_MS } from "./config.mjs";
-import { playAudioThroughSpeakers, streamAudioToUDP } from "./features/audio.mjs";
+import { playAudioThroughSpeakers } from "./features/audio.mjs";
 import { initializeDiagnostics, logReceiverError, logServerClosed, logServerStartup, logShutdown } from "./features/diagnostics.mjs";
 import { closeHttpServer, createHttpServer } from "./features/http-server.mjs";
-import { getLastSenderIp } from "./features/ip-discovery.mjs";
 import {
   closeRealtimeConnection,
   configureSilenceDetection,
@@ -23,7 +22,11 @@ startServer();
 function startServer() {
   validateEnvironment();
   initializeDiagnostics();
-  setAudioStreamCallbacks(playAudioThroughSpeakers, (pcmBuffer) => streamAudioToUDP(pcmBuffer, udpSender, getLastSenderIp()));
+  setAudioStreamCallbacks(
+    playAudioThroughSpeakers,
+    () => {}
+    // (pcmBuffer) => streamAudioToUDP(pcmBuffer, udpSender, getLastSenderIp())
+  );
   configureSilenceDetection(SILENCE_TIMEOUT_MS, SILENCE_CHECK_INTERVAL_MS);
   connectToRealtimeAPI();
   setupUDPReceiver();

@@ -4,10 +4,14 @@ import "./style.css";
 // SSE connection
 const eventSource = new EventSource("http://localhost:3000/api/events");
 eventSource.onmessage = (event) => {
-  console.log(event.data);
+  const timestamp = new Date().toISOString().substring(11, 23);
+  logDiv.textContent += `[${timestamp}] SSE: ${event.data}\n`;
+  logDiv.scrollTop = logDiv.scrollHeight;
 };
 eventSource.onerror = (error) => {
-  console.error("SSE error:", error);
+  const timestamp = new Date().toISOString().substring(11, 23);
+  logDiv.textContent += `[${timestamp}] SSE error: ${error}\n`;
+  logDiv.scrollTop = logDiv.scrollHeight;
 };
 
 declare global {
@@ -34,6 +38,8 @@ const ledNumberSpan = document.getElementById("ledNumber") as HTMLSpanElement;
 const connectBtnSw = document.getElementById("connectBtnSw") as HTMLButtonElement;
 const disconnectBtnSw = document.getElementById("disconnectBtnSw") as HTMLButtonElement;
 const offAllBtn = document.getElementById("offAll") as HTMLButtonElement;
+const speakTextarea = document.getElementById("speakTextarea") as HTMLTextAreaElement;
+const speakBtn = document.getElementById("speakBtn") as HTMLButtonElement;
 
 let device: any = null;
 let charTx: any = null;
@@ -298,6 +304,32 @@ for (let i = 0; i < 7; i++) {
 // Turn off all LEDs
 offAllBtn.addEventListener("click", () => {
   sendMessageSw("off:all");
+});
+
+// Speak button
+speakBtn.addEventListener("click", async () => {
+  const text = speakTextarea.value.trim();
+  if (!text) {
+    log("ERROR: Text field is empty");
+    return;
+  }
+  try {
+    const response = await fetch("http://localhost:3000/api/speak", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ text }),
+    });
+    const data = await response.json();
+    if (response.ok) {
+      log(`✓ Speak: ${text}`);
+    } else {
+      log(`ERROR: ${data.error}`);
+    }
+  } catch (error) {
+    log(`ERROR: Failed to call /api/speak: ${error}`);
+  }
 });
 
 // Fetch server IP on page load

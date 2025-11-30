@@ -71,10 +71,86 @@ fetchButton.addEventListener("click", async () => {
     - Web -> Server: send operator address
 - See screenshot v2
 
+web
+
+```js
+// Fetch server IP on page load
+const response = await fetch("http://localhost:3000/api/origin");
+const data = await response.json();
+serverAddressSpan.textContent = data.host;
+
+// After Operator BLE connects, send server address
+const message = `server:${url.hostname}:${url.port}`;
+sendMessage(message);
+
+// Receive operator address from device
+if (message.startsWith("operator:")) {
+  const address = message.substring(9);
+  operatorAddressSpan.textContent = address;
+  fetch(`http://localhost:3000/api/locate-operator?address=${encodeURIComponent(address)}`, {
+    method: "POST",
+  });
+}
+```
+
+operator
+
+```cpp
+// Receive server address from web
+void handleRxMessage(String msg) {
+  if (msg.startsWith("server:")) {
+    String serverIp = msg.substring(7, msg.lastIndexOf(':'));
+    int port = msg.substring(msg.lastIndexOf(':') + 1).toInt();
+    // Store and use for UDP
+    setupUDP(serverIp.c_str(), port);
+  }
+}
+
+// Send operator address to web for registration
+void sendOperatorAddress() {
+  String myIP = WiFi.localIP().toString();
+  sendBLE("operator:" + myIP);
+}
+```
+
 - Added Switchboard UI
   - Basic connection testing features from Networking week
   - See screenshot v3
 
-## TODO
+- Trigger speak from web UI
+  - We want the web UI to have the latest speech content
+  - Added SSE endpoint on node.js server, so we can push speech content to web with minimum latency
+  - Added new endpoints to hande speech content from the web UI
 
-operator send probe only when changed
+```js
+// Server: SSE endpoint for pushing events to web
+if (req.url === "/api/events") {
+  res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache" });
+  sseClients.push({ res });
+  req.on("close", () => {
+    sseClients = sseClients.filter((c) => c.res !== res);
+  });
+}
+
+// Server: /api/speak endpoint - triggers speech synthesis
+else if (req.url === "/api/speak") {
+  const { text, voice } = JSON.parse(body);
+  await synthesizeAndStreamSpeech(text, voice);
+  emitServerEvent(text); // Push to SSE clients
+}
+
+// Web: Listen to SSE stream
+const eventSource = new EventSource("http://localhost:3000/api/events");
+eventSource.onmessage = (event) => {
+  logDiv.textContent += `[${timestamp}] SSE: ${event.data}\n`;
+};
+
+// Web: Trigger speak from UI
+speakBtn.addEventListener("click", async () => {
+  const text = speakTextarea.value.trim();
+  const response = await fetch("http://localhost:3000/api/speak", {
+    method: "POST",
+    body: JSON.stringify({ text }),
+  });
+});
+```

@@ -110,7 +110,7 @@ export function cancelPlayback() {
  * @param {Buffer} buffer
  * @param {dgram.Socket} socket
  * @param {string} ip - Target IP address to send the packet to
- * @param {string} port - Target port to send the packet to
+ * @param {number} port - Target port to send the packet to
  * @returns {Promise}
  */
 function sendAudioPacketToESP32(buffer, socket, ip, port) {

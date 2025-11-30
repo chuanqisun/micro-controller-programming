@@ -1,6 +1,7 @@
 import { WebSocket } from "ws";
 import { convertWavToPCM16 } from "./audio.mjs";
 import { logStatisticsIfIntervalElapsed, updateStatistics } from "./diagnostics.mjs";
+import { emitServerEvent } from "./http-server.mjs";
 import { getLastSenderIp } from "./ip-discovery.mjs";
 
 let realtimeWs = null;
@@ -196,7 +197,8 @@ async function handleResponseComplete(event) {
 
   if (responseText) {
     console.log(`💬 Final response: "${responseText}"`);
-    await synthesizeAndStreamSpeech(responseText);
+    emitServerEvent(`AI: ${responseText}`);
+    // await synthesizeAndStreamSpeech(responseText);
   } else {
     console.log("⚠️  No text response received");
   }
@@ -207,7 +209,7 @@ async function handleResponseComplete(event) {
   if (onResponseComplete) onResponseComplete();
 }
 
-async function synthesizeAndStreamSpeech(text) {
+export async function synthesizeAndStreamSpeech(text, voice = "ash") {
   console.log(`🔊 Synthesizing TTS for: "${text}"`);
 
   try {
@@ -219,7 +221,7 @@ async function synthesizeAndStreamSpeech(text) {
       },
       body: JSON.stringify({
         model: "gpt-4o-mini-tts",
-        voice: "ash",
+        voice,
         input: text,
         instructions: "Low coarse seasoned veteran from war time, military radio operator voice with no emotion. Speak fast with urgency.",
         response_format: "wav",
@@ -305,7 +307,7 @@ export function configureSilenceDetection(timeoutMs, checkIntervalMs) {
  * @param {string} rinfo.family - Address family ('IPv4' or 'IPv6')
  * @param {number} rinfo.size - Size of the received message
  */
-export function handleIncomingAudioPacket(msg, rinfo) {
+export function handleIncomingAudioPacket(msg) {
   beginSpeakingStateIfNeeded();
   lastPacketTime = Date.now();
   audioBuffer.push(Buffer.from(msg));

@@ -2,7 +2,7 @@ import * as http from "http";
 import { HTTP_PORT, LAPTOP_UDP_RX_PORT } from "../config.mjs";
 import { cancelPlayback, cancelStreaming } from "./audio.mjs";
 import { getLocalNetworkIp, setLastSenderIp } from "./ip-discovery.mjs";
-import { requestDirectResponse } from "./openai-realtime.mjs";
+import { requestDirectResponse, synthesizeAndStreamSpeech } from "./openai-realtime.mjs";
 import { agents } from "./simulation.mjs";
 
 let httpServer;
@@ -20,7 +20,6 @@ export function createHttpServer() {
 export function closeHttpServer() {
   return new Promise((resolve) => {
     sseClients.forEach((client) => {
-      clearInterval(client.intervalId);
       client.res.end();
     });
     sseClients = [];
@@ -41,6 +40,14 @@ export function emitServerEvent(message) {
 function handleHttpRequest(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Content-Type", "application/json");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  if (req.method === "OPTIONS") {
+    res.writeHead(200);
+    res.end();
+    return;
+  }
 
   if (req.method === "GET" && req.url === "/api/origin") {
     const localIp = getLocalNetworkIp();
@@ -76,18 +83,6 @@ function handleHttpRequest(req, res) {
     console.log(`📍 Operator located: ${address}`);
     res.writeHead(200);
     res.end(JSON.stringify({ success: true, address }));
-  } else if (req.method === "POST" && req.url.startsWith("/api/pair-operator")) {
-    const url = new URL(req.url, `http://${req.headers.host}`);
-    const address = url.searchParams.get("address");
-    if (!address) {
-      res.writeHead(400);
-      res.end(JSON.stringify({ error: "Missing address parameter" }));
-      return;
-    }
-    setLastSenderIp(address);
-    console.log(`📍 Operator paired: ${address}`);
-    res.writeHead(200);
-    res.end(JSON.stringify({ success: true, address }));
   } else if (req.method === "GET" && req.url === "/api/events") {
     res.writeHead(200, {
       "Content-Type": "text/event-stream",
@@ -97,18 +92,34 @@ function handleHttpRequest(req, res) {
     });
     res.write("\n");
 
-    let counter = 1;
-    const intervalId = setInterval(() => {
-      res.write(`data: ${counter}\n\n`);
-      counter++;
-    }, 1000);
-
-    sseClients.push({ res, intervalId });
+    sseClients.push({ res });
 
     req.on("close", () => {
-      clearInterval(intervalId);
       sseClients = sseClients.filter((client) => client.res !== res);
       console.log("SSE client disconnected");
+    });
+  } else if (req.method === "POST" && req.url === "/api/speak") {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    let body = "";
+    req.on("data", (chunk) => {
+      body += chunk.toString();
+    });
+    req.on("end", async () => {
+      try {
+        const { text, voice } = JSON.parse(body);
+        if (!text) {
+          res.writeHead(400);
+          res.end(JSON.stringify({ error: "Missing text field" }));
+          return;
+        }
+        await synthesizeAndStreamSpeech(text, voice);
+        res.writeHead(200);
+        res.end(JSON.stringify({ success: true, text }));
+      } catch (error) {
+        console.error("❌ Error processing /api/speak:", error.message);
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: error.message }));
+      }
     });
   } else {
     res.writeHead(404);
