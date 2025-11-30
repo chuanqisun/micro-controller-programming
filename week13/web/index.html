@@ -21,9 +21,26 @@
       <p>LED Number: <span id="ledNumber">---</span></p>
     </div>
 
-    <div class="log" id="log"></div>
-
     <h2>Switchboard</h2>
+
+    <button id="connectBtnSw">Connect</button>
+    <button id="disconnectBtnSw" disabled>Disconnect</button>
+
+    <div id="ledControls" style="margin-top: 1em">
+      <button id="led0" disabled>Blink LED 0</button>
+      <button id="led1" disabled>Blink LED 1</button>
+      <button id="led2" disabled>Blink LED 2</button>
+      <button id="led3" disabled>Blink LED 3</button>
+      <button id="led4" disabled>Blink LED 4</button>
+      <button id="led5" disabled>Blink LED 5</button>
+      <button id="led6" disabled>Blink LED 6</button>
+    </div>
+
+    <div style="margin-top: 1em">
+      <button id="offAll" disabled>Turn Off All</button>
+    </div>
+
+    <div class="log" id="log"></div>
 
     <script type="module" src="/src/main.ts"></script>
   </body>

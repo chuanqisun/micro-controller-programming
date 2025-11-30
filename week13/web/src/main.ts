@@ -21,10 +21,20 @@ const rawProbeSpan = document.getElementById("rawProbe") as HTMLSpanElement;
 const debouncedProbeSpan = document.getElementById("debouncedProbe") as HTMLSpanElement;
 const ledNumberSpan = document.getElementById("ledNumber") as HTMLSpanElement;
 
+// Switchboard UI elements
+const connectBtnSw = document.getElementById("connectBtnSw") as HTMLButtonElement;
+const disconnectBtnSw = document.getElementById("disconnectBtnSw") as HTMLButtonElement;
+const offAllBtn = document.getElementById("offAll") as HTMLButtonElement;
+
 let device: any = null;
 let charTx: any = null;
 let charRx: any = null;
 let probeSubject: Subject<string> | null = null;
+
+// Switchboard BLE variables
+let deviceSw: any = null;
+let charTxSw: any = null;
+let charRxSw: any = null;
 
 function log(msg: string) {
   const timestamp = new Date().toISOString().substring(11, 23);
@@ -182,6 +192,103 @@ disconnectBtn.addEventListener("click", () => {
 
 resetBtn.addEventListener("click", () => {
   sendMessage("reset:");
+});
+
+// Switchboard helper functions
+function sendMessageSw(message: string) {
+  if (!charTxSw) {
+    log("ERROR: Switchboard not connected");
+    return;
+  }
+  const encoder = new TextEncoder();
+  charTxSw.writeValue(encoder.encode(message));
+  log(`Switchboard TX: ${message}`);
+}
+
+function enableLedButtons() {
+  for (let i = 0; i < 7; i++) {
+    (document.getElementById(`led${i}`) as HTMLButtonElement).disabled = false;
+  }
+  offAllBtn.disabled = false;
+}
+
+function disableLedButtons() {
+  for (let i = 0; i < 7; i++) {
+    (document.getElementById(`led${i}`) as HTMLButtonElement).disabled = true;
+  }
+  offAllBtn.disabled = true;
+}
+
+// Switchboard connect
+connectBtnSw.addEventListener("click", async () => {
+  try {
+    if (!navigator.bluetooth) {
+      throw new Error("Web Bluetooth not supported");
+    }
+
+    log("Requesting Switchboard BLE device...");
+    deviceSw = await navigator.bluetooth.requestDevice({
+      filters: [{ name: "sw" }],
+      optionalServices: [SERVICE_UUID],
+    });
+
+    log(`Connecting to ${deviceSw.name || "device"}...`);
+    const server = await deviceSw.gatt.connect();
+    const service = await server.getPrimaryService(SERVICE_UUID);
+
+    charRxSw = await service.getCharacteristic(TX_CHAR_UUID);
+    charTxSw = await service.getCharacteristic(RX_CHAR_UUID);
+
+    await charRxSw.startNotifications();
+    charRxSw.addEventListener("characteristicvaluechanged", (e: any) => {
+      const text = new TextDecoder().decode(e.target.value.buffer);
+      log(`Switchboard RX: ${text}`);
+    });
+
+    deviceSw.addEventListener("gattserverdisconnected", () => {
+      log("Switchboard disconnected");
+      connectBtnSw.disabled = false;
+      disconnectBtnSw.disabled = true;
+      disableLedButtons();
+      deviceSw = null;
+      charTxSw = null;
+      charRxSw = null;
+    });
+
+    log("Switchboard connected");
+    connectBtnSw.disabled = true;
+    disconnectBtnSw.disabled = false;
+    enableLedButtons();
+  } catch (error: any) {
+    log(`ERROR: ${error.message}`);
+    console.error(error);
+  }
+});
+
+// Switchboard disconnect
+disconnectBtnSw.addEventListener("click", () => {
+  if (deviceSw && deviceSw.gatt.connected) {
+    deviceSw.gatt.disconnect();
+    log("Switchboard disconnected by user");
+    connectBtnSw.disabled = false;
+    disconnectBtnSw.disabled = true;
+    disableLedButtons();
+    deviceSw = null;
+    charTxSw = null;
+    charRxSw = null;
+  }
+});
+
+// LED blink buttons
+for (let i = 0; i < 7; i++) {
+  (document.getElementById(`led${i}`) as HTMLButtonElement).addEventListener("click", () => {
+    sendMessageSw(`blink:${i}`);
+  });
+}
+
+// Turn off all LEDs
+offAllBtn.addEventListener("click", () => {
+  sendMessageSw("off:all");
 });
 
 // Fetch server IP on page load
