@@ -54,6 +54,12 @@ function handleRxMessage(message: string) {
   if (message.startsWith("operator:")) {
     const address = message.substring(9);
     operatorAddressSpan.textContent = address;
+    // Send operator address to server
+    fetch(`http://localhost:3000/api/locate-operator?address=${encodeURIComponent(address)}`, {
+      method: "POST",
+    }).catch((error) => {
+      console.error("Failed to POST locate-operator:", error);
+    });
   }
   log(`RX: ${message}`);
 }

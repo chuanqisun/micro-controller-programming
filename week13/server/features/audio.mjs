@@ -1,6 +1,6 @@
 import { spawn } from "child_process";
 import dgram from "dgram";
-import { CHANNELS, ESP32_UDP_RX_PORT, PACKET_SIZE, SAMPLE_RATE } from "../config.mjs";
+import { CHANNELS, PACKET_SIZE, SAMPLE_RATE } from "../config.mjs";
 
 // Track active streaming operations
 let activeStreamingCancelled = false;
@@ -59,8 +59,8 @@ export async function playAudioThroughSpeakers(wavBuffer) {
   });
 }
 
-export async function streamAudioToUDP(pcmBuffer, socket, targetIp) {
-  if (!targetIp) {
+export async function streamAudioToUDP(pcmBuffer, socket, targetAddress) {
+  if (!targetAddress) {
     console.warn("⚠️  No target IP provided for UDP streaming");
     return;
   }
@@ -68,7 +68,7 @@ export async function streamAudioToUDP(pcmBuffer, socket, targetIp) {
   // Reset cancellation flag at start of new stream
   activeStreamingCancelled = false;
 
-  console.log(`📡 Streaming audio to ESP32 at ${targetIp}:${ESP32_UDP_RX_PORT}...`);
+  console.log(`📡 Streaming audio to ESP32 at ${targetAddress}...`);
 
   const totalPackets = Math.ceil(pcmBuffer.length / PACKET_SIZE);
 
@@ -83,7 +83,8 @@ export async function streamAudioToUDP(pcmBuffer, socket, targetIp) {
     const end = Math.min(start + PACKET_SIZE, pcmBuffer.length);
     const packet = pcmBuffer.slice(start, end);
 
-    await sendAudioPacketToESP32(packet, socket, targetIp);
+    const [ip, port] = targetAddress.split(":");
+    await sendAudioPacketToESP32(packet, socket, ip, port);
 
     const delayMs = (PACKET_SIZE / 2 / SAMPLE_RATE) * 1000;
     await sleep(delayMs);
@@ -108,12 +109,13 @@ export function cancelPlayback() {
 /**
  * @param {Buffer} buffer
  * @param {dgram.Socket} socket
- * @param {string} targetIp - Target IP address to send the packet to
+ * @param {string} ip - Target IP address to send the packet to
+ * @param {string} port - Target port to send the packet to
  * @returns {Promise}
  */
-function sendAudioPacketToESP32(buffer, socket, targetIp) {
+function sendAudioPacketToESP32(buffer, socket, ip, port) {
   return new Promise((resolve, reject) => {
-    socket.send(buffer, ESP32_UDP_RX_PORT, targetIp, (err) => {
+    socket.send(buffer, port, ip, (err) => {
       if (err) {
         console.error("❌ Error sending UDP packet:", err.message);
         reject(err);

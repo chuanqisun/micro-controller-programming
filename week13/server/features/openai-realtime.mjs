@@ -1,6 +1,7 @@
 import { WebSocket } from "ws";
 import { convertWavToPCM16 } from "./audio.mjs";
 import { logStatisticsIfIntervalElapsed, updateStatistics } from "./diagnostics.mjs";
+import { getLastSenderIp } from "./ip-discovery.mjs";
 
 let realtimeWs = null;
 let sessionReady = false;
@@ -39,7 +40,7 @@ export function setAudioStreamCallbacks(playAudioFn, streamAudioFn) {
       // Response processing complete
     },
     onAudioStream: async (wavBuffer, pcmBuffer) => {
-      await Promise.all([playAudioFn(wavBuffer), streamAudioFn(pcmBuffer, lastSenderIp)]);
+      await Promise.all([playAudioFn(wavBuffer), streamAudioFn(pcmBuffer, getLastSenderIp())]);
     },
   });
 }

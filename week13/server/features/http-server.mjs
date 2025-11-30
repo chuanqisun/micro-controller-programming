@@ -52,7 +52,19 @@ function handleHttpRequest(req, res) {
     cancelPlayback();
     res.writeHead(200);
     res.end(JSON.stringify({ success: true, message: "Voice generation stopped" }));
-  } else if (req.method === "POST" && req.url.startsWith("/api/operator-address")) {
+  } else if (req.method === "POST" && req.url.startsWith("/api/locate-operator")) {
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const address = url.searchParams.get("address");
+    if (!address) {
+      res.writeHead(400);
+      res.end(JSON.stringify({ error: "Missing address parameter" }));
+      return;
+    }
+    setLastSenderIp(address);
+    console.log(`📍 Operator located: ${address}`);
+    res.writeHead(200);
+    res.end(JSON.stringify({ success: true, address }));
+  } else if (req.method === "POST" && req.url.startsWith("/api/pair-operator")) {
     const url = new URL(req.url, `http://${req.headers.host}`);
     const address = url.searchParams.get("address");
     if (!address) {
