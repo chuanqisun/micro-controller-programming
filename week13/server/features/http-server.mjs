@@ -32,7 +32,7 @@ function handleHttpRequest(req, res) {
 
   if (req.method === "GET" && req.url === "/api/origin") {
     const localIp = getLocalNetworkIp();
-    const host = `http://${localIp}:${LAPTOP_UDP_RX_PORT}`;
+    const host = `${localIp}:${LAPTOP_UDP_RX_PORT}`;
     res.writeHead(200);
     res.end(JSON.stringify({ host }));
   } else if (req.method === "POST" && req.url.startsWith("/api/probe")) {

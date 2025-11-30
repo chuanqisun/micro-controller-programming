@@ -15,9 +15,8 @@ const connectBtn = document.getElementById("connectBtn") as HTMLButtonElement;
 const disconnectBtn = document.getElementById("disconnectBtn") as HTMLButtonElement;
 const resetBtn = document.getElementById("reset") as HTMLButtonElement;
 const logDiv = document.getElementById("log") as HTMLDivElement;
-const ipInput = document.getElementById("ipInput") as HTMLInputElement;
-const fetchButton = document.getElementById("fetchButton") as HTMLButtonElement;
 const pushButton = document.getElementById("pushButton") as HTMLButtonElement;
+const serverAddressSpan = document.getElementById("serverAddress") as HTMLSpanElement;
 const operatorAddressSpan = document.getElementById("operatorAddress") as HTMLSpanElement;
 const rawProbeSpan = document.getElementById("rawProbe") as HTMLSpanElement;
 const debouncedProbeSpan = document.getElementById("debouncedProbe") as HTMLSpanElement;
@@ -155,21 +154,10 @@ disconnectBtn.addEventListener("click", () => {
   }
 });
 
-fetchButton.addEventListener("click", async () => {
-  try {
-    const response = await fetch("http://localhost:3000/api/origin");
-    const data = await response.json();
-    ipInput.value = data.host;
-  } catch (error) {
-    console.error("Failed to fetch origin:", error);
-    ipInput.value = "Error fetching origin";
-  }
-});
-
 pushButton.addEventListener("click", () => {
-  const address = ipInput.value.trim();
-  if (!address) {
-    log("ERROR: No address to push");
+  const address = serverAddressSpan.textContent;
+  if (!address || address === "---") {
+    log("ERROR: No server IP available");
     return;
   }
 
@@ -186,3 +174,17 @@ pushButton.addEventListener("click", () => {
 resetBtn.addEventListener("click", () => {
   sendMessage("reset:");
 });
+
+// Fetch server IP on page load
+async function initializePage() {
+  try {
+    const response = await fetch("http://localhost:3000/api/origin");
+    const data = await response.json();
+    serverAddressSpan.textContent = data.host;
+  } catch (error) {
+    console.error("Failed to fetch origin on page load:", error);
+    serverAddressSpan.textContent = "Error";
+  }
+}
+
+document.addEventListener("DOMContentLoaded", initializePage);
