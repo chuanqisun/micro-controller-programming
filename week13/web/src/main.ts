@@ -18,6 +18,7 @@ const logDiv = document.getElementById("log") as HTMLDivElement;
 const ipInput = document.getElementById("ipInput") as HTMLInputElement;
 const fetchButton = document.getElementById("fetchButton") as HTMLButtonElement;
 const pushButton = document.getElementById("pushButton") as HTMLButtonElement;
+const operatorAddressSpan = document.getElementById("operatorAddress") as HTMLSpanElement;
 const rawProbeSpan = document.getElementById("rawProbe") as HTMLSpanElement;
 const debouncedProbeSpan = document.getElementById("debouncedProbe") as HTMLSpanElement;
 const ledNumberSpan = document.getElementById("ledNumber") as HTMLSpanElement;
@@ -51,6 +52,10 @@ function handleRxMessage(message: string) {
     if (probeSubject) {
       probeSubject.next(probeValue);
     }
+  }
+  if (message.startsWith("operator:")) {
+    const address = message.substring(9);
+    operatorAddressSpan.textContent = address;
   }
   log(`RX: ${message}`);
 }
@@ -126,6 +131,8 @@ connectBtn.addEventListener("click", async () => {
     log("Operator connected");
     connectBtn.disabled = true;
     disconnectBtn.disabled = false;
+
+    sendMessage("find:");
   } catch (error: any) {
     log(`ERROR: ${error.message}`);
     console.error(error);

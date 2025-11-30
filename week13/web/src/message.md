@@ -6,6 +6,26 @@
 
 ## Messages
 
+### Find device
+
+Sender: Laptop
+Receiver: Operator
+Example:
+
+```
+find:
+```
+
+### Announce origin
+
+Sender: ESP32
+Receiver: Laptop
+Example:
+
+```
+operator:192.168.1.101:8888
+```
+
 ### Set origin
 
 Sender: Laptop

@@ -6,6 +6,7 @@
 
 // Forward declarations for BLE message handler
 void handleBleMessage(String message);
+void sendAnnouncement();
 
 // =============================================================================
 // BLE Server Callbacks
@@ -90,4 +91,23 @@ void handleBleConnectionStateChange() {
   if (deviceConnected && !oldDeviceConnected) {
     oldDeviceConnected = deviceConnected;
   }
+}
+
+// =============================================================================
+// Announce UDP Address - Sends ESP32's IP and port to paired device
+// =============================================================================
+
+void sendAnnouncement() {
+  if (!pTxCharacteristic || WiFi.status() != WL_CONNECTED) {
+    Serial.println("Cannot send announcement: WiFi not connected");
+    return;
+  }
+  
+  // Format: operator:192.168.1.101:8889
+  String announcement = "operator:" + WiFi.localIP().toString() + ":" + String(UDP_RECEIVE_PORT);
+  pTxCharacteristic->setValue(announcement.c_str());
+  pTxCharacteristic->notify();
+  
+  Serial.print("Sent announcement: ");
+  Serial.println(announcement);
 }

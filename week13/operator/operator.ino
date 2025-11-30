@@ -73,6 +73,7 @@ void connectToWiFi();
 void handleBleConnectionStateChange();
 String readProbeValue();
 void sendProbeToBLE(String probeValue);
+void sendAnnouncement();
 void processAudioStreams(bool isTransmitting);
 
 // =============================================================================
@@ -85,6 +86,9 @@ void handleBleMessage(String message) {
   }
   if (message.startsWith("reset:")) {
     handleReset();
+  }
+  if (message.startsWith("find:")) {
+    sendAnnouncement();
   }
 }
 
