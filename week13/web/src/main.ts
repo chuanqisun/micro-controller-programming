@@ -42,6 +42,13 @@ function sendMessage(message: string) {
   log(`TX: ${message}`);
 }
 
+function clearUIFields() {
+  operatorAddressSpan.textContent = "---";
+  rawProbeSpan.textContent = "---";
+  debouncedProbeSpan.textContent = "---";
+  ledNumberSpan.textContent = "---";
+}
+
 function handleRxMessage(message: string) {
   // Handle incoming messages from Operator device
   if (message.startsWith("probe:")) {
@@ -126,6 +133,7 @@ connectBtn.addEventListener("click", async () => {
       device = null;
       charTx = null;
       charRx = null;
+      clearUIFields();
       if (probeSubject) {
         probeSubject.complete();
         probeSubject = null;
@@ -164,6 +172,7 @@ disconnectBtn.addEventListener("click", () => {
     device = null;
     charTx = null;
     charRx = null;
+    clearUIFields();
     if (probeSubject) {
       probeSubject.complete();
       probeSubject = null;
