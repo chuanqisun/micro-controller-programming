@@ -6,6 +6,7 @@ import { requestDirectResponse } from "./openai-realtime.mjs";
 import { agents } from "./simulation.mjs";
 
 let httpServer;
+let sseClients = [];
 
 export function createHttpServer() {
   httpServer = http.createServer(handleHttpRequest);
@@ -18,11 +19,22 @@ export function createHttpServer() {
 
 export function closeHttpServer() {
   return new Promise((resolve) => {
+    sseClients.forEach((client) => {
+      clearInterval(client.intervalId);
+      client.res.end();
+    });
+    sseClients = [];
     if (httpServer) {
       httpServer.close(resolve);
     } else {
       resolve();
     }
+  });
+}
+
+export function emitServerEvent(message) {
+  sseClients.forEach((client) => {
+    client.res.write(`data: ${message}\n\n`);
   });
 }
 
@@ -76,6 +88,28 @@ function handleHttpRequest(req, res) {
     console.log(`📍 Operator paired: ${address}`);
     res.writeHead(200);
     res.end(JSON.stringify({ success: true, address }));
+  } else if (req.method === "GET" && req.url === "/api/events") {
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "Access-Control-Allow-Origin": "*",
+    });
+    res.write("\n");
+
+    let counter = 1;
+    const intervalId = setInterval(() => {
+      res.write(`data: ${counter}\n\n`);
+      counter++;
+    }, 1000);
+
+    sseClients.push({ res, intervalId });
+
+    req.on("close", () => {
+      clearInterval(intervalId);
+      sseClients = sseClients.filter((client) => client.res !== res);
+      console.log("SSE client disconnected");
+    });
   } else {
     res.writeHead(404);
     res.end(JSON.stringify({ error: "Not found" }));

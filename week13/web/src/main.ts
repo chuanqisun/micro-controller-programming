@@ -1,6 +1,15 @@
 import { Subject, debounceTime, distinctUntilChanged } from "rxjs";
 import "./style.css";
 
+// SSE connection
+const eventSource = new EventSource("http://localhost:3000/api/events");
+eventSource.onmessage = (event) => {
+  console.log(event.data);
+};
+eventSource.onerror = (error) => {
+  console.error("SSE error:", error);
+};
+
 declare global {
   interface Navigator {
     bluetooth: any;
