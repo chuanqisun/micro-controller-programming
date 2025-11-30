@@ -97,7 +97,7 @@ void handleBleConnectionStateChange() {
 // Announce UDP Address - Sends ESP32's IP and port to paired device
 // =============================================================================
 
-void sendAnnouncement() {
+void handleAnnounceSelfRxAddress(String message) {
   if (!pTxCharacteristic || WiFi.status() != WL_CONNECTED) {
     Serial.println("Cannot send announcement: WiFi not connected");
     return;

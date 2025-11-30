@@ -15,7 +15,6 @@ const connectBtn = document.getElementById("connectBtn") as HTMLButtonElement;
 const disconnectBtn = document.getElementById("disconnectBtn") as HTMLButtonElement;
 const resetBtn = document.getElementById("reset") as HTMLButtonElement;
 const logDiv = document.getElementById("log") as HTMLDivElement;
-const pushButton = document.getElementById("pushButton") as HTMLButtonElement;
 const serverAddressSpan = document.getElementById("serverAddress") as HTMLSpanElement;
 const operatorAddressSpan = document.getElementById("operatorAddress") as HTMLSpanElement;
 const rawProbeSpan = document.getElementById("rawProbe") as HTMLSpanElement;
@@ -131,7 +130,19 @@ connectBtn.addEventListener("click", async () => {
     connectBtn.disabled = true;
     disconnectBtn.disabled = false;
 
-    sendMessage("find:");
+    // Send server address in format: server:<ip>:<udp_rx_port>
+    const serverAddress = serverAddressSpan.textContent;
+    if (serverAddress && serverAddress !== "---" && serverAddress !== "Error") {
+      try {
+        const url = new URL(`http://${serverAddress}`);
+        const message = `server:${url.hostname}:${url.port}`;
+        sendMessage(message);
+      } catch (error) {
+        log("ERROR: Invalid server address format");
+      }
+    } else {
+      log("WARNING: Server address not available yet");
+    }
   } catch (error: any) {
     log(`ERROR: ${error.message}`);
     console.error(error);
@@ -151,23 +162,6 @@ disconnectBtn.addEventListener("click", () => {
       probeSubject.complete();
       probeSubject = null;
     }
-  }
-});
-
-pushButton.addEventListener("click", () => {
-  const address = serverAddressSpan.textContent;
-  if (!address || address === "---") {
-    log("ERROR: No server IP available");
-    return;
-  }
-
-  // Parse the URL to extract IP and port
-  try {
-    const url = new URL(address);
-    const message = `setorigin:${url.hostname}:${url.port}`;
-    sendMessage(message);
-  } catch (error) {
-    log("ERROR: Invalid URL format");
   }
 });
 

@@ -65,7 +65,7 @@ bool lastTransmitState = false;
 
 // Forward declarations
 void handleBleMessage(String message);
-void handleSetOriginMessage(String message);
+void handleServerRxAddress(String message);
 void initializeUdp();
 void cleanupUdp();
 void initializeBleUart();
@@ -73,7 +73,7 @@ void connectToWiFi();
 void handleBleConnectionStateChange();
 String readProbeValue();
 void sendProbeToBLE(String probeValue);
-void sendAnnouncement();
+void handleAnnounceSelfRxAddress(String message);
 void processAudioStreams(bool isTransmitting);
 
 // =============================================================================
@@ -81,21 +81,20 @@ void processAudioStreams(bool isTransmitting);
 // =============================================================================
 
 void handleBleMessage(String message) {
-  if (message.startsWith("setorigin:")) {
-    handleSetOriginMessage(message);
-  }
   if (message.startsWith("reset:")) {
     handleReset();
   }
-  if (message.startsWith("find:")) {
-    sendAnnouncement();
+  if (message.startsWith("server:")) {
+    handleServerRxAddress(message);
+    handleAnnounceSelfRxAddress(message);
   }
 }
 
-void handleSetOriginMessage(String message) {
+void handleServerRxAddress(String message) {
   // Parse example:
-  // setorigin:192.168.1.100:8888
-  String params = message.substring(10);
+  // server:192.168.1.100:8888
+
+  String params = message.substring(7);
   int colonPos = params.indexOf(':');
   
   if (colonPos > 0) {
