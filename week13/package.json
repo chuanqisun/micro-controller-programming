@@ -16,7 +16,8 @@
     "upload:sw": "arduino-cli upload -p /dev/ttyACM0 -b esp32:esp32:XIAO_ESP32C3 ./switchboard",
     "monitor": "arduino-cli monitor -p /dev/ttyACM0 -c baudrate=115200",
     "monitor:b": "arduino-cli monitor -p /dev/ttyACM1 -c baudrate=115200",
-    "serve": "node  --env-file .env server/server.mjs"
+    "serve": "node  --env-file .env server/server.mjs",
+    "dev:server": "tsx watch --env-file .env server-v2/main.ts"
   },
   "keywords": [],
   "author": "",
@@ -28,8 +29,10 @@
     "vite": "^7.2.4"
   },
   "dependencies": {
+    "node-ble": "^1.13.0",
     "openai": "^6.7.0",
     "rxjs": "^7.8.2",
+    "tsx": "^4.21.0",
     "ws": "^8.18.3"
   }
 }
