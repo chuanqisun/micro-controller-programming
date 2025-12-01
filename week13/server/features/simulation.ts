@@ -42,12 +42,9 @@ export async function createVoiceAgent() {
 
   const session = new RealtimeSession(agent, {
     model: "gpt-realtime-mini",
-    transport: "websocket",
   });
 
   await session.connect({ apiKey });
-  session.mute(true);
-
   console.log(`[AI] connected`);
 
   return session;
