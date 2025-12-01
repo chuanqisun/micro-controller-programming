@@ -1,7 +1,7 @@
 import { tap } from "rxjs";
 import { appendDiagnosticsError, updateDiagnosticsState } from "./features/diagnostics";
 import { initOperatorUI, updateOperatorUI } from "./features/operator";
-import { initSimulationUI } from "./features/simulation";
+import { initSimulationUI, updateSimulationUI } from "./features/simulation";
 import { createSSEObservable } from "./features/sse";
 import { state$, stateChange$ } from "./features/state";
 import { initSwitchboardUI, updateSwitchboardUI } from "./features/switchboard";
@@ -13,7 +13,7 @@ initSimulationUI();
 
 state$.pipe(tap(updateDiagnosticsState)).subscribe();
 
-stateChange$.pipe(tap(updateSwitchboardUI), tap(updateOperatorUI)).subscribe();
+stateChange$.pipe(tap(updateSwitchboardUI), tap(updateOperatorUI), tap(updateSimulationUI)).subscribe();
 
 export const sseEvents$ = createSSEObservable("http://localhost:3000/api/events");
 

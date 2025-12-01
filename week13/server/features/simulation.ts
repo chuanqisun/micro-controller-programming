@@ -1,14 +1,22 @@
 import { RealtimeAgent, RealtimeSession } from "@openai/agents/realtime";
 import type { Handler } from "./http";
+import { updateState } from "./state";
+import { withTimeout } from "./timeout";
 
 let currentSession: RealtimeSession | null = null;
 
-export function handleStartSession(): Handler {
+export function handleConnectSession(): Handler {
   return async (req, res) => {
-    if (req.method !== "POST" || req.url !== "/api/ai/start") return false;
+    if (req.method !== "POST" || req.url !== "/api/ai/connect") return false;
 
-    currentSession?.close();
-    currentSession = await createVoiceAgent();
+    updateState((state) => ({ ...state, aiConnection: "busy" }));
+    try {
+      currentSession?.close();
+      currentSession = await withTimeout(createVoiceAgent(), 5000);
+      updateState((state) => ({ ...state, aiConnection: "connected" }));
+    } catch (error) {
+      updateState((state) => ({ ...state, aiConnection: "disconnected" }));
+    }
 
     res.writeHead(200);
     res.end();
@@ -17,12 +25,20 @@ export function handleStartSession(): Handler {
   };
 }
 
-export function handleStopSession(): Handler {
+export function handleDisconnectSession(): Handler {
   return async (req, res) => {
-    if (req.method !== "POST" || req.url !== "/api/ai/stop") return false;
+    if (req.method !== "POST" || req.url !== "/api/ai/disconnect") return false;
 
-    currentSession?.close();
-    currentSession = null;
+    updateState((state) => ({ ...state, aiConnection: "busy" }));
+
+    try {
+      currentSession?.close();
+      currentSession = null;
+    } catch (error) {
+      console.error("Error stopping AI session:", error);
+    } finally {
+      updateState((state) => ({ ...state, aiConnection: "disconnected" }));
+    }
 
     res.writeHead(200);
     res.end();

@@ -4,7 +4,6 @@ const connectBtnOp = document.getElementById("connectBtnOp") as HTMLButtonElemen
 
 export function initOperatorUI() {
   connectBtnOp.addEventListener("click", async () => {
-    connectBtnOp.disabled = true;
     if (connectBtnOp.textContent === "Connect") {
       await fetch("http://localhost:3000/api/op/connect", { method: "POST" });
       await fetch("http://localhost:3000/api/op/request-address", { method: "POST" });
