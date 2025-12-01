@@ -7,7 +7,7 @@ export function initDiagnosticsUI() {
 }
 
 export function updateDiagnosticsState(state: AppState) {
-  rawStateDisplay.textContent = JSON.stringify(state);
+  rawStateDisplay.textContent = JSON.stringify(state, null, 2);
 }
 
 export function appendDiagnosticsError(error: unknown) {
