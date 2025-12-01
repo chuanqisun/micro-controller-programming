@@ -52,8 +52,10 @@ stateChange$
   .pipe(
     tap((state) => {
       if (state.previous?.swConnected !== state.current.swConnected) {
-        connectBtnSw.disabled = false;
         connectBtnSw.textContent = state.current.swConnected ? "Disconnect" : "Connect";
+      }
+      if (state.previous?.swConnecting !== state.current.swConnecting) {
+        connectBtnSw.disabled = state.current.swConnecting;
       }
     }),
   )

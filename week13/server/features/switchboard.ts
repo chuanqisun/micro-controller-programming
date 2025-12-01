@@ -23,8 +23,17 @@ export function handleConnectSwitchboard(switchboard: BLEDevice): Handler {
   return async (req, res) => {
     if (req.method !== "POST" || req.url !== "/api/sw/connect") return false;
 
-    await switchboard.connect();
-    updateState((state) => ({ ...state, swConnected: true }));
+    updateState((state) => ({ ...state, swConnecting: true }));
+    try {
+      await Promise.race([
+        switchboard.connect(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Connection timeout")), 5000)),
+      ]);
+      updateState((state) => ({ ...state, swConnected: true }));
+    } catch (error) {
+      updateState((state) => ({ ...state, swConnected: false }));
+    }
+    updateState((state) => ({ ...state, swConnecting: false }));
 
     return true;
   };

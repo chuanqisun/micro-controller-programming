@@ -2,12 +2,16 @@ import { BehaviorSubject } from "rxjs";
 
 export interface AppState {
   opConnected: boolean;
+  opConnecting: boolean;
   swConnected: boolean;
+  swConnecting: boolean;
 }
 
 export const appState$ = new BehaviorSubject<AppState>({
   opConnected: false,
   swConnected: false,
+  opConnecting: false,
+  swConnecting: false,
 });
 
 export function updateState(updateFn: (state: AppState) => AppState) {
