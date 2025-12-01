@@ -197,12 +197,7 @@ async function handleResponseComplete(event) {
 
   if (responseText) {
     console.log(`💬 Final response: "${responseText}"`);
-
     emitServerEvent(JSON.stringify({ speak: responseText }));
-    // TODO: if user is plugged into the target AI, speak immediatedly
-    if (!!true === true) {
-      synthesizeAndStreamSpeech(responseText);
-    }
   } else {
     console.log("⚠️  No text response received");
   }
