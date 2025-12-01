@@ -11,12 +11,12 @@ const speakTextarea = document.getElementById("speakTextarea") as HTMLTextAreaEl
 const speakBtn = document.getElementById("speakBtn") as HTMLButtonElement;
 
 connectBtnSw.addEventListener("click", () => {
-  fetch("http://localhost:3000/api/connect-sw", { method: "POST" });
+  fetch("http://localhost:3000/api/sw/connect", { method: "POST" });
 });
 
 for (let i = 0; i < 7; i++) {
   (document.getElementById(`led${i}`) as HTMLButtonElement).addEventListener("click", () => {
-    fetch(`http://localhost:3000/api/blink?id=${i}`, { method: "POST" });
+    fetch(`http://localhost:3000/api/sw/blink?id=${i}`, { method: "POST" });
   });
 }
 

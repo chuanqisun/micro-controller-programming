@@ -1,5 +1,6 @@
 import type { BLEDevice } from "./ble";
 import type { Handler } from "./http";
+import { updateState } from "./state";
 
 /**
  * /api/blink?id=num
@@ -8,7 +9,7 @@ export function handleBlinkLED(switchboard: BLEDevice): Handler {
   return (req, res) => {
     const url = new URL(req.url!, `http://${req.headers.host}`);
 
-    if (req.method !== "POST" || url.pathname !== "/api/blink") return false;
+    if (req.method !== "POST" || url.pathname !== "/api/sw/blink") return false;
     const id = url.searchParams.get("id");
     switchboard.send(`blink:${id}`);
     res.writeHead(200);
@@ -20,8 +21,11 @@ export function handleBlinkLED(switchboard: BLEDevice): Handler {
 
 export function handleConnectSwitchboard(switchboard: BLEDevice): Handler {
   return async (req, res) => {
-    if (req.method !== "POST" || req.url !== "/api/connect-sw") return false;
+    if (req.method !== "POST" || req.url !== "/api/sw/connect") return false;
+
     await switchboard.connect();
+    updateState((state) => ({ ...state, switchboardConnected: true }));
+
     return true;
   };
 }
