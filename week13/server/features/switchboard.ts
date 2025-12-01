@@ -1,6 +1,7 @@
 import type { BLEDevice } from "./ble";
 import type { Handler } from "./http";
 import { updateState } from "./state";
+import { withTimeout } from "./timeout";
 
 /**
  * /api/blink?id=num
@@ -25,15 +26,15 @@ export function handleConnectSwitchboard(switchboard: BLEDevice): Handler {
 
     updateState((state) => ({ ...state, swConnecting: true }));
     try {
-      await Promise.race([
-        switchboard.connect(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Connection timeout")), 5000)),
-      ]);
+      await withTimeout(switchboard.connect(), 5000);
       updateState((state) => ({ ...state, swConnected: true }));
     } catch (error) {
       updateState((state) => ({ ...state, swConnected: false }));
     }
     updateState((state) => ({ ...state, swConnecting: false }));
+
+    res.writeHead(200);
+    res.end();
 
     return true;
   };
@@ -45,6 +46,9 @@ export function handleDisconnectSwitchboard(switchboard: BLEDevice): Handler {
 
     await switchboard.disconnect();
     updateState((state) => ({ ...state, swConnected: false }));
+
+    res.writeHead(200);
+    res.end();
 
     return true;
   };

@@ -3,6 +3,7 @@ import { LAPTOP_UDP_RX_PORT } from "./config";
 import { BLEDevice, opMac, swMac } from "./features/ble";
 import { createHttpServer } from "./features/http";
 import { getServerAddress } from "./features/net";
+import { handleConnectOperator, handleDisconnectOperator } from "./features/operator";
 import { broadcast, handleSSE, newSseClient$ } from "./features/sse";
 import { appState$ } from "./features/state";
 import { handleBlinkLED, handleConnectSwitchboard, handleDisconnectSwitchboard } from "./features/switchboard";
@@ -16,6 +17,8 @@ async function main() {
     handleBlinkLED(switchboard),
     handleConnectSwitchboard(switchboard),
     handleDisconnectSwitchboard(switchboard),
+    handleConnectOperator(operator),
+    handleDisconnectOperator(operator),
   ]);
 
   appState$
