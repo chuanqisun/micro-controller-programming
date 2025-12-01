@@ -11,7 +11,7 @@ const probeRaw$ = new Subject<string>();
 const operatorAddressInternal$ = new Subject<string>();
 export const operatorAddress$ = operatorAddressInternal$.asObservable();
 
-export const probeNum$ = probeRaw$.pipe(
+export const operatorProbeNum$ = probeRaw$.pipe(
   distinctUntilChanged(),
   debounceTime(500),
   map((probeValue) => parseInt(probeValue, 2)),

@@ -10,7 +10,7 @@ import {
   handleProbeMessage,
   handleRequestOperatorAddress,
   operatorAddress$,
-  probeNum$,
+  operatorProbeNum$,
 } from "./features/operator";
 import { broadcast, handleSSE, newSseClient$ } from "./features/sse";
 import { appState$, updateState } from "./features/state";
@@ -40,7 +40,7 @@ async function main() {
   newSseClient$.pipe(tap(() => broadcast({ state: appState$.value }))).subscribe();
 
   operator.message$.pipe(tap(handleProbeMessage()), tap(handleOpAddress())).subscribe();
-  probeNum$.pipe(tap((num) => updateState((state) => ({ ...state, probeNum: num })))).subscribe();
+  operatorProbeNum$.pipe(tap((num) => updateState((state) => ({ ...state, probeNum: num })))).subscribe();
   operatorAddress$.pipe(tap((address) => updateState((state) => ({ ...state, opAddress: address })))).subscribe();
 
   await operator.send(`server:${await getServerAddress()}:${LAPTOP_UDP_RX_PORT}`);
