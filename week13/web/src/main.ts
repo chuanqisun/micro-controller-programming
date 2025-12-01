@@ -1,6 +1,7 @@
 import { tap } from "rxjs";
 import { appendDiagnosticsError, updateDiagnosticsState } from "./features/diagnostics";
 import { initOperatorUI, updateOperatorUI } from "./features/operator";
+import { initSimulationUI } from "./features/simulation";
 import { createSSEObservable } from "./features/sse";
 import { state$, stateChange$ } from "./features/state";
 import { initSwitchboardUI, updateSwitchboardUI } from "./features/switchboard";
@@ -8,6 +9,7 @@ import "./style.css";
 
 initSwitchboardUI();
 initOperatorUI();
+initSimulationUI();
 
 state$.pipe(tap(updateDiagnosticsState)).subscribe();
 

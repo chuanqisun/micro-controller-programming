@@ -12,6 +12,7 @@ import {
   operatorAddress$,
   operatorProbeNum$,
 } from "./features/operator";
+import { handleStartSession, handleStopSession } from "./features/simulation";
 import { broadcast, handleSSE, newSseClient$ } from "./features/sse";
 import { appState$, updateState } from "./features/state";
 import { handleBlinkLED, handleConnectSwitchboard, handleDisconnectSwitchboard } from "./features/switchboard";
@@ -28,6 +29,8 @@ async function main() {
     handleConnectOperator(operator),
     handleDisconnectOperator(operator),
     handleRequestOperatorAddress(operator),
+    handleStartSession(),
+    handleStopSession(),
   ]);
 
   appState$
