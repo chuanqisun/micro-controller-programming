@@ -1,5 +1,7 @@
+import { LAPTOP_UDP_RX_PORT } from "../config";
 import type { BLEDevice } from "./ble";
 import type { Handler } from "./http";
+import { getServerAddress } from "./net";
 import { updateState } from "./state";
 import { withTimeout } from "./timeout";
 
@@ -29,6 +31,18 @@ export function handleDisconnectOperator(operator: BLEDevice): Handler {
 
     await operator.disconnect();
     updateState((state) => ({ ...state, opConnected: false }));
+
+    res.writeHead(200);
+    res.end();
+
+    return true;
+  };
+}
+
+export function handleRequestOperatorAddress(operator: BLEDevice): Handler {
+  return async (req, res) => {
+    if (req.method !== "POST" || req.url !== "/api/op/request-address") return false;
+    await operator.send(`server:${await getServerAddress()}:${LAPTOP_UDP_RX_PORT}`);
 
     res.writeHead(200);
     res.end();

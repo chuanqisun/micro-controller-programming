@@ -7,6 +7,7 @@ const rawStateDisplay = document.getElementById("rawState") as HTMLDivElement;
 
 // Switchboard UI elements
 const connectBtnSw = document.getElementById("connectBtnSw") as HTMLButtonElement;
+const connectBtnOp = document.getElementById("connectBtnOp") as HTMLButtonElement;
 const offAllBtn = document.getElementById("offAll") as HTMLButtonElement;
 
 const state$ = new Subject<AppState>();
@@ -32,6 +33,16 @@ connectBtnSw.addEventListener("click", () => {
   }
 });
 
+connectBtnOp.addEventListener("click", async () => {
+  connectBtnOp.disabled = true;
+  if (connectBtnOp.textContent === "Connect") {
+    await fetch("http://localhost:3000/api/op/connect", { method: "POST" });
+    await fetch("http://localhost:3000/api/op/request-address", { method: "POST" });
+  } else {
+    fetch("http://localhost:3000/api/op/disconnect", { method: "POST" });
+  }
+});
+
 for (let i = 0; i < 7; i++) {
   (document.getElementById(`led${i}`) as HTMLButtonElement).addEventListener("click", () => {
     fetch(`http://localhost:3000/api/sw/blink?id=${i}`, { method: "POST" });
@@ -51,12 +62,12 @@ state$
 stateChange$
   .pipe(
     tap((state) => {
-      if (state.previous?.swConnected !== state.current.swConnected) {
-        connectBtnSw.textContent = state.current.swConnected ? "Disconnect" : "Connect";
-      }
-      if (state.previous?.swConnecting !== state.current.swConnecting) {
-        connectBtnSw.disabled = state.current.swConnecting;
-      }
+      connectBtnSw.textContent = state.current.swConnected ? "Disconnect" : "Connect";
+      connectBtnSw.disabled = state.current.swConnecting;
+    }),
+    tap((state) => {
+      connectBtnOp.textContent = state.current.opConnected ? "Disconnect" : "Connect";
+      connectBtnOp.disabled = state.current.opConnecting;
     }),
   )
   .subscribe();
