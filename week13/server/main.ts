@@ -3,9 +3,15 @@ import { LAPTOP_UDP_RX_PORT } from "./config";
 import { BLEDevice, opMac, swMac } from "./features/ble";
 import { createHttpServer } from "./features/http";
 import { getServerAddress } from "./features/net";
-import { handleConnectOperator, handleDisconnectOperator, handleRequestOperatorAddress } from "./features/operator";
+import {
+  handleConnectOperator,
+  handleDisconnectOperator,
+  handleProbeMessage,
+  handleRequestOperatorAddress,
+  probeNum$,
+} from "./features/operator";
 import { broadcast, handleSSE, newSseClient$ } from "./features/sse";
-import { appState$ } from "./features/state";
+import { appState$, updateState } from "./features/state";
 import { handleBlinkLED, handleConnectSwitchboard, handleDisconnectSwitchboard } from "./features/switchboard";
 
 const operator = new BLEDevice(opMac);
@@ -31,9 +37,9 @@ async function main() {
 
   newSseClient$.pipe(tap(() => broadcast({ state: appState$.value }))).subscribe();
 
-  operator.message$.subscribe((msg) => {
-    console.log("[DEBUG] op tx:", msg);
-  });
+  operator.message$.pipe(tap(handleProbeMessage())).subscribe();
+
+  probeNum$.pipe(tap((num) => updateState((state) => ({ ...state, probeNum: num })))).subscribe();
 
   await operator.send(`server:${await getServerAddress()}:${LAPTOP_UDP_RX_PORT}`);
 }

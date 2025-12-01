@@ -3,6 +3,7 @@ import { BehaviorSubject } from "rxjs";
 export interface AppState {
   opConnected: boolean;
   opConnecting: boolean;
+  probeNum: number;
   swConnected: boolean;
   swConnecting: boolean;
 }
@@ -10,6 +11,7 @@ export interface AppState {
 export const appState$ = new BehaviorSubject<AppState>({
   opConnected: false,
   swConnected: false,
+  probeNum: 7,
   opConnecting: false,
   swConnecting: false,
 });

@@ -1,9 +1,18 @@
+import { debounceTime, distinctUntilChanged, map, Subject } from "rxjs";
 import { LAPTOP_UDP_RX_PORT } from "../config";
 import type { BLEDevice } from "./ble";
 import type { Handler } from "./http";
 import { getServerAddress } from "./net";
 import { updateState } from "./state";
 import { withTimeout } from "./timeout";
+
+const probeRaw$ = new Subject<string>();
+
+export const probeNum$ = probeRaw$.pipe(
+  distinctUntilChanged(),
+  debounceTime(500),
+  map((probeValue) => parseInt(probeValue, 2)),
+);
 
 export function handleConnectOperator(operator: BLEDevice): Handler {
   return async (req, res) => {
@@ -48,5 +57,14 @@ export function handleRequestOperatorAddress(operator: BLEDevice): Handler {
     res.end();
 
     return true;
+  };
+}
+
+export function handleProbeMessage() {
+  return (message: string) => {
+    if (message.startsWith("probe:")) {
+      const probeId = message.split(":")[1];
+      probeRaw$.next(probeId);
+    }
   };
 }
