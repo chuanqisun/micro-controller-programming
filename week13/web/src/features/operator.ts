@@ -21,6 +21,6 @@ export function initOperatorUI() {
 }
 
 export function updateOperatorUI(stateChange: StateChange) {
-  connectBtnOp.textContent = stateChange.current.opConnected ? "Disconnect" : "Connect";
-  connectBtnOp.disabled = stateChange.current.opConnecting;
+  connectBtnOp.textContent = stateChange.current.opConnection === "connected" ? "Disconnect" : "Connect";
+  connectBtnOp.disabled = stateChange.current.opConnection === "busy";
 }

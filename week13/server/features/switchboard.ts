@@ -24,14 +24,13 @@ export function handleConnectSwitchboard(switchboard: BLEDevice): Handler {
   return async (req, res) => {
     if (req.method !== "POST" || req.url !== "/api/sw/connect") return false;
 
-    updateState((state) => ({ ...state, swConnecting: true }));
+    updateState((state) => ({ ...state, swConnection: "busy" }));
     try {
       await withTimeout(switchboard.connect(), 5000);
-      updateState((state) => ({ ...state, swConnected: true }));
+      updateState((state) => ({ ...state, swConnection: "connected" }));
     } catch (error) {
-      updateState((state) => ({ ...state, swConnected: false }));
+      updateState((state) => ({ ...state, swConnection: "disconnected" }));
     }
-    updateState((state) => ({ ...state, swConnecting: false }));
 
     res.writeHead(200);
     res.end();
@@ -44,8 +43,14 @@ export function handleDisconnectSwitchboard(switchboard: BLEDevice): Handler {
   return async (req, res) => {
     if (req.method !== "POST" || req.url !== "/api/sw/disconnect") return false;
 
-    await switchboard.disconnect();
-    updateState((state) => ({ ...state, swConnected: false }));
+    updateState((state) => ({ ...state, swConnection: "busy" }));
+    try {
+      await withTimeout(switchboard.disconnect(), 5000);
+    } catch (error) {
+      console.error("Error disconnecting switchboard:", error);
+    } finally {
+      updateState((state) => ({ ...state, swConnection: "disconnected" }));
+    }
 
     res.writeHead(200);
     res.end();

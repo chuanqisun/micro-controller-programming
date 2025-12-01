@@ -1,21 +1,21 @@
 import { BehaviorSubject } from "rxjs";
 
+export type ConnectionStatus = "connected" | "busy" | "disconnected";
+
 export interface AppState {
-  opConnected: boolean;
-  opConnecting: boolean;
+  aiConnection: ConnectionStatus;
+  opConnection: ConnectionStatus;
   opAddress: string;
   probeNum: number;
-  swConnected: boolean;
-  swConnecting: boolean;
+  swConnection: ConnectionStatus;
 }
 
 export const appState$ = new BehaviorSubject<AppState>({
-  opConnected: false,
-  swConnected: false,
+  aiConnection: "disconnected",
+  opConnection: "disconnected",
+  swConnection: "disconnected",
   opAddress: "",
   probeNum: 7,
-  opConnecting: false,
-  swConnecting: false,
 });
 
 export function updateState(updateFn: (state: AppState) => AppState) {

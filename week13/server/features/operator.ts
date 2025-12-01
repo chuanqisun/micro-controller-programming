@@ -21,14 +21,13 @@ export function handleConnectOperator(operator: BLEDevice): Handler {
   return async (req, res) => {
     if (req.method !== "POST" || req.url !== "/api/op/connect") return false;
 
-    updateState((state) => ({ ...state, opConnecting: true }));
+    updateState((state) => ({ ...state, opConnection: "busy" }));
     try {
       await withTimeout(operator.connect(), 5000);
-      updateState((state) => ({ ...state, opConnected: true }));
+      updateState((state) => ({ ...state, opConnection: "connected" }));
     } catch (error) {
-      updateState((state) => ({ ...state, opConnected: false }));
+      updateState((state) => ({ ...state, opConnection: "disconnected" }));
     }
-    updateState((state) => ({ ...state, opConnecting: false }));
 
     res.writeHead(200);
     res.end();
@@ -41,8 +40,14 @@ export function handleDisconnectOperator(operator: BLEDevice): Handler {
   return async (req, res) => {
     if (req.method !== "POST" || req.url !== "/api/op/disconnect") return false;
 
-    await operator.disconnect();
-    updateState((state) => ({ ...state, opConnected: false }));
+    updateState((state) => ({ ...state, opConnection: "busy" }));
+    try {
+      await withTimeout(operator.disconnect(), 5000);
+    } catch (error) {
+      console.error("Error disconnecting operator:", error);
+    } finally {
+      updateState((state) => ({ ...state, opConnection: "disconnected" }));
+    }
 
     res.writeHead(200);
     res.end();

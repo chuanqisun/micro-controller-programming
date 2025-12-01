@@ -15,6 +15,6 @@ export function initSwitchboardUI() {
 }
 
 export function updateSwitchboardUI(stateChange: StateChange) {
-  connectBtnSw.textContent = stateChange.current.swConnected ? "Disconnect" : "Connect";
-  connectBtnSw.disabled = stateChange.current.swConnecting;
+  connectBtnSw.textContent = stateChange.current.swConnection === "connected" ? "Disconnect" : "Connect";
+  connectBtnSw.disabled = stateChange.current.swConnection === "busy";
 }
