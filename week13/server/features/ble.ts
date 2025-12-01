@@ -25,6 +25,12 @@ export class BLEDevice {
   message$ = this.internalMessage$.asObservable();
 
   async connect() {
+    if (this.rxCharacteristic) {
+      this.rxCharacteristic.removeAllListeners("valuechanged");
+      this.rxCharacteristic = null;
+    }
+    this.txCharacteristic = null;
+
     const adapter = await bluetooth.defaultAdapter();
     if (!(await adapter.isDiscovering())) await adapter.startDiscovery();
     console.log(`[BLE] starting adapter ${await adapter.getName()}`);
@@ -53,12 +59,16 @@ export class BLEDevice {
 
     this.device$.next(device);
 
-    device.on("disconnect", () => {
+    const disconnectHandler = () => {
       console.log(`[BLE] disconnected ${this.mac}`);
       this.device$.next(null);
+      this.rxCharacteristic?.removeAllListeners("valuechanged");
       this.rxCharacteristic = null;
       this.txCharacteristic = null;
-    });
+      device.removeListener("disconnect", disconnectHandler);
+    };
+
+    device.on("disconnect", disconnectHandler);
 
     return this;
   }
