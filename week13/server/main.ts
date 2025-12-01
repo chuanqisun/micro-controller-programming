@@ -1,19 +1,31 @@
-import { tap } from "rxjs";
+import { map, tap } from "rxjs";
 import { LAPTOP_UDP_RX_PORT } from "./config";
 import { BLEDevice, opMac, swMac } from "./features/ble";
 import { createHttpServer } from "./features/http";
 import { getServerAddress } from "./features/net";
-import { broadcast, handleSSE } from "./features/sse";
+import { broadcast, handleSSE, newSseClient$ } from "./features/sse";
 import { appState$ } from "./features/state";
-import { handleBlinkLED, handleConnectSwitchboard } from "./features/switchboard";
+import { handleBlinkLED, handleConnectSwitchboard, handleDisconnectSwitchboard } from "./features/switchboard";
 
 const operator = new BLEDevice(opMac);
 const switchboard = new BLEDevice(swMac);
 
 async function main() {
-  createHttpServer([handleSSE(), handleBlinkLED(switchboard), handleConnectSwitchboard(switchboard)]);
+  createHttpServer([
+    handleSSE(),
+    handleBlinkLED(switchboard),
+    handleConnectSwitchboard(switchboard),
+    handleDisconnectSwitchboard(switchboard),
+  ]);
 
-  appState$.pipe(tap(broadcast)).subscribe();
+  appState$
+    .pipe(
+      map((state) => ({ state })),
+      tap(broadcast),
+    )
+    .subscribe();
+
+  newSseClient$.pipe(tap(() => broadcast({ state: appState$.value }))).subscribe();
 
   operator.message$.subscribe((msg) => {
     console.log("[DEBUG] op tx:", msg);

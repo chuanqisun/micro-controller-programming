@@ -1,17 +1,35 @@
+import { Observable, Subject, tap } from "rxjs";
+import { type AppState } from "../../server/features/state";
 import { createSSEObservable } from "./features/sse";
 import "./style.css";
 
-const logDiv = document.getElementById("log") as HTMLDivElement;
+const rawStateDisplay = document.getElementById("rawState") as HTMLDivElement;
 
 // Switchboard UI elements
 const connectBtnSw = document.getElementById("connectBtnSw") as HTMLButtonElement;
-const disconnectBtnSw = document.getElementById("disconnectBtnSw") as HTMLButtonElement;
 const offAllBtn = document.getElementById("offAll") as HTMLButtonElement;
-const speakTextarea = document.getElementById("speakTextarea") as HTMLTextAreaElement;
-const speakBtn = document.getElementById("speakBtn") as HTMLButtonElement;
+
+const state$ = new Subject<AppState>();
+
+export const stateChange$: Observable<{ previous: AppState | undefined; current: AppState }> = new Observable(
+  (subscriber) => {
+    let previousState: AppState | undefined = undefined;
+    state$.subscribe((currentState) => {
+      subscriber.next({ previous: previousState, current: currentState });
+      previousState = currentState;
+    });
+
+    return () => state$.unsubscribe();
+  },
+);
 
 connectBtnSw.addEventListener("click", () => {
-  fetch("http://localhost:3000/api/sw/connect", { method: "POST" });
+  connectBtnSw.disabled = true;
+  if (connectBtnSw.textContent === "Connect") {
+    fetch("http://localhost:3000/api/sw/connect", { method: "POST" });
+  } else {
+    fetch("http://localhost:3000/api/sw/disconnect", { method: "POST" });
+  }
 });
 
 for (let i = 0; i < 7; i++) {
@@ -22,20 +40,35 @@ for (let i = 0; i < 7; i++) {
 
 offAllBtn.addEventListener("click", () => {});
 
+state$
+  .pipe(
+    tap((state) => {
+      rawStateDisplay.textContent = JSON.stringify(state);
+    }),
+  )
+  .subscribe();
+
+stateChange$
+  .pipe(
+    tap((state) => {
+      if (state.previous?.swConnected !== state.current.swConnected) {
+        connectBtnSw.disabled = false;
+        connectBtnSw.textContent = state.current.swConnected ? "Disconnect" : "Connect";
+      }
+    }),
+  )
+  .subscribe();
+
 export const sseEvents$ = createSSEObservable("http://localhost:3000/api/events");
 
 sseEvents$.subscribe({
   next: (message) => {
-    logDiv.textContent += `[${now()}] SSE: ${JSON.stringify(message)}\n`;
-    logDiv.scrollTop = logDiv.scrollHeight;
-
-    if (message.speak !== undefined) {
-      speakTextarea.value = message.speak;
+    if (message.state) {
+      state$.next(message.state);
     }
   },
   error: (error) => {
-    logDiv.textContent += `[${now()}] SSE error: ${error}\n`;
-    logDiv.scrollTop = logDiv.scrollHeight;
+    rawStateDisplay.textContent += `[${now()}] SSE error: ${JSON.stringify(error)}\n`;
   },
 });
 

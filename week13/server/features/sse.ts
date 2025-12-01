@@ -1,7 +1,10 @@
 import type { ServerResponse } from "http";
+import { Subject } from "rxjs";
 import type { Handler } from "./http";
 
 let sseClients: ServerResponse[] = [];
+
+export const newSseClient$ = new Subject<ServerResponse>();
 
 export function handleSSE(): Handler {
   return (req, res) => {
@@ -16,6 +19,7 @@ export function handleSSE(): Handler {
     res.write("\n");
 
     sseClients.push(res);
+    newSseClient$.next(res);
 
     req.on("close", () => {
       sseClients = sseClients.filter((client) => client !== res);

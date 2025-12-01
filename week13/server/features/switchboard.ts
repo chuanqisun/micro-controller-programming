@@ -24,7 +24,18 @@ export function handleConnectSwitchboard(switchboard: BLEDevice): Handler {
     if (req.method !== "POST" || req.url !== "/api/sw/connect") return false;
 
     await switchboard.connect();
-    updateState((state) => ({ ...state, switchboardConnected: true }));
+    updateState((state) => ({ ...state, swConnected: true }));
+
+    return true;
+  };
+}
+
+export function handleDisconnectSwitchboard(switchboard: BLEDevice): Handler {
+  return async (req, res) => {
+    if (req.method !== "POST" || req.url !== "/api/sw/disconnect") return false;
+
+    await switchboard.disconnect();
+    updateState((state) => ({ ...state, swConnected: false }));
 
     return true;
   };
