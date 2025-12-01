@@ -8,6 +8,9 @@ import { withTimeout } from "./timeout";
 
 const probeRaw$ = new Subject<string>();
 
+const operatorAddressInternal$ = new Subject<string>();
+export const operatorAddress$ = operatorAddressInternal$.asObservable();
+
 export const probeNum$ = probeRaw$.pipe(
   distinctUntilChanged(),
   debounceTime(500),
@@ -65,6 +68,16 @@ export function handleProbeMessage() {
     if (message.startsWith("probe:")) {
       const probeId = message.split(":")[1];
       probeRaw$.next(probeId);
+    }
+  };
+}
+
+export function handleOpAddress() {
+  return (message: string) => {
+    console.log("Received operator address message:", message);
+    if (message.startsWith("operator:")) {
+      const address = message.split(":").slice(1).join(":");
+      operatorAddressInternal$.next(address);
     }
   };
 }
