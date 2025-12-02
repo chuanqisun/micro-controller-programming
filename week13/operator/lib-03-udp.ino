@@ -82,6 +82,10 @@ void processAudioStreams(bool isTransmitting) {
 
   if (isTransmitting && transmitCopier) {
     transmitCopier->copy();
+  } else {
+    // Drain mic buffer to prevent overflow when not transmitting
+    uint8_t dummyBuffer[512];
+    i2sMic.readBytes(dummyBuffer, sizeof(dummyBuffer));
   }
   
   if (receiveCopier) {
