@@ -78,9 +78,20 @@ export function createButtonStateMachine(buttons$: Observable<ButtonInput>) {
 
   const someButtonsDown$ = buttons$.pipe(filter(({ btn1, btn2 }) => btn1 || btn2));
 
+  const leaveIdle$ = buttonState$.pipe(
+    filter((s) => s.state !== "idle"),
+    scan((prev, curr) => ({ prevState: prev.currState, currState: curr.state }), {
+      prevState: "idle" as ButtonState,
+      currState: "idle" as ButtonState,
+    }),
+    filter(({ prevState }) => prevState === "idle"),
+    map(() => void 0),
+  );
+
   return {
     oneButtonUp$,
     twoButtonUp$,
     someButtonsDown$,
+    leaveIdle$,
   };
 }

@@ -79,7 +79,6 @@ export function handleProbeMessage() {
 
 export function handleOpAddressMessage() {
   return (message: string) => {
-    console.log("Received operator address message:", message);
     if (message.startsWith("operator:")) {
       const address = message.split(":").slice(1).join(":");
       operatorAddressInternal$.next(address);
@@ -97,4 +96,8 @@ export function handleButtonsMessage() {
       operatorButtons$.next({ btn1, btn2 });
     }
   };
+}
+
+export function logOperatorMessage(message: string) {
+  console.log(`[Operator]: ${message}`);
 }

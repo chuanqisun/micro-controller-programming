@@ -10,11 +10,18 @@ import {
   handleOpAddressMessage,
   handleProbeMessage,
   handleRequestOperatorAddress,
+  logOperatorMessage,
   operatorAddress$,
   operatorButtons$,
   operatorProbeNum$,
 } from "./features/operator";
-import { handleAudio, handleConnectSession, handleDisconnectSession } from "./features/simulation";
+import {
+  handleAudio,
+  handleConnectSession,
+  handleDisconnectSession,
+  interrupt,
+  triggerResponse,
+} from "./features/simulation";
 import { broadcast, handleSSE, newSseClient$ } from "./features/sse";
 import { appState$, updateState } from "./features/state";
 import { handleBlinkLED, handleConnectSwitchboard, handleDisconnectSwitchboard } from "./features/switchboard";
@@ -51,7 +58,12 @@ async function main() {
   newSseClient$.pipe(tap(() => broadcast({ state: appState$.value }))).subscribe();
 
   operator.message$
-    .pipe(tap(handleProbeMessage()), tap(handleOpAddressMessage()), tap(handleButtonsMessage()))
+    .pipe(
+      tap(logOperatorMessage),
+      tap(handleProbeMessage()),
+      tap(handleOpAddressMessage()),
+      tap(handleButtonsMessage()),
+    )
     .subscribe();
   operatorProbeNum$.pipe(tap((num) => updateState((state) => ({ ...state, probeNum: num })))).subscribe();
   operatorAddress$.pipe(tap((address) => updateState((state) => ({ ...state, opAddress: address })))).subscribe();
@@ -61,8 +73,9 @@ async function main() {
 
   const operataorButtons = createButtonStateMachine(operatorButtons$);
 
-  operataorButtons.oneButtonUp$.pipe(tap(() => console.log("Operator single button up"))).subscribe();
-  operataorButtons.twoButtonUp$.pipe(tap(() => console.log("Operator two buttons up"))).subscribe();
+  operataorButtons.leaveIdle$.pipe(tap(interrupt)).subscribe();
+  operataorButtons.oneButtonUp$.pipe(tap(triggerResponse)).subscribe();
+  operataorButtons.twoButtonUp$.pipe(tap(triggerResponse)).subscribe();
 }
 
 main();

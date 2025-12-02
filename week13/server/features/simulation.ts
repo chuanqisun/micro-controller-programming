@@ -1,4 +1,6 @@
 import { RealtimeAgent, RealtimeSession } from "@openai/agents/realtime";
+// import { OpenAIRealtimeWebSocket } from "@openai/agents/realtime"
+
 import type { Handler } from "./http";
 import { updateState } from "./state";
 import { withTimeout } from "./timeout";
@@ -48,7 +50,6 @@ export function handleDisconnectSession(): Handler {
   };
 }
 
-// Handler approach
 export function handleAudio(): UDPHandler {
   return (msg) => {
     const arrayBufferData = msg.data.buffer.slice(
@@ -58,6 +59,16 @@ export function handleAudio(): UDPHandler {
 
     currentSession?.sendAudio(arrayBufferData);
   };
+}
+
+export function interrupt() {
+  currentSession?.transport.interrupt();
+}
+
+export function triggerResponse() {
+  currentSession?.transport.sendEvent({ type: "input_audio_buffer.commit" });
+  currentSession?.transport.sendEvent({ type: "response.create" });
+  currentSession?.transport.sendEvent({ type: "input_audio_buffer.clear" });
 }
 
 export async function createVoiceAgent() {
@@ -75,6 +86,27 @@ export async function createVoiceAgent() {
 
   await session.connect({ apiKey });
   console.log(`[AI] connected`);
+
+  await session.transport.updateSessionConfig({
+    outputModalities: ["text"],
+    audio: {
+      input: {
+        format: {
+          type: "audio/pcm",
+          rate: 24_000,
+        },
+        turnDetection: undefined,
+      },
+    },
+  });
+
+  session.transport.on("*", (event: any) => {
+    switch (event.type) {
+      case "response.output_text.done":
+        console.log(`\n📝 Response text: "${event.text}"`);
+        break;
+    }
+  });
 
   return session;
 }
