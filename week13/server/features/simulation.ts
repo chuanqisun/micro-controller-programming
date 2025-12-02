@@ -1,5 +1,5 @@
 import { WebSocket } from "ws";
-
+import { PlayableBuffer } from "./audio";
 import type { Handler } from "./http";
 import { updateState } from "./state";
 import { withTimeout } from "./timeout";
@@ -7,6 +7,7 @@ import type { UDPHandler } from "./udp";
 
 let realtimeWs: WebSocket | null = null;
 let sessionReady = false;
+const audioBuffer = new PlayableBuffer();
 
 export function handleConnectSession(): Handler {
   return async (req, res) => {
@@ -55,7 +56,8 @@ export function handleAudio(): UDPHandler {
   return (msg) => {
     if (!sessionReady || !realtimeWs || realtimeWs.readyState !== WebSocket.OPEN) return;
 
-    console.log(`packet received: ${msg.data.length} bytes`);
+    // Accumulate audio in local buffer for playback
+    audioBuffer.push(Buffer.from(msg.data));
 
     const base64Audio = Buffer.from(msg.data).toString("base64");
     realtimeWs.send(
@@ -71,8 +73,11 @@ export function interrupt() {
   // Not implemented for raw WebSocket - would need to send cancel event
 }
 
-export function triggerResponse() {
+export async function triggerResponse() {
   if (!realtimeWs || realtimeWs.readyState !== WebSocket.OPEN) return;
+
+  // Play accumulated audio before sending to API
+  await audioBuffer.playAndClear();
 
   realtimeWs.send(JSON.stringify({ type: "input_audio_buffer.commit" }));
   realtimeWs.send(JSON.stringify({ type: "response.create" }));
