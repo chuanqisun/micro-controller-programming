@@ -66,6 +66,9 @@ export function handleAudio(): UDPHandler {
   return (msg) => {
     if (!sessionReady || !realtimeWs || realtimeWs.readyState !== WebSocket.OPEN) return;
 
+    // skip empty msg
+    if (msg.data.length === 0) return;
+
     // Track speech state for silence detection
     recordAudioActivity();
 
