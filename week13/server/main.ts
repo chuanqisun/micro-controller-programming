@@ -1,8 +1,7 @@
 import { map, tap } from "rxjs";
-import { LAPTOP_UDP_RX_PORT } from "./config";
+import { HTTP_PORT, LAPTOP_UDP_RX_PORT } from "./config";
 import { BLEDevice, opMac, swMac } from "./features/ble";
 import { createHttpServer } from "./features/http";
-import { getServerAddress } from "./features/net";
 import {
   handleConnectOperator,
   handleDisconnectOperator,
@@ -16,22 +15,41 @@ import { handleConnectSession, handleDisconnectSession } from "./features/simula
 import { broadcast, handleSSE, newSseClient$ } from "./features/sse";
 import { appState$, updateState } from "./features/state";
 import { handleBlinkLED, handleConnectSwitchboard, handleDisconnectSwitchboard } from "./features/switchboard";
+import { createUDPServer, udpMessage$, type UDPHandler } from "./features/udp";
 
 const operator = new BLEDevice(opMac);
 const switchboard = new BLEDevice(swMac);
 
+// Handler approach
+const handleAudio: UDPHandler = (msg) => {
+  console.log(`Received ${msg.data.length} bytes from ${msg.rinfo.address}`);
+};
+
+// Or reactive approach
+udpMessage$.subscribe((msg) => {
+  /* handle message */
+});
+
+// Sending data
+// await sendUDP(Buffer.from("hello"), 8889, "192.168.1.100");
+
 async function main() {
-  createHttpServer([
-    handleSSE(),
-    handleBlinkLED(switchboard),
-    handleConnectSwitchboard(switchboard),
-    handleDisconnectSwitchboard(switchboard),
-    handleConnectOperator(operator),
-    handleDisconnectOperator(operator),
-    handleRequestOperatorAddress(operator),
-    handleConnectSession(),
-    handleDisconnectSession(),
-  ]);
+  createUDPServer([handleAudio], LAPTOP_UDP_RX_PORT);
+
+  createHttpServer(
+    [
+      handleSSE(),
+      handleBlinkLED(switchboard),
+      handleConnectSwitchboard(switchboard),
+      handleDisconnectSwitchboard(switchboard),
+      handleConnectOperator(operator),
+      handleDisconnectOperator(operator),
+      handleRequestOperatorAddress(operator),
+      handleConnectSession(),
+      handleDisconnectSession(),
+    ],
+    HTTP_PORT,
+  );
 
   appState$
     .pipe(
@@ -45,8 +63,6 @@ async function main() {
   operator.message$.pipe(tap(handleProbeMessage()), tap(handleOpAddress())).subscribe();
   operatorProbeNum$.pipe(tap((num) => updateState((state) => ({ ...state, probeNum: num })))).subscribe();
   operatorAddress$.pipe(tap((address) => updateState((state) => ({ ...state, opAddress: address })))).subscribe();
-
-  await operator.send(`server:${await getServerAddress()}:${LAPTOP_UDP_RX_PORT}`);
 }
 
 main();

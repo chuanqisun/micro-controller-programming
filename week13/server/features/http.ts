@@ -1,9 +1,8 @@
 import http from "http";
-import { HTTP_PORT } from "../config";
 
 export type Handler = (req: http.IncomingMessage, res: http.ServerResponse) => Promise<boolean> | boolean;
 
-export function createHttpServer(handlers: Handler[]) {
+export function createHttpServer(handlers: Handler[], port: number) {
   async function handleHttpRequest(req: http.IncomingMessage, res: http.ServerResponse) {
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Content-Type", "application/json");
@@ -23,8 +22,8 @@ export function createHttpServer(handlers: Handler[]) {
   }
 
   const httpServer = http.createServer(handleHttpRequest);
-  httpServer.listen(HTTP_PORT, () => {
-    console.log(`HTTP server listening on port ${HTTP_PORT}`);
+  httpServer.listen(port, () => {
+    console.log(`HTTP server listening on port ${port}`);
   });
 
   return httpServer;

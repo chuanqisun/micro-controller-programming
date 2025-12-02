@@ -1,10 +1,9 @@
 import { debounceTime, distinctUntilChanged, map, Subject } from "rxjs";
-import { LAPTOP_UDP_RX_PORT } from "../config";
 import type { BLEDevice } from "./ble";
 import type { Handler } from "./http";
-import { getServerAddress } from "./net";
 import { updateState } from "./state";
 import { withTimeout } from "./timeout";
+import { getServerAddress } from "./udp";
 
 const probeRaw$ = new Subject<string>();
 
@@ -59,7 +58,7 @@ export function handleDisconnectOperator(operator: BLEDevice): Handler {
 export function handleRequestOperatorAddress(operator: BLEDevice): Handler {
   return async (req, res) => {
     if (req.method !== "POST" || req.url !== "/api/op/request-address") return false;
-    await operator.send(`server:${await getServerAddress()}:${LAPTOP_UDP_RX_PORT}`);
+    await operator.send(`server:${getServerAddress()}`);
 
     res.writeHead(200);
     res.end();
