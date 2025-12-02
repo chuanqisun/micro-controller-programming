@@ -7,6 +7,8 @@ export interface AppState {
   opConnection: ConnectionStatus;
   opAddress: string;
   probeNum: number;
+  btn1: boolean;
+  btn2: boolean;
   swConnection: ConnectionStatus;
 }
 
@@ -16,6 +18,8 @@ export const appState$ = new BehaviorSubject<AppState>({
   swConnection: "disconnected",
   opAddress: "",
   probeNum: 7,
+  btn1: false,
+  btn2: false,
 });
 
 export function updateState(updateFn: (state: AppState) => AppState) {

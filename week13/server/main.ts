@@ -3,9 +3,10 @@ import { HTTP_PORT, LAPTOP_UDP_RX_PORT } from "./config";
 import { BLEDevice, opMac, swMac } from "./features/ble";
 import { createHttpServer } from "./features/http";
 import {
+  handleButtonsMessage,
   handleConnectOperator,
   handleDisconnectOperator,
-  handleOpAddress,
+  handleOpAddressMessage,
   handleProbeMessage,
   handleRequestOperatorAddress,
   operatorAddress$,
@@ -47,7 +48,9 @@ async function main() {
 
   newSseClient$.pipe(tap(() => broadcast({ state: appState$.value }))).subscribe();
 
-  operator.message$.pipe(tap(handleProbeMessage()), tap(handleOpAddress())).subscribe();
+  operator.message$
+    .pipe(tap(handleProbeMessage()), tap(handleOpAddressMessage()), tap(handleButtonsMessage()))
+    .subscribe();
   operatorProbeNum$.pipe(tap((num) => updateState((state) => ({ ...state, probeNum: num })))).subscribe();
   operatorAddress$.pipe(tap((address) => updateState((state) => ({ ...state, opAddress: address })))).subscribe();
 }

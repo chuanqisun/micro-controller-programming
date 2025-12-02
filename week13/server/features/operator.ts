@@ -76,12 +76,24 @@ export function handleProbeMessage() {
   };
 }
 
-export function handleOpAddress() {
+export function handleOpAddressMessage() {
   return (message: string) => {
     console.log("Received operator address message:", message);
     if (message.startsWith("operator:")) {
       const address = message.split(":").slice(1).join(":");
       operatorAddressInternal$.next(address);
+    }
+  };
+}
+
+export function handleButtonsMessage() {
+  return (message: string) => {
+    if (message.startsWith("buttons:")) {
+      const buttonsValue = message.split(":")[1];
+      const [btn1Str, btn2Str] = buttonsValue.split(",");
+      const btn1 = btn1Str === "on";
+      const btn2 = btn2Str === "on";
+      updateState((state) => ({ ...state, btn1, btn2 }));
     }
   };
 }

@@ -59,9 +59,7 @@ Throttle* throttle = nullptr;
 StreamCopy* transmitCopier = nullptr;
 StreamCopy* receiveCopier = nullptr;
 
-int debounceCounter = 0;
 bool isTransmitting = false;
-bool lastTransmitState = false;
 
 // Forward declarations
 void handleBleMessage(String message);
@@ -75,6 +73,8 @@ String readProbeValue();
 void sendProbeToBLE(String probeValue);
 void handleAnnounceSelfRxAddress(String message);
 void processAudioStreams(bool isTransmitting);
+void updateButtonStates();
+void sendButtonsToBLE();
 
 // =============================================================================
 // BLE Message Handler - Routes incoming messages based on type
@@ -161,31 +161,9 @@ void loop() {
   // Read TRRS probe and send over BLE
   sendProbeToBLE(readProbeValue());
 
-  // Handle PTT button with debounce
-  bool buttonPressed = (digitalRead(BTN_PTT1) == LOW || digitalRead(BTN_PTT2) == LOW);
-  
-  if (buttonPressed) {
-    debounceCounter++;
-    if (debounceCounter >= DEBOUNCE_THRESHOLD) {
-      isTransmitting = true;
-      debounceCounter = DEBOUNCE_THRESHOLD;
-    }
-  } else {
-    debounceCounter--;
-    if (debounceCounter <= -DEBOUNCE_THRESHOLD) {
-      isTransmitting = false;
-      debounceCounter = -DEBOUNCE_THRESHOLD;
-    }
-  }
-
-  if (isTransmitting != lastTransmitState) {
-    if (isTransmitting) {
-      Serial.println("Speaking...");
-    } else {
-      Serial.println("Listening...");
-    }
-    lastTransmitState = isTransmitting;
-  }
+  // Handle PTT buttons with debounce and send over BLE
+  updateButtonStates();
+  sendButtonsToBLE();
 
   // Process audio streams
   processAudioStreams(isTransmitting);
