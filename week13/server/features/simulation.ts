@@ -1,12 +1,12 @@
-import { RealtimeAgent, RealtimeSession } from "@openai/agents/realtime";
-// import { OpenAIRealtimeWebSocket } from "@openai/agents/realtime"
+import { WebSocket } from "ws";
 
 import type { Handler } from "./http";
 import { updateState } from "./state";
 import { withTimeout } from "./timeout";
 import type { UDPHandler } from "./udp";
 
-let currentSession: RealtimeSession | null = null;
+let realtimeWs: WebSocket | null = null;
+let sessionReady = false;
 
 export function handleConnectSession(): Handler {
   return async (req, res) => {
@@ -14,8 +14,8 @@ export function handleConnectSession(): Handler {
 
     updateState((state) => ({ ...state, aiConnection: "busy" }));
     try {
-      currentSession?.close();
-      currentSession = await withTimeout(createVoiceAgent(), 5000);
+      realtimeWs?.close();
+      realtimeWs = await withTimeout(createRealtimeConnection(), 5000);
       updateState((state) => ({ ...state, aiConnection: "connected" }));
     } catch (error) {
       updateState((state) => ({ ...state, aiConnection: "disconnected" }));
@@ -35,8 +35,9 @@ export function handleDisconnectSession(): Handler {
     updateState((state) => ({ ...state, aiConnection: "busy" }));
 
     try {
-      currentSession?.close();
-      currentSession = null;
+      realtimeWs?.close();
+      realtimeWs = null;
+      sessionReady = false;
     } catch (error) {
       console.error("Error stopping AI session:", error);
     } finally {
@@ -52,67 +53,133 @@ export function handleDisconnectSession(): Handler {
 
 export function handleAudio(): UDPHandler {
   return (msg) => {
-    const arrayBufferData = msg.data.buffer.slice(
-      msg.data.byteOffset,
-      msg.data.byteOffset + msg.data.byteLength,
-    ) as ArrayBuffer;
+    if (!sessionReady || !realtimeWs || realtimeWs.readyState !== WebSocket.OPEN) return;
 
-    currentSession?.sendAudio(arrayBufferData);
+    console.log(`packet received: ${msg.data.length} bytes`);
+
+    const base64Audio = Buffer.from(msg.data).toString("base64");
+    realtimeWs.send(
+      JSON.stringify({
+        type: "input_audio_buffer.append",
+        audio: base64Audio,
+      }),
+    );
   };
 }
 
 export function interrupt() {
-  currentSession?.transport.interrupt();
+  // Not implemented for raw WebSocket - would need to send cancel event
 }
 
 export function triggerResponse() {
-  currentSession?.transport.sendEvent({ type: "input_audio_buffer.commit" });
-  currentSession?.transport.sendEvent({ type: "response.create" });
-  currentSession?.transport.sendEvent({ type: "input_audio_buffer.clear" });
+  if (!realtimeWs || realtimeWs.readyState !== WebSocket.OPEN) return;
+
+  realtimeWs.send(JSON.stringify({ type: "input_audio_buffer.commit" }));
+  realtimeWs.send(JSON.stringify({ type: "response.create" }));
+  realtimeWs.send(JSON.stringify({ type: "input_audio_buffer.clear" }));
 }
 
-export async function createVoiceAgent() {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error("OPENAI_API_KEY not set in environment variables");
+export function createRealtimeConnection(): Promise<WebSocket> {
+  return new Promise((resolve, reject) => {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      reject(new Error("OPENAI_API_KEY not set in environment variables"));
+      return;
+    }
 
-  const agent = new RealtimeAgent({
-    name: "Assistant",
-    instructions: "You are a helpful assistant.",
+    const url = "wss://api.openai.com/v1/realtime?model=gpt-realtime";
+    const ws = new WebSocket(url, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+    });
+
+    ws.on("open", () => {
+      console.log("✓ Connected to Realtime API");
+    });
+
+    ws.on("message", (data) => {
+      try {
+        const event = JSON.parse(data.toString());
+
+        switch (event.type) {
+          case "session.created":
+            console.log("✓ Session created");
+            configureSession(ws);
+            break;
+
+          case "session.updated":
+            console.log("✓ Session configured");
+            sessionReady = true;
+            resolve(ws);
+            break;
+
+          case "input_audio_buffer.committed":
+            console.log("✓ Audio buffer committed");
+            break;
+
+          case "response.output_text.delta":
+            // process.stdout.write(event.delta);
+            break;
+
+          case "response.output_text.done":
+            console.log(`\n📝 Response text: "${event.text}"`);
+            break;
+
+          case "response.done":
+            console.log("✓ Response complete");
+            break;
+
+          case "error":
+            console.error("❌ Realtime API error:", event.error);
+            break;
+        }
+      } catch (error: any) {
+        console.error("❌ Error parsing Realtime message:", error.message);
+      }
+    });
+
+    ws.on("error", (error) => {
+      console.error("❌ Realtime WebSocket error:", error.message);
+      reject(error);
+    });
+
+    ws.on("close", () => {
+      console.log("🔌 Realtime connection closed");
+      sessionReady = false;
+    });
   });
+}
+function configureSession(ws: WebSocket) {
+  const sessionConfig = {
+    type: "session.update",
+    session: {
+      type: "realtime",
+      model: "gpt-realtime",
+      output_modalities: ["text"],
+      instructions: `
+## Unclear audio
+- Only respond in English
+- Only respond to clear audio or text.
+- If the user's audio is not clear (e.g., ambiguous input/background noise/silent/unintelligible) or if you did not fully hear or understand the user, ask for clarification using {preferred_language} phrases.
 
-  const session = new RealtimeSession(agent, {
-    model: "gpt-realtime-mini",
-  });
+Sample clarification phrases (parameterize with {preferred_language}):
 
-  await session.connect({ apiKey });
-  console.log(`[AI] connected`);
-
-  await session.transport.updateSessionConfig({
-    outputModalities: ["text"],
-    audio: {
-      input: {
-        format: {
-          type: "audio/pcm",
-          rate: 24_000,
+- “Sorry, I didn’t catch that—could you say it again?”
+- “There’s some background noise. Please repeat the last part.”
+- “I only heard part of that. What did you say after ___?”
+      `,
+      audio: {
+        input: {
+          format: {
+            type: "audio/pcm",
+            rate: 24000,
+          },
+          turn_detection: null,
         },
-        turnDetection: undefined,
       },
     },
-  });
+  };
 
-  session.transport.on("*", (event: any) => {
-    switch (event.type) {
-      case "response.output_text.done":
-        console.log(`\n📝 Response text: "${event.text}"`);
-        break;
-    }
-  });
-
-  return session;
-}
-
-export interface EphmeralTokenConfig {
-  apiKey: string;
-  model: string;
-  voice: string;
+  ws.send(JSON.stringify(sessionConfig));
 }
