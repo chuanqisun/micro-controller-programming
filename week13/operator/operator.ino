@@ -54,7 +54,6 @@ I2SStream i2sMic;
 I2SStream i2sSpeaker;
 UDPStream* udpSend = nullptr;
 UDPStream* udpReceive = nullptr;
-Throttle* throttle = nullptr;
 
 StreamCopy* transmitCopier = nullptr;
 StreamCopy* receiveCopier = nullptr;

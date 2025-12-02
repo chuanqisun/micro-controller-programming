@@ -48,14 +48,8 @@ void initializeUdp() {
   udpSend->begin(laptopAddress, laptopRxPort);
   udpReceive->begin(UDP_RECEIVE_PORT);
 
-  // Create throttle
-  throttle = new Throttle(*udpSend);
-  auto throttleConfig = throttle->defaultConfig();
-  throttleConfig.copyFrom(audioInfo);
-  throttle->begin(throttleConfig);
-
   // Create stream copiers
-  transmitCopier = new StreamCopy(*throttle, i2sMic);
+  transmitCopier = new StreamCopy(*udpSend, i2sMic);
   receiveCopier = new StreamCopy(i2sSpeaker, *udpReceive, 1024);
 
   udpConfigured = true;
