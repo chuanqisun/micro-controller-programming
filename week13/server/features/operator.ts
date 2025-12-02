@@ -9,12 +9,13 @@ const probeRaw$ = new Subject<string>();
 
 const operatorAddressInternal$ = new Subject<string>();
 export const operatorAddress$ = operatorAddressInternal$.asObservable();
-
 export const operatorProbeNum$ = probeRaw$.pipe(
   distinctUntilChanged(),
   debounceTime(500),
   map((probeValue) => parseInt(probeValue, 2)),
 );
+
+export const operatorButtons$ = new Subject<{ btn1: boolean; btn2: boolean }>();
 
 export function handleConnectOperator(operator: BLEDevice): Handler {
   return async (req, res) => {
@@ -93,7 +94,7 @@ export function handleButtonsMessage() {
       const [btn1Str, btn2Str] = buttonsValue.split(",");
       const btn1 = btn1Str === "on";
       const btn2 = btn2Str === "on";
-      updateState((state) => ({ ...state, btn1, btn2 }));
+      operatorButtons$.next({ btn1, btn2 });
     }
   };
 }

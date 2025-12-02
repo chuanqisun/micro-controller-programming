@@ -51,7 +51,12 @@ export function handleDisconnectSession(): Handler {
 // Handler approach
 export function handleAudio(): UDPHandler {
   return (msg) => {
-    // do something with audio data
+    const arrayBufferData = msg.data.buffer.slice(
+      msg.data.byteOffset,
+      msg.data.byteOffset + msg.data.byteLength,
+    ) as ArrayBuffer;
+
+    currentSession?.sendAudio(arrayBufferData);
   };
 }
 

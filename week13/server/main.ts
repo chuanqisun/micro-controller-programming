@@ -10,6 +10,7 @@ import {
   handleProbeMessage,
   handleRequestOperatorAddress,
   operatorAddress$,
+  operatorButtons$,
   operatorProbeNum$,
 } from "./features/operator";
 import { handleAudio, handleConnectSession, handleDisconnectSession } from "./features/simulation";
@@ -53,6 +54,9 @@ async function main() {
     .subscribe();
   operatorProbeNum$.pipe(tap((num) => updateState((state) => ({ ...state, probeNum: num })))).subscribe();
   operatorAddress$.pipe(tap((address) => updateState((state) => ({ ...state, opAddress: address })))).subscribe();
+  operatorButtons$
+    .pipe(tap((buttons) => updateState((state) => ({ ...state, btn1: buttons.btn1, btn2: buttons.btn2 }))))
+    .subscribe();
 }
 
 main();
