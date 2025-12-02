@@ -6,7 +6,7 @@
 const char *ssid = "MLDEV";
 const char *password = "";
 
-AudioInfo info(22000, 1, 16);  // 22kHz, mono, 16-bit
+AudioInfo info(24000, 1, 16);  // freq, channels, bits per sample
 I2SStream i2sStream;           // Access I2S as stream
 ConverterFillLeftAndRight<int16_t> filler(LeftIsEmpty); // fill both channels
 UDPStream udp(ssid, password);
