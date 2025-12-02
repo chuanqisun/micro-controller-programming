@@ -1,4 +1,4 @@
-import { spawn } from "child_process";
+import { type ChildProcessWithoutNullStreams, spawn } from "child_process";
 
 export interface AudioPlayerConfig {
   format: string;
@@ -6,89 +6,71 @@ export interface AudioPlayerConfig {
   channels: number;
 }
 
-export class PlayableBuffer {
-  private chunks: Buffer[] = [];
+export class StreamingAudioPlayer {
+  private ffmpegPlayer: ChildProcessWithoutNullStreams | null = null;
   private config: AudioPlayerConfig;
 
-  constructor(config: AudioPlayerConfig = { format: "u16le", sampleRate: 24000, channels: 1 }) {
+  constructor(config: AudioPlayerConfig = { format: "s16le", sampleRate: 24000, channels: 1 }) {
     this.config = config;
   }
 
+  private startAudioPlayer(): void {
+    console.log("🔊 Starting audio player...");
+
+    // Use ffmpeg to play raw PCM audio
+    this.ffmpegPlayer = spawn("ffmpeg", [
+      "-f",
+      this.config.format,
+      "-ar",
+      this.config.sampleRate.toString(),
+      "-ac",
+      this.config.channels.toString(),
+      "-i",
+      "pipe:0",
+      "-f",
+      "alsa",
+      "default",
+    ]);
+
+    this.ffmpegPlayer.stderr.on("data", (data: Buffer) => {
+      const message = data.toString();
+      if (message.includes("error") || message.includes("Error")) {
+        console.error("FFmpeg error:", message);
+      }
+    });
+
+    this.ffmpegPlayer.on("error", (err) => {
+      console.error("❌ FFmpeg process error:", err);
+    });
+
+    this.ffmpegPlayer.on("close", (code) => {
+      console.log(`FFmpeg process exited with code ${code}`);
+      this.ffmpegPlayer = null;
+    });
+
+    console.log("✓ Audio player started");
+  }
+
   push(data: Buffer): void {
-    this.chunks.push(data);
-  }
-
-  clear(): void {
-    this.chunks = [];
-  }
-
-  isEmpty(): boolean {
-    return this.chunks.length === 0;
-  }
-
-  getCombinedBuffer(): Buffer {
-    return Buffer.concat(this.chunks);
-  }
-
-  async playAndClear(): Promise<void> {
-    if (this.isEmpty()) {
-      console.log("⚠️ No audio to play");
-      return;
+    if (!this.ffmpegPlayer) {
+      this.startAudioPlayer();
     }
 
-    const combinedBuffer = this.getCombinedBuffer();
-    console.log(`🔊 Playing ${combinedBuffer.length} bytes of audio...`);
-
-    await this.playWithFfmpeg(combinedBuffer);
-    this.clear();
+    if (this.ffmpegPlayer && !this.ffmpegPlayer.killed) {
+      this.ffmpegPlayer.stdin.write(data);
+    }
   }
 
-  private playWithFfmpeg(buffer: Buffer): Promise<void> {
-    return new Promise((resolve) => {
-      // Use ffmpeg to play raw PCM audio
-      const ffmpeg = spawn(
-        "ffmpeg",
-        [
-          "-f",
-          this.config.format, // signed 16-bit little-endian
-          "-ar",
-          this.config.sampleRate.toString(), // sample rate
-          "-ac",
-          this.config.channels.toString(), // channels (mono)
-          "-i",
-          "pipe:0", // input from stdin
-          "-f",
-          "alsa", // Use ALSA for Linux audio output
-          "default", // Default audio output device
-        ],
-        {
-          stdio: ["pipe", "ignore", "pipe"],
-        },
-      );
+  stop(): void {
+    if (this.ffmpegPlayer && !this.ffmpegPlayer.killed) {
+      this.ffmpegPlayer.stdin.end();
+      this.ffmpegPlayer.kill("SIGTERM");
+      this.ffmpegPlayer = null;
+      console.log("✓ Audio player stopped");
+    }
+  }
 
-      ffmpeg.stderr.on("data", (data: Buffer) => {
-        const message = data.toString();
-        if (message.includes("error") || message.includes("Error")) {
-          console.error("FFmpeg error:", message);
-        }
-      });
-
-      ffmpeg.stdin.write(buffer);
-      ffmpeg.stdin.end();
-
-      ffmpeg.on("close", (code) => {
-        if (code === 0) {
-          console.log("✓ Audio playback complete");
-        } else {
-          console.error(`❌ ffmpeg exited with code ${code}`);
-        }
-        resolve();
-      });
-
-      ffmpeg.on("error", (error) => {
-        console.error("❌ ffmpeg error:", error.message);
-        resolve();
-      });
-    });
+  isPlaying(): boolean {
+    return this.ffmpegPlayer !== null && !this.ffmpegPlayer.killed;
   }
 }
