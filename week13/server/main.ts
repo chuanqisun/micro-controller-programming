@@ -15,6 +15,7 @@ import {
   operatorButtons$,
   operatorProbeNum$,
 } from "./features/operator";
+import { silence$ } from "./features/silence-detection";
 import {
   handleAudio,
   handleConnectSession,
@@ -74,8 +75,7 @@ async function main() {
   const operataorButtons = createButtonStateMachine(operatorButtons$);
 
   operataorButtons.leaveIdle$.pipe(tap(interrupt)).subscribe();
-  operataorButtons.oneButtonUp$.pipe(tap(triggerResponse)).subscribe();
-  operataorButtons.twoButtonUp$.pipe(tap(triggerResponse)).subscribe();
+  silence$.pipe(tap(triggerResponse)).subscribe();
 }
 
 main();

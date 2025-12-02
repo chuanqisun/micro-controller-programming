@@ -1,6 +1,13 @@
 import { WebSocket } from "ws";
 import { StreamingAudioPlayer } from "./audio";
 import type { Handler } from "./http";
+import {
+  recordAudioActivity,
+  resetSpeechState,
+  setIsProcessing,
+  startSilenceDetection,
+  stopSilenceDetection,
+} from "./silence-detection";
 import { updateState } from "./state";
 import { withTimeout } from "./timeout";
 import type { UDPHandler } from "./udp";
@@ -17,6 +24,7 @@ export function handleConnectSession(): Handler {
     try {
       realtimeWs?.close();
       realtimeWs = await withTimeout(createRealtimeConnection(), 5000);
+      startSilenceDetection();
       updateState((state) => ({ ...state, aiConnection: "connected" }));
     } catch (error) {
       updateState((state) => ({ ...state, aiConnection: "disconnected" }));
@@ -36,9 +44,11 @@ export function handleDisconnectSession(): Handler {
     updateState((state) => ({ ...state, aiConnection: "busy" }));
 
     try {
+      stopSilenceDetection();
       realtimeWs?.close();
       realtimeWs = null;
       sessionReady = false;
+      resetSpeechState();
     } catch (error) {
       console.error("Error stopping AI session:", error);
     } finally {
@@ -55,6 +65,9 @@ export function handleDisconnectSession(): Handler {
 export function handleAudio(): UDPHandler {
   return (msg) => {
     if (!sessionReady || !realtimeWs || realtimeWs.readyState !== WebSocket.OPEN) return;
+
+    // Track speech state for silence detection
+    recordAudioActivity();
 
     // Accumulate audio in local buffer for playback
     audioPlayer.push(Buffer.from(msg.data));
@@ -76,6 +89,7 @@ export function interrupt() {
 export async function triggerResponse() {
   if (!realtimeWs || realtimeWs.readyState !== WebSocket.OPEN) return;
 
+  setIsProcessing(true);
   realtimeWs.send(JSON.stringify({ type: "input_audio_buffer.commit" }));
   realtimeWs.send(JSON.stringify({ type: "response.create" }));
   realtimeWs.send(JSON.stringify({ type: "input_audio_buffer.clear" }));
@@ -130,6 +144,7 @@ export function createRealtimeConnection(): Promise<WebSocket> {
 
           case "response.done":
             console.log("✓ Response complete");
+            setIsProcessing(false);
             break;
 
           case "conversation.item.input_audio_transcription.completed":
@@ -164,16 +179,7 @@ function configureSession(ws: WebSocket) {
       model: "gpt-realtime",
       output_modalities: ["text"],
       instructions: `
-## Unclear audio
-- Only respond in English
-- Only respond to clear audio or text.
-- If the user's audio is not clear (e.g., ambiguous input/background noise/silent/unintelligible) or if you did not fully hear or understand the user, ask for clarification using {preferred_language} phrases.
-
-Sample clarification phrases (parameterize with {preferred_language}):
-
-- “Sorry, I didn’t catch that—could you say it again?”
-- “There’s some background noise. Please repeat the last part.”
-- “I only heard part of that. What did you say after ___?”
+You are an English speaking friend. Your response is always short.
       `,
       audio: {
         input: {
