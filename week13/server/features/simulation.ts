@@ -130,6 +130,10 @@ export function createRealtimeConnection(): Promise<WebSocket> {
             console.log("✓ Response complete");
             break;
 
+          case "conversation.item.input_audio_transcription.completed":
+            console.log(`Transcribed: ${event.transcript}`);
+            break;
+
           case "error":
             console.error("❌ Realtime API error:", event.error);
             break;
