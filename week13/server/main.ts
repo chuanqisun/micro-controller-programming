@@ -1,6 +1,7 @@
 import { map, tap } from "rxjs";
 import { HTTP_PORT, LAPTOP_UDP_RX_PORT } from "./config";
 import { BLEDevice, opMac, swMac } from "./features/ble";
+import { createButtonStateMachine } from "./features/buttons";
 import { createHttpServer } from "./features/http";
 import {
   handleButtonsMessage,
@@ -57,6 +58,11 @@ async function main() {
   operatorButtons$
     .pipe(tap((buttons) => updateState((state) => ({ ...state, btn1: buttons.btn1, btn2: buttons.btn2 }))))
     .subscribe();
+
+  const operataorButtons = createButtonStateMachine(operatorButtons$);
+
+  operataorButtons.oneButtonUp$.pipe(tap(() => console.log("Operator single button up"))).subscribe();
+  operataorButtons.twoButtonUp$.pipe(tap(() => console.log("Operator two buttons up"))).subscribe();
 }
 
 main();
