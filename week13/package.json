@@ -30,6 +30,7 @@
     "vite": "^7.2.4"
   },
   "dependencies": {
+    "@google/genai": "^1.30.0",
     "@openai/agents": "^0.3.3",
     "node-ble": "^1.13.0",
     "openai": "^6.7.0",

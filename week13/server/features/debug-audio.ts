@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { BITS_PER_SAMPLE, CHANNELS, SAMPLE_RATE } from "../config";
+import { isGeminiSessionReady, sendAudioStreamEnd, streamAudioToGemini } from "./gemini-live";
 
 const AUDIO_DIR = "audio";
 
@@ -18,6 +19,11 @@ export class DebugAudioBuffer {
 
   push(data: Buffer): void {
     this.chunks.push(Buffer.from(data));
+
+    // Stream audio to Gemini if connected
+    if (isGeminiSessionReady()) {
+      streamAudioToGemini(data);
+    }
   }
 
   clear(): void {
@@ -45,6 +51,11 @@ export class DebugAudioBuffer {
 
     fs.writeFileSync(outputFilename, wavBuffer);
     console.log(`📁 Saved debug audio: ${outputFilename} (${pcmData.length} bytes PCM)`);
+
+    // Signal end of audio stream to trigger Gemini response
+    if (isGeminiSessionReady()) {
+      sendAudioStreamEnd();
+    }
 
     this.clear();
     return outputFilename;

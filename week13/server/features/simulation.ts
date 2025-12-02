@@ -1,5 +1,4 @@
 import { WebSocket } from "ws";
-import { StreamingAudioPlayer } from "./audio";
 import { DebugAudioBuffer } from "./debug-audio";
 import type { Handler } from "./http";
 import {
@@ -15,7 +14,6 @@ import type { UDPHandler } from "./udp";
 
 let realtimeWs: WebSocket | null = null;
 let sessionReady = false;
-const audioPlayer = new StreamingAudioPlayer();
 const debugBuffer = new DebugAudioBuffer();
 
 export function handleConnectSession(): Handler {
@@ -73,9 +71,6 @@ export function handleAudio(): UDPHandler {
 
     // Track speech state for silence detection
     recordAudioActivity();
-
-    // Accumulate audio in local buffer for playback
-    audioPlayer.push(Buffer.from(msg.data));
 
     // Append to debug buffer
     debugBuffer.push(Buffer.from(msg.data));

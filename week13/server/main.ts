@@ -2,6 +2,12 @@ import { map, tap } from "rxjs";
 import { HTTP_PORT, LAPTOP_UDP_RX_PORT } from "./config";
 import { BLEDevice, opMac, swMac } from "./features/ble";
 import { createButtonStateMachine } from "./features/buttons";
+import {
+  geminiResponse$,
+  geminiTranscript$,
+  handleConnectGemini,
+  handleDisconnectGemini,
+} from "./features/gemini-live";
 import { createHttpServer } from "./features/http";
 import {
   handleButtonsMessage,
@@ -45,6 +51,8 @@ async function main() {
       handleRequestOperatorAddress(operator),
       handleConnectSession(),
       handleDisconnectSession(),
+      handleConnectGemini(),
+      handleDisconnectGemini(),
     ],
     HTTP_PORT,
   );
@@ -76,6 +84,10 @@ async function main() {
 
   operataorButtons.leaveIdle$.pipe(tap(interrupt)).subscribe();
   silence$.pipe(tap(triggerResponse)).subscribe();
+
+  // Gemini Live API subscriptions
+  geminiTranscript$.pipe(tap((text) => console.log(`🎤 Transcript: ${text}`))).subscribe();
+  geminiResponse$.pipe(tap((text) => console.log(`🤖 Gemini: ${text}`))).subscribe();
 }
 
 main();
