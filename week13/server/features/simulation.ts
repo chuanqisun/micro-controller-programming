@@ -1,5 +1,6 @@
 import { WebSocket } from "ws";
 import { StreamingAudioPlayer } from "./audio";
+import { DebugAudioBuffer } from "./debug-audio";
 import type { Handler } from "./http";
 import {
   recordAudioActivity,
@@ -15,6 +16,7 @@ import type { UDPHandler } from "./udp";
 let realtimeWs: WebSocket | null = null;
 let sessionReady = false;
 const audioPlayer = new StreamingAudioPlayer();
+const debugBuffer = new DebugAudioBuffer();
 
 export function handleConnectSession(): Handler {
   return async (req, res) => {
@@ -75,6 +77,9 @@ export function handleAudio(): UDPHandler {
     // Accumulate audio in local buffer for playback
     audioPlayer.push(Buffer.from(msg.data));
 
+    // Append to debug buffer
+    debugBuffer.push(Buffer.from(msg.data));
+
     const base64Audio = Buffer.from(msg.data).toString("base64");
     realtimeWs.send(
       JSON.stringify({
@@ -91,6 +96,9 @@ export function interrupt() {
 
 export async function triggerResponse() {
   if (!realtimeWs || realtimeWs.readyState !== WebSocket.OPEN) return;
+
+  // Save debug buffer as WAV file
+  debugBuffer.saveAsWav();
 
   setIsProcessing(true);
   realtimeWs.send(JSON.stringify({ type: "input_audio_buffer.commit" }));
