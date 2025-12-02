@@ -11,30 +11,17 @@ import {
   operatorAddress$,
   operatorProbeNum$,
 } from "./features/operator";
-import { handleConnectSession, handleDisconnectSession } from "./features/simulation";
+import { handleAudio, handleConnectSession, handleDisconnectSession } from "./features/simulation";
 import { broadcast, handleSSE, newSseClient$ } from "./features/sse";
 import { appState$, updateState } from "./features/state";
 import { handleBlinkLED, handleConnectSwitchboard, handleDisconnectSwitchboard } from "./features/switchboard";
-import { createUDPServer, udpMessage$, type UDPHandler } from "./features/udp";
-
-const operator = new BLEDevice(opMac);
-const switchboard = new BLEDevice(swMac);
-
-// Handler approach
-const handleAudio: UDPHandler = (msg) => {
-  console.log(`Received ${msg.data.length} bytes from ${msg.rinfo.address}`);
-};
-
-// Or reactive approach
-udpMessage$.subscribe((msg) => {
-  /* handle message */
-});
-
-// Sending data
-// await sendUDP(Buffer.from("hello"), 8889, "192.168.1.100");
+import { createUDPServer } from "./features/udp";
 
 async function main() {
-  createUDPServer([handleAudio], LAPTOP_UDP_RX_PORT);
+  const operator = new BLEDevice(opMac);
+  const switchboard = new BLEDevice(swMac);
+
+  createUDPServer([handleAudio()], LAPTOP_UDP_RX_PORT);
 
   createHttpServer(
     [

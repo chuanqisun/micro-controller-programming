@@ -2,6 +2,7 @@ import { RealtimeAgent, RealtimeSession } from "@openai/agents/realtime";
 import type { Handler } from "./http";
 import { updateState } from "./state";
 import { withTimeout } from "./timeout";
+import type { UDPHandler } from "./udp";
 
 let currentSession: RealtimeSession | null = null;
 
@@ -44,6 +45,13 @@ export function handleDisconnectSession(): Handler {
     res.end();
 
     return true;
+  };
+}
+
+// Handler approach
+export function handleAudio(): UDPHandler {
+  return (msg) => {
+    // do something with audio data
   };
 }
 
