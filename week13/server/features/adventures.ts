@@ -1,16 +1,19 @@
 import { GoogleGenAI } from "@google/genai";
 import { JSONParser } from "@streamparser/json";
+import OpenAI from "openai";
 import { BehaviorSubject, Subject } from "rxjs";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import type { Handler } from "./http";
 import { cancelAllSpeakerPlayback, playPcm16Buffer } from "./speaker";
 import { appState$, updateState } from "./state";
+import { GenerateOpenAISpeech } from "./tts";
 
 const storyOptionsSchema = z.object({
   storyOptions: z.array(z.string().describe("A story beginning for a text adventure game.")),
 });
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
 export const textGenerated$ = new Subject<number>();
 export const assignments$ = new BehaviorSubject<
@@ -104,7 +107,7 @@ async function generateOptionsInternal(ac: AbortController, escapeIndex?: number
             ? {
                 ...a,
                 text: entry.value as string,
-                audioBuffer: generateSpeech(entry.value as string, ac.signal),
+                audioBuffer: GenerateOpenAISpeech(entry.value as string, ac.signal),
                 visited: false,
               }
             : a,
@@ -145,26 +148,4 @@ function random(set: Set<number>): number | null {
   if (set.size === 0) return null;
   const items = Array.from(set);
   return items[Math.floor(Math.random() * items.length)];
-}
-
-async function generateSpeech(text: string, signal?: AbortSignal) {
-  const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash-preview-tts",
-    contents: [{ parts: [{ text }] }],
-    config: {
-      responseModalities: ["AUDIO"],
-      speechConfig: {
-        voiceConfig: {
-          prebuiltVoiceConfig: { voiceName: "Kore" },
-        },
-      },
-      abortSignal: signal,
-    },
-  });
-
-  const data = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-  if (!data) throw new Error("No audio data received from TTS model");
-  console.log("Generated speech for text:", text);
-  const audioBuffer = Buffer.from(data, "base64");
-  return audioBuffer;
 }

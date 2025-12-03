@@ -1,4 +1,4 @@
-import { concatMap, filter, map, merge, tap, withLatestFrom } from "rxjs";
+import { concatMap, filter, map, tap, withLatestFrom } from "rxjs";
 import { HTTP_PORT, LAPTOP_UDP_RX_PORT } from "./config";
 import { commitOption, handleStartTextAdventures, previewOption, textGenerated$ } from "./features/adventures";
 import { BLEDevice, opMac, swMac } from "./features/ble";
@@ -116,7 +116,7 @@ async function main() {
     )
     .subscribe();
 
-  merge(operataorButtons.oneButtonUp$, operataorButtons.twoButtonUp$)
+  operataorButtons.someButtonDown$
     .pipe(
       withLatestFrom(operatorProbeNum$),
       tap(cancelAllSpeakerPlayback),
