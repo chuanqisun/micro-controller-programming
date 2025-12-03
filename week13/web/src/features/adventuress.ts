@@ -11,13 +11,6 @@ export function initAdventureUI() {
 }
 
 export function updateAdventureUI(stateChange: StateChange) {
-  const historyItems = stateChange.current.storyHistory.toReversed();
-
-  render(
-    html`
-      <b>Options</b>
-      ${historyItems.map((entry) => html`<p>${entry}</p>`)}
-    `,
-    adventureLog,
-  );
+  const historyItems = stateChange.current.storyHistory;
+  render(html` ${historyItems.map((entry) => html`<p>${entry}</p>`)} `, adventureLog);
 }
