@@ -52,7 +52,7 @@ export async function commitOption(id: number) {
   const ac = new AbortController();
   ongoingTasks.push(ac);
   try {
-    await generateOptionsInternal(ac);
+    await generateOptionsInternal(ac, id);
   } finally {
     ongoingTasks = ongoingTasks.filter((task) => task !== ac);
   }
@@ -82,14 +82,16 @@ export function handleStartTextAdventures(): Handler {
   };
 }
 
-async function generateOptionsInternal(ac: AbortController) {
+async function generateOptionsInternal(ac: AbortController, escapeIndex?: number) {
   const parser = new JSONParser();
 
   parser.onValue = (entry) => {
     if (typeof entry.key === "number" && typeof entry.value === "string") {
       console.log("Story option:", entry.value);
 
-      const randomIndex = random(new Set(assignments$.value.filter((a) => a.text === null).map((a) => a.index)));
+      const randomIndex = random(
+        new Set(assignments$.value.filter((a) => a.text === null && a.index !== escapeIndex).map((a) => a.index)),
+      );
       if (randomIndex === null) {
         console.log("No available assignment slots, skip");
         return;
