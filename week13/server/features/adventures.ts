@@ -1,6 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
 import { JSONParser } from "@streamparser/json";
-import OpenAI from "openai";
 import { BehaviorSubject, Subject } from "rxjs";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
@@ -13,7 +12,6 @@ const storyOptionsSchema = z.object({
   storyOptions: z.array(z.string().describe("A story beginning for a text adventure game.")),
 });
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
 export const textGenerated$ = new Subject<number>();
 export const assignments$ = new BehaviorSubject<
