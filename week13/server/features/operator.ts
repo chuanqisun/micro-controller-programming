@@ -23,7 +23,7 @@ export function handleConnectOperator(operator: BLEDevice): Handler {
 
     updateState((state) => ({ ...state, opConnection: "busy" }));
     try {
-      await withTimeout(operator.connect(), 5000);
+      await withTimeout(operator.connect(), 10000);
       updateState((state) => ({ ...state, opConnection: "connected" }));
     } catch (error) {
       updateState((state) => ({ ...state, opConnection: "disconnected" }));
@@ -42,7 +42,7 @@ export function handleDisconnectOperator(operator: BLEDevice): Handler {
 
     updateState((state) => ({ ...state, opConnection: "busy" }));
     try {
-      await withTimeout(operator.disconnect(), 5000);
+      await withTimeout(operator.disconnect(), 10000);
     } catch (error) {
       console.error("Error disconnecting operator:", error);
     } finally {
