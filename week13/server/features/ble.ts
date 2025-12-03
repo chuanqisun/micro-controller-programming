@@ -1,5 +1,5 @@
 import NodeBle, { createBluetooth } from "node-ble";
-import { BehaviorSubject, Subject } from "rxjs";
+import { BehaviorSubject, concatMap, Subject, Subscription } from "rxjs";
 
 export const opMac = "B0:81:84:04:70:E2";
 export const swMac = "B0:81:84:04:59:DE";
@@ -21,6 +21,9 @@ export class BLEDevice {
   private internalMessage$ = new Subject<string>();
   private rxCharacteristic: NodeBle.GattCharacteristic | null = null;
   private txCharacteristic: NodeBle.GattCharacteristic | null = null;
+
+  private sendQueue$ = new Subject<string>();
+  private sendQueueSub: Subscription | null = null;
 
   message$ = this.internalMessage$.asObservable();
 
@@ -70,15 +73,21 @@ export class BLEDevice {
 
     device.on("disconnect", disconnectHandler);
 
+    this.sendQueueSub = this.sendQueue$
+      .pipe(concatMap(async (message) => this.txCharacteristic?.writeValue(Buffer.from(message, "utf-8"))))
+      .subscribe();
+
     return this;
   }
 
   async disconnect() {
+    this.sendQueueSub?.unsubscribe();
+    this.sendQueueSub = null;
     await this.device$.getValue()?.disconnect();
   }
 
   async send(message: string) {
     console.log(`[BLE] sending to ${this.mac}:`, message);
-    this.txCharacteristic?.writeValue(Buffer.from(message, "utf-8"));
+    this.sendQueue$.next(message);
   }
 }

@@ -10,6 +10,9 @@ export interface AppState {
   btn1: boolean;
   btn2: boolean;
   swConnection: ConnectionStatus;
+  // Text adventure state
+  storyHistory: string[];
+  storyOptions: Record<number, string>;
 }
 
 export const appState$ = new BehaviorSubject<AppState>({
@@ -20,6 +23,8 @@ export const appState$ = new BehaviorSubject<AppState>({
   probeNum: 7,
   btn1: false,
   btn2: false,
+  storyHistory: [],
+  storyOptions: {},
 });
 
 export function updateState(updateFn: (state: AppState) => AppState) {

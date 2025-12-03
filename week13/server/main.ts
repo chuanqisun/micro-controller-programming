@@ -1,4 +1,4 @@
-import { map, tap } from "rxjs";
+import { concatMap, filter, map, tap } from "rxjs";
 import { HTTP_PORT, LAPTOP_UDP_RX_PORT } from "./config";
 import { BLEDevice, opMac, swMac } from "./features/ble";
 import { createButtonStateMachine } from "./features/buttons";
@@ -29,9 +29,23 @@ import {
   interrupt,
   triggerResponse,
 } from "./features/simulation";
+import { cancelAllSpeakerPlayback } from "./features/speaker";
 import { broadcast, handleSSE, newSseClient$ } from "./features/sse";
 import { appState$, updateState } from "./features/state";
-import { handleBlinkLED, handleConnectSwitchboard, handleDisconnectSwitchboard } from "./features/switchboard";
+import {
+  handleBlinkLED,
+  handleConnectSwitchboard,
+  handleDisconnectSwitchboard,
+  handleLEDAllOff,
+  turnOnLED,
+} from "./features/switchboard";
+import {
+  handleCommitOption,
+  handlePreviewOption,
+  handleStartTextAdventures,
+  previewOption,
+  textGenerated$,
+} from "./features/text-adventures";
 import { createUDPServer } from "./features/udp";
 
 async function main() {
@@ -44,6 +58,7 @@ async function main() {
     [
       handleSSE(),
       handleBlinkLED(switchboard),
+      handleLEDAllOff(switchboard),
       handleConnectSwitchboard(switchboard),
       handleDisconnectSwitchboard(switchboard),
       handleConnectOperator(operator),
@@ -51,8 +66,12 @@ async function main() {
       handleRequestOperatorAddress(operator),
       handleConnectSession(),
       handleDisconnectSession(),
+
       handleConnectGemini(),
       handleDisconnectGemini(),
+      handleStartTextAdventures(),
+      handlePreviewOption(),
+      handleCommitOption(),
     ],
     HTTP_PORT,
   );
@@ -88,6 +107,21 @@ async function main() {
   // Gemini Live API subscriptions
   geminiTranscript$.pipe(tap((text) => console.log(`🎤 Transcript: ${text}`))).subscribe();
   geminiResponse$.pipe(tap((text) => console.log(`🤖 Gemini: ${text}`))).subscribe();
+
+  // Text adventures subscriptions
+  textGenerated$.pipe(concatMap((index) => turnOnLED(switchboard, index))).subscribe();
+  operatorProbeNum$
+    .pipe(
+      filter((num) => num !== 7),
+      tap((index) => previewOption(index)),
+    )
+    .subscribe();
+  operatorProbeNum$
+    .pipe(
+      filter((num) => num === 7),
+      tap(cancelAllSpeakerPlayback),
+    )
+    .subscribe();
 }
 
 main();

@@ -20,6 +20,26 @@ export function handleBlinkLED(switchboard: BLEDevice): Handler {
   };
 }
 
+export function handleLEDAllOff(switchboard: BLEDevice): Handler {
+  return async (req, res) => {
+    if (req.method !== "POST" || req.url !== "/api/sw/all-off") return false;
+
+    await turnOffAllLED(switchboard);
+    res.writeHead(200);
+    res.end(JSON.stringify({ status: "ok" }));
+
+    return true;
+  };
+}
+
+export async function turnOnLED(switchboard: BLEDevice, id: number) {
+  await switchboard.send(`on:${id}`);
+}
+
+export async function turnOffAllLED(switchboard: BLEDevice) {
+  await switchboard.send(`off:all`);
+}
+
 export function handleConnectSwitchboard(switchboard: BLEDevice): Handler {
   return async (req, res) => {
     if (req.method !== "POST" || req.url !== "/api/sw/connect") return false;
@@ -27,6 +47,7 @@ export function handleConnectSwitchboard(switchboard: BLEDevice): Handler {
     updateState((state) => ({ ...state, swConnection: "busy" }));
     try {
       await withTimeout(switchboard.connect(), 5000);
+      turnOffAllLED(switchboard);
       updateState((state) => ({ ...state, swConnection: "connected" }));
     } catch (error) {
       updateState((state) => ({ ...state, swConnection: "disconnected" }));

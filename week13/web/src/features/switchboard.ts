@@ -12,6 +12,10 @@ export function initSwitchboardUI() {
       fetch("http://localhost:3000/api/sw/disconnect", { method: "POST" });
     }
   });
+
+  offAllBtn.addEventListener("click", () => {
+    fetch("http://localhost:3000/api/sw/all-off", { method: "POST" });
+  });
 }
 
 export function updateSwitchboardUI(stateChange: StateChange) {
