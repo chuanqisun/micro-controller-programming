@@ -1,6 +1,6 @@
-# Handleshake
+# Protocols
 
-## Voice
+## Handshake
 
 - node.js server send `server:<ip>:<udp_rx_port>` to Operator via BLE
 - Operator responds with `operator:<ip>:<udp_rx_port>` via BLE
