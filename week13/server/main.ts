@@ -1,5 +1,6 @@
-import { concatMap, filter, map, tap } from "rxjs";
+import { concatMap, filter, map, merge, tap, withLatestFrom } from "rxjs";
 import { HTTP_PORT, LAPTOP_UDP_RX_PORT } from "./config";
+import { commitOption, handleStartTextAdventures, previewOption, textGenerated$ } from "./features/adventures";
 import { BLEDevice, opMac, swMac } from "./features/ble";
 import { createButtonStateMachine } from "./features/buttons";
 import {
@@ -37,15 +38,9 @@ import {
   handleConnectSwitchboard,
   handleDisconnectSwitchboard,
   handleLEDAllOff,
+  turnOffAllLED,
   turnOnLED,
 } from "./features/switchboard";
-import {
-  handleCommitOption,
-  handlePreviewOption,
-  handleStartTextAdventures,
-  previewOption,
-  textGenerated$,
-} from "./features/text-adventures";
 import { createUDPServer } from "./features/udp";
 
 async function main() {
@@ -70,8 +65,6 @@ async function main() {
       handleConnectGemini(),
       handleDisconnectGemini(),
       handleStartTextAdventures(),
-      handlePreviewOption(),
-      handleCommitOption(),
     ],
     HTTP_PORT,
   );
@@ -120,6 +113,15 @@ async function main() {
     .pipe(
       filter((num) => num === 7),
       tap(cancelAllSpeakerPlayback),
+    )
+    .subscribe();
+
+  merge(operataorButtons.oneButtonUp$, operataorButtons.twoButtonUp$)
+    .pipe(
+      withLatestFrom(operatorProbeNum$),
+      tap(cancelAllSpeakerPlayback),
+      tap(() => turnOffAllLED(switchboard)),
+      tap(([_, index]) => commitOption(index)),
     )
     .subscribe();
 }

@@ -1,11 +1,11 @@
 import { tap } from "rxjs";
+import { initAdventureUI, updateAdventureUI } from "./features/adventuress";
 import { appendDiagnosticsError, updateDiagnosticsState } from "./features/diagnostics";
 import { initOperatorUI, updateOperatorUI } from "./features/operator";
 import { initSimulationUI, updateSimulationUI } from "./features/simulation";
 import { createSSEObservable } from "./features/sse";
 import { state$, stateChange$ } from "./features/state";
 import { initSwitchboardUI, updateSwitchboardUI } from "./features/switchboard";
-import { initAdventureUI, updateAdventureUI } from "./features/text-adventures";
 import "./style.css";
 
 initSwitchboardUI();
