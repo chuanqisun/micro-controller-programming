@@ -19,7 +19,7 @@ bool oldDeviceConnected = false;
 
 const int ledPins[] = {D0, D7, D2, D9, D1, D8, D3};
 const int numLeds = 7;
-const int PERIOD_US = 500;
+const int PERIOD_US = 1000;
 const int FADE_STEP_MS = 1;  // Time between brightness steps
 
 // Track LED on/off state
