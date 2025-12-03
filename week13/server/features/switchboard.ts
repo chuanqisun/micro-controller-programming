@@ -33,11 +33,11 @@ export function handleLEDAllOff(switchboard: BLEDevice): Handler {
 }
 
 export async function turnOnLED(switchboard: BLEDevice, id: number) {
-  await switchboard.send(`on:${id}`);
+  await switchboard.send(`fadeon:${id}`);
 }
 
 export async function turnOffAllLED(switchboard: BLEDevice) {
-  await switchboard.send(`off:all`);
+  await switchboard.send(`fadeoff:all`);
 }
 
 export function handleConnectSwitchboard(switchboard: BLEDevice): Handler {

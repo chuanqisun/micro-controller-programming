@@ -19,6 +19,162 @@ bool oldDeviceConnected = false;
 
 const int ledPins[] = {D0, D7, D2, D9, D1, D8, D3};
 const int numLeds = 7;
+const int PERIOD_US = 500;
+const int FADE_STEP_MS = 1;  // Time between brightness steps
+
+// Track LED on/off state
+bool ledOn[7] = {false};
+
+// Fade state for each LED
+struct FadeState {
+    bool active;
+    bool fadingOn;      // true = fading on, false = fading off
+    int brightness;     // 0-255
+    unsigned long lastStepTime;
+};
+FadeState fadeStates[7];
+
+// Global fade-all state
+bool fadeAllActive = false;
+int fadeAllBrightness = 255;
+unsigned long fadeAllLastStepTime = 0;
+bool fadeAllLedMask[7] = {false};  // Which LEDs to fade during fade-all
+
+// Process one PWM cycle for all LEDs based on their current brightness
+void processPwmCycle() {
+    for (int i = 0; i < numLeds; i++) {
+        if (fadeStates[i].active && fadeStates[i].brightness > 0) {
+            int on_us = map(fadeStates[i].brightness, 0, 255, 0, PERIOD_US);
+            int off_us = PERIOD_US - on_us;
+            digitalWrite(ledPins[i], HIGH);
+            delayMicroseconds(on_us);
+            digitalWrite(ledPins[i], LOW);
+            delayMicroseconds(off_us);
+        }
+    }
+}
+
+// Update fade states (called from loop)
+void updateFades() {
+    unsigned long now = millis();
+    
+    // Handle fade-all-off
+    if (fadeAllActive) {
+        if (now - fadeAllLastStepTime >= FADE_STEP_MS) {
+            fadeAllLastStepTime = now;
+            fadeAllBrightness--;
+            
+            int on_us = map(fadeAllBrightness, 0, 255, 0, PERIOD_US);
+            int off_us = PERIOD_US - on_us;
+            for (int i = 0; i < numLeds; i++) {
+                if (fadeAllLedMask[i]) {
+                    digitalWrite(ledPins[i], HIGH);
+                }
+            }
+            delayMicroseconds(on_us);
+            for (int i = 0; i < numLeds; i++) {
+                if (fadeAllLedMask[i]) {
+                    digitalWrite(ledPins[i], LOW);
+                }
+            }
+            delayMicroseconds(off_us);
+            
+            if (fadeAllBrightness <= 0) {
+                fadeAllActive = false;
+                for (int i = 0; i < numLeds; i++) {
+                    if (fadeAllLedMask[i]) {
+                        digitalWrite(ledPins[i], LOW);
+                        ledOn[i] = false;
+                    }
+                }
+                // Send acknowledgment
+                String ack = "ACK:fadeoff all";
+                pTxCharacteristic->setValue((uint8_t*)ack.c_str(), ack.length());
+                pTxCharacteristic->notify();
+            }
+        }
+        return; // Don't process individual fades during fade-all
+    }
+    
+    // Handle individual LED fades
+    for (int i = 0; i < numLeds; i++) {
+        if (fadeStates[i].active) {
+            if (now - fadeStates[i].lastStepTime >= FADE_STEP_MS) {
+                fadeStates[i].lastStepTime = now;
+                
+                // Do one PWM cycle at current brightness
+                int on_us = map(fadeStates[i].brightness, 0, 255, 0, PERIOD_US);
+                int off_us = PERIOD_US - on_us;
+                if (fadeStates[i].brightness > 0) {
+                    digitalWrite(ledPins[i], HIGH);
+                    delayMicroseconds(on_us);
+                    digitalWrite(ledPins[i], LOW);
+                    delayMicroseconds(off_us);
+                }
+                
+                // Update brightness
+                if (fadeStates[i].fadingOn) {
+                    fadeStates[i].brightness++;
+                    if (fadeStates[i].brightness >= 255) {
+                        fadeStates[i].active = false;
+                        digitalWrite(ledPins[i], HIGH);  // Leave on
+                        ledOn[i] = true;
+                        String ack = "ACK:fadeon " + String(i);
+                        pTxCharacteristic->setValue((uint8_t*)ack.c_str(), ack.length());
+                        pTxCharacteristic->notify();
+                    }
+                } else {
+                    fadeStates[i].brightness--;
+                    if (fadeStates[i].brightness <= 0) {
+                        fadeStates[i].active = false;
+                        digitalWrite(ledPins[i], LOW);  // Leave off
+                        ledOn[i] = false;
+                        String ack = "ACK:fadeoff " + String(i);
+                        pTxCharacteristic->setValue((uint8_t*)ack.c_str(), ack.length());
+                        pTxCharacteristic->notify();
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Start fade on for a specific LED
+void startFadeOn(int ledIndex) {
+    fadeStates[ledIndex].active = true;
+    fadeStates[ledIndex].fadingOn = true;
+    fadeStates[ledIndex].brightness = 0;
+    fadeStates[ledIndex].lastStepTime = millis();
+}
+
+// Start fade off for a specific LED (only if currently on)
+void startFadeOff(int ledIndex) {
+    if (!ledOn[ledIndex]) return;  // Skip if LED is not on
+    fadeStates[ledIndex].active = true;
+    fadeStates[ledIndex].fadingOn = false;
+    fadeStates[ledIndex].brightness = 255;
+    fadeStates[ledIndex].lastStepTime = millis();
+}
+
+// Start fade off for all LEDs (only those currently on)
+void startFadeOffAll() {
+    bool anyOn = false;
+    for (int i = 0; i < numLeds; i++) {
+        fadeAllLedMask[i] = ledOn[i];
+        if (ledOn[i]) anyOn = true;
+        fadeStates[i].active = false;  // Cancel any individual fades
+    }
+    if (!anyOn) {
+        // No LEDs are on, send ACK immediately
+        String ack = "ACK:fadeoff all";
+        pTxCharacteristic->setValue((uint8_t*)ack.c_str(), ack.length());
+        pTxCharacteristic->notify();
+        return;
+    }
+    fadeAllActive = true;
+    fadeAllBrightness = 255;
+    fadeAllLastStepTime = millis();
+}
 
 // Server callbacks
 class MyServerCallbacks: public BLEServerCallbacks {
@@ -63,6 +219,7 @@ class MyRxCallbacks: public BLECharacteristicCallbacks {
                     Serial.print("Turning on LED ");
                     Serial.println(ledIndex);
                     digitalWrite(ledPins[ledIndex], HIGH);
+                    ledOn[ledIndex] = true;
                     
                     // Send acknowledgment
                     String ack = "ACK:on " + String(ledIndex);
@@ -77,6 +234,7 @@ class MyRxCallbacks: public BLECharacteristicCallbacks {
                     Serial.println("Turning off all LEDs");
                     for (int i = 0; i < numLeds; i++) {
                         digitalWrite(ledPins[i], LOW);
+                        ledOn[i] = false;
                     }
                     String ack = "ACK:off all";
                     pTxCharacteristic->setValue((uint8_t*)ack.c_str(), ack.length());
@@ -87,11 +245,36 @@ class MyRxCallbacks: public BLECharacteristicCallbacks {
                         Serial.print("Turning off LED ");
                         Serial.println(ledIndex);
                         digitalWrite(ledPins[ledIndex], LOW);
+                        ledOn[ledIndex] = false;
                         
                         // Send acknowledgment
                         String ack = "ACK:off " + String(ledIndex);
                         pTxCharacteristic->setValue((uint8_t*)ack.c_str(), ack.length());
                         pTxCharacteristic->notify();
+                    } else {
+                        Serial.println("Invalid LED index");
+                    }
+                }
+            } else if (rxValue.startsWith("fadeon:")) {
+                int ledIndex = rxValue.substring(7).toInt();
+                if (ledIndex >= 0 && ledIndex < numLeds) {
+                    Serial.print("Fading on LED ");
+                    Serial.println(ledIndex);
+                    startFadeOn(ledIndex);
+                } else {
+                    Serial.println("Invalid LED index");
+                }
+            } else if (rxValue.startsWith("fadeoff:")) {
+                String sub = rxValue.substring(8);
+                if (sub == "all") {
+                    Serial.println("Fading off all LEDs");
+                    startFadeOffAll();
+                } else {
+                    int ledIndex = sub.toInt();
+                    if (ledIndex >= 0 && ledIndex < numLeds) {
+                        Serial.print("Fading off LED ");
+                        Serial.println(ledIndex);
+                        startFadeOff(ledIndex);
                     } else {
                         Serial.println("Invalid LED index");
                     }
@@ -169,5 +352,6 @@ void loop() {
         oldDeviceConnected = deviceConnected;
     }
     
-    delay(10);
+    // Process non-blocking fades
+    updateFades();
 }
