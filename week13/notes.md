@@ -157,6 +157,139 @@ speakBtn.addEventListener("click", async () => {
 
 - See screenshot v4
 
+- Dealing with complexity, refactored the BLE communication to live within server code, rather than web UI
+- The full server code becomes modular and easier to manage
+
+```ts
+import { map, tap } from "rxjs";
+import { HTTP_PORT, LAPTOP_UDP_RX_PORT } from "./config";
+import { BLEDevice, opMac, swMac } from "./features/ble";
+import { createButtonStateMachine } from "./features/buttons";
+import {
+  geminiResponse$,
+  geminiTranscript$,
+  handleConnectGemini,
+  handleDisconnectGemini,
+} from "./features/gemini-live";
+import { createHttpServer } from "./features/http";
+import {
+  handleButtonsMessage,
+  handleConnectOperator,
+  handleDisconnectOperator,
+  handleOpAddressMessage,
+  handleProbeMessage,
+  handleRequestOperatorAddress,
+  logOperatorMessage,
+  operatorAddress$,
+  operatorButtons$,
+  operatorProbeNum$,
+} from "./features/operator";
+import { silence$ } from "./features/silence-detection";
+import {
+  handleAudio,
+  handleConnectSession,
+  handleDisconnectSession,
+  interrupt,
+  triggerResponse,
+} from "./features/simulation";
+import { broadcast, handleSSE, newSseClient$ } from "./features/sse";
+import { appState$, updateState } from "./features/state";
+import { handleBlinkLED, handleConnectSwitchboard, handleDisconnectSwitchboard } from "./features/switchboard";
+import { createUDPServer } from "./features/udp";
+
+async function main() {
+  const operator = new BLEDevice(opMac);
+  const switchboard = new BLEDevice(swMac);
+
+  createUDPServer([handleAudio()], LAPTOP_UDP_RX_PORT);
+
+  createHttpServer(
+    [
+      handleSSE(),
+      handleBlinkLED(switchboard),
+      handleConnectSwitchboard(switchboard),
+      handleDisconnectSwitchboard(switchboard),
+      handleConnectOperator(operator),
+      handleDisconnectOperator(operator),
+      handleRequestOperatorAddress(operator),
+      handleConnectSession(),
+      handleDisconnectSession(),
+      handleConnectGemini(),
+      handleDisconnectGemini(),
+    ],
+    HTTP_PORT,
+  );
+
+  appState$
+    .pipe(
+      map((state) => ({ state })),
+      tap(broadcast),
+    )
+    .subscribe();
+
+  newSseClient$.pipe(tap(() => broadcast({ state: appState$.value }))).subscribe();
+
+  operator.message$
+    .pipe(
+      tap(logOperatorMessage),
+      tap(handleProbeMessage()),
+      tap(handleOpAddressMessage()),
+      tap(handleButtonsMessage()),
+    )
+    .subscribe();
+  operatorProbeNum$.pipe(tap((num) => updateState((state) => ({ ...state, probeNum: num })))).subscribe();
+  operatorAddress$.pipe(tap((address) => updateState((state) => ({ ...state, opAddress: address })))).subscribe();
+  operatorButtons$
+    .pipe(tap((buttons) => updateState((state) => ({ ...state, btn1: buttons.btn1, btn2: buttons.btn2 }))))
+    .subscribe();
+
+  const operataorButtons = createButtonStateMachine(operatorButtons$);
+
+  operataorButtons.leaveIdle$.pipe(tap(interrupt)).subscribe();
+  silence$.pipe(tap(triggerResponse)).subscribe();
+
+  // Gemini Live API subscriptions
+  geminiTranscript$.pipe(tap((text) => console.log(`🎤 Transcript: ${text}`))).subscribe();
+  geminiResponse$.pipe(tap((text) => console.log(`🤖 Gemini: ${text}`))).subscribe();
+}
+
+main();
+```
+
+Meanwhile, also modularized web ui code
+
+```ts
+import { tap } from "rxjs";
+import { appendDiagnosticsError, updateDiagnosticsState } from "./features/diagnostics";
+import { initOperatorUI, updateOperatorUI } from "./features/operator";
+import { initSimulationUI, updateSimulationUI } from "./features/simulation";
+import { createSSEObservable } from "./features/sse";
+import { state$, stateChange$ } from "./features/state";
+import { initSwitchboardUI, updateSwitchboardUI } from "./features/switchboard";
+import "./style.css";
+
+initSwitchboardUI();
+initOperatorUI();
+initSimulationUI();
+
+state$.pipe(tap(updateDiagnosticsState)).subscribe();
+
+stateChange$.pipe(tap(updateSwitchboardUI), tap(updateOperatorUI), tap(updateSimulationUI)).subscribe();
+
+export const sseEvents$ = createSSEObservable("http://localhost:3000/api/events");
+
+sseEvents$.subscribe({
+  next: (message) => {
+    if (message.state) {
+      state$.next(message.state);
+    }
+  },
+  error: (error) => {
+    appendDiagnosticsError(error);
+  },
+});
+```
+
 ## TODO
 
 - LED on means want to say
