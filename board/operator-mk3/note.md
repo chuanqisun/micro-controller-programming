@@ -26,3 +26,28 @@ Calibrate front from Round 1, (5 + 8.82)/2 = 6.91
 
 - front
   - x-set: 6.91
+
+Round 3
+
+- front
+  - x-set: 6
+  - left-actual: 7.88 | 7.76 | 7.88 | 7.95 = 7.8675
+  - right-actual: 9.50 | 9.51 | 9.51 | 9.54 = 9.515
+  - delta = 9.515 - 7.8675 = 1.6475
+- back
+  - x-set: 6 + 1.6475 = 7.6475 = 7.648 instead
+
+Round 4
+
+- front
+  - x-set: 6
+  - left-actual: 7.86 | 7.87 | 7.78 | 7.81 = 7.83
+  - right-actual: 9.50 | 9.50 | 9.48 | 9.52 = 9.5
+  - delta = 9.5 - 7.83 = 1.67
+- back
+  - x-set: 6 + 1.67 = 7.67
+
+Learning:
+
+- The side with the drills should be the side that has the most solder
+- f should have the drill, b should not
