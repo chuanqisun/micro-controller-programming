@@ -7,6 +7,7 @@ import type { Handler } from "./http";
 import { cancelAllSpeakerPlayback, playPcm16Buffer } from "./speaker";
 import { appState$, updateState } from "./state";
 import { GenerateOpenAISpeech } from "./tts";
+import { sendPcm16UDP } from "./udp";
 
 const storyOptionsSchema = z.object({
   storyOptions: z.array(z.string().describe("A story beginning for a text adventure game.")),
@@ -28,7 +29,9 @@ export async function previewOption(id: number) {
   }
 
   cancelAllSpeakerPlayback();
-  playPcm16Buffer(await assignment.audioBuffer);
+  const audioBuffer = await assignment.audioBuffer;
+  playPcm16Buffer(audioBuffer);
+  sendPcm16UDP(audioBuffer, appState$.value.opAddress);
 }
 
 export async function commitOption(id: number) {

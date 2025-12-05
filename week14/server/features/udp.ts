@@ -12,6 +12,15 @@ export type UDPHandler = (msg: UDPMessage) => void;
 const udpSocket = dgram.createSocket("udp4");
 const message$ = new Subject<UDPMessage>();
 
+const MAX_UDP_PAYLOAD = 1400; // Safe size to avoid fragmentation
+const SAMPLE_RATE = 24000;
+const BYTES_PER_SAMPLE = 2; // 16-bit PCM
+const BYTES_PER_SECOND = SAMPLE_RATE * BYTES_PER_SAMPLE;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export function createUDPServer(handlers: UDPHandler[], rxPort: number) {
   udpSocket.bind(rxPort);
 
@@ -36,13 +45,30 @@ export function createUDPServer(handlers: UDPHandler[], rxPort: number) {
   return udpSocket;
 }
 
-export function sendUDP(data: Buffer, port: number, address: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    udpSocket.send(data, port, address, (err) => {
-      if (err) reject(err);
-      else resolve();
+export async function sendPcm16UDP(data: Buffer, address: string): Promise<void> {
+  const [ip, port] = address.split(":");
+  const portNum = parseInt(port);
+
+  // Calculate delay per chunk based on audio duration
+  const chunkDurationMs = (MAX_UDP_PAYLOAD / BYTES_PER_SECOND) * 1000;
+  // Send slightly faster than realtime to keep buffer filled (80% of realtime)
+  const delayMs = chunkDurationMs * 0.8;
+
+  // Split into chunks if data is too large
+  for (let offset = 0; offset < data.length; offset += MAX_UDP_PAYLOAD) {
+    const chunk = data.subarray(offset, offset + MAX_UDP_PAYLOAD);
+    await new Promise<void>((resolve, reject) => {
+      udpSocket.send(chunk, portNum, ip, (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
     });
-  });
+
+    // Throttle to prevent receiver buffer overflow
+    if (offset + MAX_UDP_PAYLOAD < data.length) {
+      await sleep(delayMs);
+    }
+  }
 }
 
 export function getServerAddress(): string {
