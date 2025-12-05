@@ -51,3 +51,12 @@ Learning:
 
 - The side with the drills should be the side that has the most solder
 - f should not drill, b should drill
+
+Round 5
+
+- x-set:
+- left: 8.59 | 8.62 | 8.57 | 8.63 = 8.6025
+- right: 8.65 | 8.74 | 8.67 | 8.67 = 8.6825
+- delta = 8.6825 - 8.6025 = 0.08
+- back x-set: 6.835 + 0.08 = 6.915
+- future x-set: (6.835+6.915)/2 = 6.875
