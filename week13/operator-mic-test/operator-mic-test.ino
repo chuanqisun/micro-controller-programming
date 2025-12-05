@@ -10,15 +10,14 @@ AudioInfo info(24000, 1, 16);  // freq, channels, bits per sample
 I2SStream i2sStream;           // Access I2S as stream
 ConverterFillLeftAndRight<int16_t> filler(LeftIsEmpty); // fill both channels
 UDPStream udp(ssid, password);
-Throttle throttle(udp);
-IPAddress udpAddress(192, 168, 41, 100);  // Broadcast address
+IPAddress udpAddress(192, 168, 41, 79);  // Broadcast address
 const int udpPort = 8888;
-StreamCopy copier(throttle, i2sStream);  // copies I2S microphone input into UDP
+StreamCopy copier(udp, i2sStream);  // copies I2S microphone input into UDP
 
 void setup() {
   Serial.begin(115200);
   delay(100);
-  AudioToolsLogger.begin(Serial, AudioToolsLogLevel::Info);
+  AudioToolsLogger.begin(Serial, AudioToolsLogLevel::Warning);
 
   // Connect to WiFi
   Serial.println("\nConnecting to WiFi...");
@@ -56,10 +55,6 @@ void setup() {
 
   // Define udp address and port
   udp.begin(udpAddress, udpPort);
-
-  auto throttleCfg = throttle.defaultConfig();
-  throttleCfg.copyFrom(info);
-  throttle.begin(throttleCfg);
 
   Serial.println("Started streaming...");
   Serial.print("Sending to: ");
