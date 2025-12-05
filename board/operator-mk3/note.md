@@ -50,4 +50,4 @@ Round 4
 Learning:
 
 - The side with the drills should be the side that has the most solder
-- f should have the drill, b should not
+- f should not drill, b should drill
