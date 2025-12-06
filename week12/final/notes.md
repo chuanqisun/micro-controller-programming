@@ -11,10 +11,10 @@
 - Move speaker closer to wall, and move push button away from PCB
 - Lid too tight, need chamfer, added 0.5mm chamfer
 - Thumbgap too narrow. Increase to 1.5cm
+- Need mid point lid support
 
 TODO
 
-- Need mid point lid support
 - PCB: move amp and bottom right header closer to center
 
 ## Switchboard Mk5
@@ -23,11 +23,11 @@ TODO
 - LED hole to 8 mm
 - PCB: move ESP32 away from the wall by 0.5mm
 - PCB: move all female headers away from wall
+- Thumbgap too narrow. Increase to 1.5cm
+- Need mid point lid support
 
 TODO
 
-- Thumbgap too narrow. Increase to 1.5cm
-- Need mid point lid support
 - Move jack to center for visual balance
 
 ## LED test
