@@ -18,7 +18,7 @@ void setup(void) {
   AudioToolsLogger.begin(Serial, AudioToolsLogLevel::Info);
 
   // connect to WIFI
-  WiFi.begin("MLDEV", "{{replace with your wifi}}");
+  WiFi.begin("MLDEV", "");
   while (WiFi.status() != WL_CONNECTED){
     Serial.print(".");
     delay(500); 
@@ -26,7 +26,7 @@ void setup(void) {
  
   // open music stream
   // music.begin("https://pschatzmann.github.io/Resources/audio/audio-8000.raw");
-  music.begin("http://192.168.41.71:3000/audio.raw");
+  music.begin("http://192.168.41.135:3000/audio.raw");
 
 
   // start I2S with external DAC
