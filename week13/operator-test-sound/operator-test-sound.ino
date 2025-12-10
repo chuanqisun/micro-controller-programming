@@ -6,9 +6,9 @@
 #define I2S_DIN  D10
 
 const int frequency = 440; 
-const int sampleRate = 44100;
+const int sampleRate = 24000;
 
-AudioInfo info(sampleRate, 2, 16);
+AudioInfo info(sampleRate, 1, 16);
 SineWaveGenerator<int16_t> sineWave(4000); // sine wave with max amplitude of 4000
 GeneratedSoundStream<int16_t> sound(sineWave); // stream generated from sine wave
 I2SStream out;
