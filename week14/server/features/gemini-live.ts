@@ -1,7 +1,14 @@
 import { GoogleGenAI, Modality, type Session } from "@google/genai";
 import { Subject } from "rxjs";
 import { StreamingAudioPlayer } from "./audio";
+import { DebugAudioBuffer } from "./debug-audio";
 import type { Handler } from "./http";
+import {
+  recordAudioActivity,
+  resetSpeechState,
+  startSilenceDetection,
+  stopSilenceDetection,
+} from "./silence-detection";
 import { updateState } from "./state";
 import type { UDPHandler } from "./udp";
 
@@ -10,6 +17,7 @@ const MODEL = "gemini-2.5-flash-native-audio-preview-09-2025";
 let session: Session | null = null;
 let sessionReady = false;
 const audioPlayer = new StreamingAudioPlayer({ format: "s16le", sampleRate: 24000, channels: 1 });
+const debugBuffer = new DebugAudioBuffer();
 
 const responseSubject = new Subject<string>();
 export const geminiResponse$ = responseSubject.asObservable();
@@ -24,6 +32,7 @@ export function handleConnectGemini(): Handler {
     updateState((state) => ({ ...state, aiConnection: "busy" }));
     try {
       await connectGeminiLive();
+      startSilenceDetection();
       updateState((state) => ({ ...state, aiConnection: "connected" }));
     } catch (error) {
       console.error("Failed to connect to Gemini:", error);
@@ -41,8 +50,54 @@ export function handleDisconnectGemini(): Handler {
     if (req.method !== "POST" || req.url !== "/api/gemini/disconnect") return false;
 
     updateState((state) => ({ ...state, aiConnection: "busy" }));
+    stopSilenceDetection();
     disconnectGeminiLive();
+    resetSpeechState();
     updateState((state) => ({ ...state, aiConnection: "disconnected" }));
+
+    res.writeHead(200);
+    res.end();
+    return true;
+  };
+}
+
+/**
+ * POST /api/gemini/send-text
+ *
+ * payload: { text: string }
+ * */
+
+export function handleGeminiSendText(): Handler {
+  return async (req, res) => {
+    if (req.method !== "POST" || req.url !== "/api/gemini/send-text") return false;
+
+    const payloadText = await new Promise<string>((resolve, reject) => {
+      let body = "";
+      req.on("data", (chunk) => {
+        body += chunk.toString();
+      });
+      req.on("end", () => {
+        try {
+          const parsed = JSON.parse(body);
+          resolve(parsed.text);
+        } catch (e) {
+          reject(e);
+        }
+      });
+      req.on("error", (err) => {
+        reject(err);
+      });
+    });
+
+    if (session && sessionReady) {
+      session.sendClientContent({
+        turns: payloadText,
+        turnComplete: true,
+      });
+      console.log(`📤 Sent text to Gemini: ${payloadText}`);
+    } else {
+      console.warn("⚠️ Cannot send text, Gemini session not ready");
+    }
 
     res.writeHead(200);
     res.end();
@@ -55,7 +110,11 @@ export function handleGeminiAudio(): UDPHandler {
     if (!sessionReady || !session) return;
     if (msg.data.length === 0) return;
 
-    streamAudioToGemini(Buffer.from(msg.data));
+    // Track speech state for silence detection
+    recordAudioActivity();
+
+    // Append to debug buffer (this also streams to Gemini via debug-audio.ts)
+    debugBuffer.push(Buffer.from(msg.data));
   };
 }
 
@@ -103,6 +162,7 @@ function handleGeminiMessage(message: any) {
   if (message.data) {
     const audioBuffer = Buffer.from(message.data, "base64");
     audioPlayer.push(audioBuffer);
+    console.log(`🎧 Playing Gemini audio response (${audioBuffer.length} bytes)`);
     return; // Don't process further if we got direct audio data
   }
 
@@ -154,7 +214,8 @@ export function sendAudioStreamEnd(): void {
     return;
   }
 
-  // Signal end of audio stream to trigger response
+  // Save debug buffer as WAV file (this also sends audio stream end via debug-audio.ts)
+  debugBuffer.saveAsWav();
   session.sendRealtimeInput({ audioStreamEnd: true });
   console.log("📤 Sent audio stream end signal");
 }

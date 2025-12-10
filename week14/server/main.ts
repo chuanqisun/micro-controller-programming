@@ -8,6 +8,9 @@ import {
   geminiTranscript$,
   handleConnectGemini,
   handleDisconnectGemini,
+  handleGeminiAudio,
+  handleGeminiSendText,
+  sendAudioStreamEnd,
 } from "./features/gemini-live";
 import { createHttpServer } from "./features/http";
 import {
@@ -25,13 +28,7 @@ import {
   operatorProbeNum$,
 } from "./features/operator";
 import { silence$ } from "./features/silence-detection";
-import {
-  handleAudio,
-  handleConnectSession,
-  handleDisconnectSession,
-  interrupt,
-  triggerResponse,
-} from "./features/simulation";
+import { handleConnectSession, handleDisconnectSession, interrupt, triggerResponse } from "./features/simulation";
 import { cancelAllSpeakerPlayback } from "./features/speaker";
 import { broadcast, handleSSE, newSseClient$ } from "./features/sse";
 import { appState$, updateState } from "./features/state";
@@ -49,7 +46,7 @@ async function main() {
   const operator = new BLEDevice(opMac);
   const switchboard = new BLEDevice(swMac);
 
-  createUDPServer([handleAudio()], LAPTOP_UDP_RX_PORT);
+  createUDPServer([handleGeminiAudio()], LAPTOP_UDP_RX_PORT);
 
   createHttpServer(
     [
@@ -68,6 +65,7 @@ async function main() {
 
       handleConnectGemini(),
       handleDisconnectGemini(),
+      handleGeminiSendText(),
       handleStartTextAdventures(),
     ],
     HTTP_PORT,
@@ -99,7 +97,7 @@ async function main() {
   const operataorButtons = createButtonStateMachine(operatorButtons$);
 
   operataorButtons.leaveIdle$.pipe(tap(interrupt)).subscribe();
-  silence$.pipe(tap(triggerResponse)).subscribe();
+  silence$.pipe(tap(triggerResponse), tap(sendAudioStreamEnd)).subscribe();
 
   // Gemini Live API subscriptions
   geminiTranscript$.pipe(tap((text) => console.log(`🎤 Transcript: ${text}`))).subscribe();
