@@ -139,6 +139,7 @@ void loop() {
   }
 
 
+  // Alternate to prevent blocking
    if (shouldSend && isTransmitting) {
     micToUdpCopier.copy();
    } else if (!shouldSend && !isTransmitting) {
