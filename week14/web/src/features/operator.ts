@@ -17,6 +17,12 @@ export function initOperatorUI() {
       fetch(`http://localhost:3000/api/sw/blink?id=${i}`, { method: "POST" });
     });
   }
+
+  for (let i = 0; i < 8; i++) {
+    (document.getElementById(`probe${i}`) as HTMLButtonElement).addEventListener("click", () => {
+      fetch(`http://localhost:3000/api/probe?id=${i}`, { method: "POST" });
+    });
+  }
 }
 
 export function updateOperatorUI(stateChange: StateChange) {

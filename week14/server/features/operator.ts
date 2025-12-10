@@ -77,6 +77,23 @@ export function handleProbeMessage() {
   };
 }
 
+export function handleProbeApi(): Handler {
+  return async (req, res) => {
+    if (req.method !== "POST" || !req.url?.startsWith("/api/probe")) return false;
+
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const id = parseInt(url.searchParams.get("id") ?? "0", 10);
+    // Convert probe index to 3-bit binary string (e.g., 0 -> "000", 5 -> "101")
+    const binaryProbe = id.toString(2).padStart(3, "0");
+    probeRaw$.next(binaryProbe);
+
+    res.writeHead(200);
+    res.end();
+
+    return true;
+  };
+}
+
 export function handleOpAddressMessage() {
   return (message: string) => {
     if (message.startsWith("operator:")) {

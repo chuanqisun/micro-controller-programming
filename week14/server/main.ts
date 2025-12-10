@@ -15,6 +15,7 @@ import {
   handleConnectOperator,
   handleDisconnectOperator,
   handleOpAddressMessage,
+  handleProbeApi,
   handleProbeMessage,
   handleRequestOperatorAddress,
   logOperatorMessage,
@@ -59,6 +60,7 @@ async function main() {
       handleConnectOperator(operator),
       handleDisconnectOperator(operator),
       handleRequestOperatorAddress(operator),
+      handleProbeApi(),
       handleConnectSession(),
       handleDisconnectSession(),
 
