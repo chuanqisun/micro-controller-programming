@@ -23,6 +23,21 @@ export function initOperatorUI() {
       fetch(`http://localhost:3000/api/probe?id=${i}`, { method: "POST" });
     });
   }
+
+  // Button press-hold handlers
+  const btnConfigs = [
+    { id: "btnBtn1", mode: "btn1" },
+    { id: "btnBtn2", mode: "btn2" },
+    { id: "btnBoth", mode: "both" },
+  ];
+
+  for (const { id, mode } of btnConfigs) {
+    const btn = document.getElementById(id) as HTMLButtonElement;
+    const sendBtn = (m: string) => fetch(`http://localhost:3000/api/btn?mode=${m}`, { method: "POST" });
+
+    btn.addEventListener("mousedown", () => sendBtn(mode));
+    btn.addEventListener("mouseup", () => sendBtn("none"));
+  }
 }
 
 export function updateOperatorUI(stateChange: StateChange) {

@@ -94,6 +94,34 @@ export function handleProbeApi(): Handler {
   };
 }
 
+export function handleBtnApi(): Handler {
+  return async (req, res) => {
+    if (req.method !== "POST" || !req.url?.startsWith("/api/btn")) return false;
+
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const mode = url.searchParams.get("mode") ?? "none";
+
+    let btn1 = false;
+    let btn2 = false;
+
+    if (mode === "btn1") {
+      btn1 = true;
+    } else if (mode === "btn2") {
+      btn2 = true;
+    } else if (mode === "both") {
+      btn1 = true;
+      btn2 = true;
+    }
+
+    operatorButtons$.next({ btn1, btn2 });
+
+    res.writeHead(200);
+    res.end();
+
+    return true;
+  };
+}
+
 export function handleOpAddressMessage() {
   return (message: string) => {
     if (message.startsWith("operator:")) {

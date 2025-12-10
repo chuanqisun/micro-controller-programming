@@ -11,6 +11,7 @@ import {
 } from "./features/gemini-live";
 import { createHttpServer } from "./features/http";
 import {
+  handleBtnApi,
   handleButtonsMessage,
   handleConnectOperator,
   handleDisconnectOperator,
@@ -61,6 +62,7 @@ async function main() {
       handleDisconnectOperator(operator),
       handleRequestOperatorAddress(operator),
       handleProbeApi(),
+      handleBtnApi(),
       handleConnectSession(),
       handleDisconnectSession(),
 
