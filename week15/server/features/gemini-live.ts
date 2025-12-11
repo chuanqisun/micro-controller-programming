@@ -1,5 +1,6 @@
-import { GoogleGenAI, Modality, type LiveConnectConfig, type Session } from "@google/genai";
+import { GoogleGenAI, LiveServerMessage, Modality, type LiveConnectConfig, type Session } from "@google/genai";
 import { Subject } from "rxjs";
+import { toolHandlers, tools, type ToolHandler } from "./adventure";
 import { StreamingAudioPlayer } from "./audio";
 import { DebugAudioBuffer } from "./debug-audio";
 import type { Handler } from "./http";
@@ -130,6 +131,9 @@ async function connectGeminiLive(): Promise<void> {
         disabled: true,
       },
     },
+    tools: tools.map((tool) => ({
+      functionDeclarations: [tool],
+    })),
   };
 
   console.log("🔌 Connecting to Gemini Live API...");
@@ -142,7 +146,7 @@ async function connectGeminiLive(): Promise<void> {
         console.log("✓ Connected to Gemini Live API");
         sessionReady = true;
       },
-      onmessage: (message: any) => {
+      onmessage: (message) => {
         handleGeminiMessage(message);
       },
       onerror: (error: any) => {
@@ -157,7 +161,7 @@ async function connectGeminiLive(): Promise<void> {
   });
 }
 
-function handleGeminiMessage(message: any) {
+async function handleGeminiMessage(message: LiveServerMessage) {
   if (message.data) {
     const audioBuffer = Buffer.from(message.data, "base64");
     audioPlayer.push(audioBuffer);
@@ -187,6 +191,38 @@ function handleGeminiMessage(message: any) {
   // Handle interruption
   if (message.serverContent?.interrupted) {
     console.log("⚡ Gemini response interrupted");
+  }
+
+  if (message.toolCall?.functionCalls) {
+    for (const fc of message.toolCall.functionCalls) {
+      const handler = toolHandlers[fc.name ?? ""] as ToolHandler | undefined;
+      if (!handler) {
+        console.warn(`⚠️ No handler for tool: ${fc.name}`);
+        continue;
+      }
+
+      const args = fc.args;
+      handler(args)
+        .then((result) => {
+          console.log(`✓ Tool "${fc.name}" returned result:`, result);
+          return { output: result };
+        })
+        .catch((error) => {
+          console.error(`Error executing tool "${fc.name}":`, error);
+          return {
+            error: `Tool execution failed: ${error.message}`,
+          };
+        })
+        .then((response) => {
+          session?.sendToolResponse({
+            functionResponses: {
+              id: fc.id,
+              name: fc.name!,
+              response,
+            },
+          });
+        });
+    }
   }
 }
 
