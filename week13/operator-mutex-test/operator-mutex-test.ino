@@ -1,9 +1,8 @@
+#include "env.h"
 #include "AudioTools.h"
 #include "AudioTools/Communication/UDPStream.h"
 
-// WiFi credentials
-const char *ssid = "MLDEV";
-const char *password = "";
+
 
 // Pin definitions
 #define I2S_BCLK D0
@@ -30,7 +29,7 @@ AudioInfo info(sampleRate, 1, 16);
 I2SStream i2sStream;
 
 // UDP streaming for mic
-UDPStream udp(ssid, password);
+UDPStream udp(WIFI_SSID, WIFI_PASSWORD);
 IPAddress udpAddress(192, 168, 41, 135);
 const int udpPort = 8888;
 
@@ -101,7 +100,7 @@ void setup() {
 
   // Connect to WiFi
   Serial.println("\nConnecting to WiFi...");
-  WiFi.begin(ssid, password);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
   int attempts = 0;
   while (WiFi.status() != WL_CONNECTED && attempts < 20) {
