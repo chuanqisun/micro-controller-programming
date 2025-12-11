@@ -1,16 +1,10 @@
 import { WebSocket } from "ws";
 import { DebugAudioBuffer } from "./debug-audio";
 import type { Handler } from "./http";
-import {
-  recordAudioActivity,
-  resetSpeechState,
-  setIsProcessing,
-  startSilenceDetection,
-  stopSilenceDetection,
-} from "./silence-detection";
-import { updateState } from "./state";
+import { recordAudioActivity, resetSpeechState, setIsProcessing, startSilenceDetection, stopSilenceDetection } from "./silence-detection";
+import { appState$, updateState } from "./state";
 import { withTimeout } from "./timeout";
-import type { UDPHandler } from "./udp";
+import { sendPcm16UDP, type UDPHandler } from "./udp";
 
 let realtimeWs: WebSocket | null = null;
 let sessionReady = false;
@@ -80,7 +74,7 @@ export function handleAudio(): UDPHandler {
       JSON.stringify({
         type: "input_audio_buffer.append",
         audio: base64Audio,
-      }),
+      })
     );
   };
 }
@@ -144,6 +138,11 @@ export function createRealtimeConnection(): Promise<WebSocket> {
             // process.stdout.write(event.delta);
             break;
 
+          case "response.output_audio.delta":
+            const base64Decoded = Buffer.from(event.delta, "base64");
+            sendPcm16UDP(base64Decoded, appState$.value.opAddress);
+            break;
+
           case "response.output_text.done":
             console.log(`\n📝 Response text: "${event.text}"`);
             break;
@@ -183,9 +182,9 @@ function configureSession(ws: WebSocket) {
     session: {
       type: "realtime",
       model: "gpt-realtime",
-      output_modalities: ["text"],
+      output_modalities: ["audio"],
       instructions: `
-You are an English speaking friend. Your response is always short.
+You are a role-play fantasy game dungeon master. 
       `,
       audio: {
         input: {
