@@ -1,18 +1,17 @@
 import { GoogleGenAI, LiveServerMessage, Modality, type LiveConnectConfig, type Session } from "@google/genai";
 import { Subject } from "rxjs";
-import { StreamingAudioPlayer } from "./audio";
+import { audioPlayer } from "./audio";
 import { DebugAudioBuffer } from "./debug-audio";
-import { toolHandlers, tools, type ToolHandler } from "./game";
+import { getDungeonMasterPrompt, toolHandlers, tools, type ToolHandler } from "./game";
 import type { Handler } from "./http";
 import { recordAudioActivity, resetSpeechState, startSilenceDetection, stopSilenceDetection } from "./silence-detection";
-import { updateState } from "./state";
-import type { UDPHandler } from "./udp";
+import { appState$, updateState } from "./state";
+import { startPcmStream, stopPcmStream, type UDPHandler } from "./udp";
 
 const MODEL = "gemini-2.5-flash-native-audio-preview-09-2025";
 
 let session: Session | null = null;
 let sessionReady = false;
-const audioPlayer = new StreamingAudioPlayer({ format: "s16le", sampleRate: 24000, channels: 1 });
 const debugBuffer = new DebugAudioBuffer();
 
 const responseSubject = new Subject<string>();
@@ -134,7 +133,7 @@ async function connectGeminiLive(): Promise<void> {
 
   const config: LiveConnectConfig = {
     responseModalities: [Modality.AUDIO],
-    systemInstruction: "You are a dedicated Dungeons & Dragons game master",
+    systemInstruction: getDungeonMasterPrompt(),
     thinkingConfig: { thinkingBudget: 0 },
     realtimeInputConfig: {
       automaticActivityDetection: {
@@ -290,4 +289,10 @@ export function handleSpeechStop() {
   session?.sendRealtimeInput({
     activityEnd: {},
   });
+}
+
+export function resetAIAudio() {
+  audioPlayer.stop();
+  stopPcmStream();
+  startPcmStream(appState$.value.opAddress);
 }

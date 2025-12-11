@@ -90,3 +90,5 @@ export class StreamingAudioPlayer {
     return this.ffmpegPlayer !== null && !this.ffmpegPlayer.killed;
   }
 }
+
+export const audioPlayer = new StreamingAudioPlayer({ format: "s16le", sampleRate: 24000, channels: 1 });

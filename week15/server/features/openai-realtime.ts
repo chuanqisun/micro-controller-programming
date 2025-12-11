@@ -1,6 +1,6 @@
 import { Subject } from "rxjs";
 import { WebSocket } from "ws";
-import { StreamingAudioPlayer } from "./audio";
+import { audioPlayer } from "./audio";
 import { DebugAudioBuffer } from "./debug-audio";
 import type { Handler } from "./http";
 import { recordAudioActivity, resetSpeechState, startSilenceDetection, stopSilenceDetection } from "./silence-detection";
@@ -11,7 +11,6 @@ const MODEL = "gpt-realtime";
 
 let realtimeWs: WebSocket | null = null;
 let sessionReady = false;
-const audioPlayer = new StreamingAudioPlayer({ format: "s16le", sampleRate: 24000, channels: 1 });
 const debugBuffer = new DebugAudioBuffer();
 
 const responseSubject = new Subject<string>();
