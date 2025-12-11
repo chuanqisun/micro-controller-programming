@@ -13,8 +13,10 @@ let lastPacketTime: number | null = null;
 let silenceCheckInterval: ReturnType<typeof setInterval> | null = null;
 let isProcessing = false;
 
-const silenceSubject = new Subject<void>();
-export const silence$ = silenceSubject.asObservable();
+const speakStartSubject = new Subject<void>();
+const silenceStartSubject = new Subject<void>();
+export const speakStart$ = speakStartSubject.asObservable();
+export const silenceStart$ = silenceStartSubject.asObservable();
 
 export function startSilenceDetection() {
   stopSilenceDetection();
@@ -55,6 +57,7 @@ function detectSilence() {
 function beginSpeakingStateIfNeeded() {
   if (currentState !== STATE.SPEAKING) {
     currentState = STATE.SPEAKING;
+    speakStartSubject.next();
   }
 }
 
@@ -63,7 +66,7 @@ function transitionToSilentAndProcessAudio() {
     currentState = STATE.SILENT;
 
     if (!isProcessing) {
-      silenceSubject.next();
+      silenceStartSubject.next();
     }
   }
 }

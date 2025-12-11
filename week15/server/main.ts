@@ -2,6 +2,16 @@ import { map, tap } from "rxjs";
 import { HTTP_PORT, LAPTOP_UDP_RX_PORT } from "./config";
 import { BLEDevice, opMac, swMac } from "./features/ble";
 import { createButtonStateMachine } from "./features/buttons";
+import {
+  geminiAudioPart$,
+  handleConnectGemini,
+  handleDisconnectGemini,
+  handleGeminiAudio,
+  handleGeminiSendText,
+  sendAudioStreamEnd,
+  startManualVoiceActivity,
+  stopManualVoiceActivity,
+} from "./features/gemini-live";
 import { createHttpServer } from "./features/http";
 import {
   handleBtnApi,
@@ -17,18 +27,17 @@ import {
   operatorButtons$,
   operatorProbeNum$,
 } from "./features/operator";
-import { silence$ } from "./features/silence-detection";
-import { handleAudio, handleConnectSession, handleDisconnectSession, interrupt, triggerResponse } from "./features/simulation";
+import { silenceStart$, speakStart$ } from "./features/silence-detection";
 import { broadcast, handleSSE, newSseClient$ } from "./features/sse";
 import { appState$, updateState } from "./features/state";
 import { handleBlinkLED, handleConnectSwitchboard, handleDisconnectSwitchboard, handleLEDAllOff } from "./features/switchboard";
-import { createUDPServer } from "./features/udp";
+import { createUDPServer, sendPcm16UDP } from "./features/udp";
 
 async function main() {
   const operator = new BLEDevice(opMac);
   const switchboard = new BLEDevice(swMac);
 
-  createUDPServer([handleAudio()], LAPTOP_UDP_RX_PORT);
+  createUDPServer([handleGeminiAudio()], LAPTOP_UDP_RX_PORT);
 
   createHttpServer(
     [
@@ -42,8 +51,10 @@ async function main() {
       handleRequestOperatorAddress(operator),
       handleProbeApi(),
       handleBtnApi(),
-      handleConnectSession(),
-      handleDisconnectSession(),
+
+      handleConnectGemini(),
+      handleDisconnectGemini(),
+      handleGeminiSendText(),
     ],
     HTTP_PORT
   );
@@ -64,8 +75,11 @@ async function main() {
 
   const operataorButtons = createButtonStateMachine(operatorButtons$);
 
-  operataorButtons.leaveIdle$.pipe(tap(interrupt)).subscribe();
-  silence$.pipe(tap(triggerResponse)).subscribe();
+  geminiAudioPart$.pipe(tap((buf) => sendPcm16UDP(buf, appState$.value.opAddress))).subscribe();
+
+  operataorButtons.leaveIdle$.pipe(tap()).subscribe(); // add gemini interrupt
+  silenceStart$.pipe(tap(sendAudioStreamEnd), tap(stopManualVoiceActivity)).subscribe();
+  speakStart$.pipe(tap(startManualVoiceActivity)).subscribe(); // add gemini record activity
 }
 
 main();

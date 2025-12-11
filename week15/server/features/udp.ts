@@ -12,8 +12,6 @@ export type UDPHandler = (msg: UDPMessage) => void;
 const udpSocket = dgram.createSocket("udp4");
 const message$ = new Subject<UDPMessage>();
 
-const MAX_UDP_PAYLOAD = 1400; // Safe size to avoid fragmentation
-
 export function createUDPServer(handlers: UDPHandler[], rxPort: number) {
   udpSocket.bind(rxPort);
 
@@ -41,17 +39,7 @@ export function createUDPServer(handlers: UDPHandler[], rxPort: number) {
 export async function sendPcm16UDP(data: Buffer, address: string): Promise<void> {
   const [ip, port] = address.split(":");
   const portNum = parseInt(port);
-
-  // Split into chunks if data is too large
-  for (let offset = 0; offset < data.length; offset += MAX_UDP_PAYLOAD) {
-    const chunk = data.subarray(offset, offset + MAX_UDP_PAYLOAD);
-    await new Promise<void>((resolve, reject) => {
-      udpSocket.send(chunk, portNum, ip, (err) => {
-        if (err) reject(err);
-        else resolve();
-      });
-    });
-  }
+  udpSocket.send(data, portNum, ip);
 }
 
 export function getServerAddress(): string {
