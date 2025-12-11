@@ -52,7 +52,7 @@ export async function sendPcm16UDP(data: Buffer, address: string): Promise<void>
   // Calculate delay per chunk based on audio duration
   const chunkDurationMs = (MAX_UDP_PAYLOAD / BYTES_PER_SECOND) * 1000;
   // Send slightly faster than realtime to keep buffer filled (80% of realtime)
-  const delayMs = chunkDurationMs * 0.8;
+  const delayMs = chunkDurationMs;
 
   // Split into chunks if data is too large
   for (let offset = 0; offset < data.length; offset += MAX_UDP_PAYLOAD) {
