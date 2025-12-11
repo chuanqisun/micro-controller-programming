@@ -2,6 +2,7 @@ import { map, tap } from "rxjs";
 import { HTTP_PORT, LAPTOP_UDP_RX_PORT } from "./config";
 import { BLEDevice, opMac, swMac } from "./features/ble";
 import { createButtonStateMachine } from "./features/buttons";
+import { createHttpServer } from "./features/http";
 import {
   aiAudioPart$,
   aiResponse$,
@@ -11,8 +12,7 @@ import {
   handleSpeechStart,
   handleSpeechStop,
   handleUserAudio,
-} from "./features/gemini-live";
-import { createHttpServer } from "./features/http";
+} from "./features/openai-agent";
 import {
   handleBtnApi,
   handleButtonsMessage,
