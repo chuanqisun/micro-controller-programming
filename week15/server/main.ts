@@ -2,6 +2,7 @@ import { map, tap } from "rxjs";
 import { HTTP_PORT, LAPTOP_UDP_RX_PORT } from "./config";
 import { BLEDevice, opMac, swMac } from "./features/ble";
 import { createButtonStateMachine } from "./features/buttons";
+import { gmHint$, handleNewGame } from "./features/game";
 import {
   aiAudioPart$,
   aiResponse$,
@@ -11,6 +12,7 @@ import {
   handleSpeechStart,
   handleSpeechStop,
   handleUserAudio,
+  sendAIText,
 } from "./features/gemini-live";
 import { createHttpServer } from "./features/http";
 import {
@@ -57,6 +59,8 @@ async function main() {
       handleDisconnectAI(),
       handleAISendText(),
 
+      handleNewGame(),
+
       handlePlayFile(),
       handleStopPlayback(),
     ],
@@ -96,6 +100,10 @@ async function main() {
     .subscribe();
   silenceStart$.pipe(tap(handleSpeechStop)).subscribe();
   speakStart$.pipe(tap(handleSpeechStart)).subscribe();
+
+  /** Game logic */
+  gmHint$.pipe(tap((hint) => sendAIText(`[GM HINT] ${hint}`))).subscribe();
+  // enterExploration$.pipe
 }
 
 main();

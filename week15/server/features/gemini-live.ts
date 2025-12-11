@@ -1,8 +1,8 @@
 import { GoogleGenAI, LiveServerMessage, Modality, type LiveConnectConfig, type Session } from "@google/genai";
 import { Subject } from "rxjs";
-import { toolHandlers, tools, type ToolHandler } from "./adventure";
 import { StreamingAudioPlayer } from "./audio";
 import { DebugAudioBuffer } from "./debug-audio";
+import { toolHandlers, tools, type ToolHandler } from "./game";
 import type { Handler } from "./http";
 import { recordAudioActivity, resetSpeechState, startSilenceDetection, stopSilenceDetection } from "./silence-detection";
 import { updateState } from "./state";
@@ -101,6 +101,16 @@ export function handleAISendText(): Handler {
     res.end();
     return true;
   };
+}
+
+export async function sendAIText(text: string) {
+  if (session && sessionReady) {
+    session.sendClientContent({
+      turns: text,
+      turnComplete: true,
+    });
+    console.log(`📤 Sent text to AI: ${text}`);
+  }
 }
 
 export function handleUserAudio(): UDPHandler {

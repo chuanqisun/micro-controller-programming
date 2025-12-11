@@ -4,7 +4,7 @@ import path from "path";
 import { CHANNELS, SAMPLE_RATE } from "../config";
 import type { Handler } from "./http";
 import { appState$ } from "./state";
-import { sendPcm16UDP } from "./udp";
+import { sendPcm16UDP, startPcmStream, stopPcmStream } from "./udp";
 
 const WAV_FILE = path.resolve(__dirname, "../sound/audio.wav");
 const RAW_FILE = path.resolve(__dirname, "../sound/audio.raw");
@@ -129,6 +129,7 @@ export function handlePlayFile(): Handler {
       res.writeHead(200);
       res.end(JSON.stringify({ status: "playing" }));
 
+      startPcmStream(opAddress);
       // Stream audio in background (don't await)
       streamRawFileUDP(opAddress).catch((err) => {
         console.error("Error streaming audio:", err);
@@ -153,6 +154,7 @@ export function handleStopPlayback(): Handler {
     if (req.method !== "POST" || req.url !== "/api/stop-playback") return false;
 
     isPlaying = false;
+    stopPcmStream();
     res.writeHead(200);
     res.end(JSON.stringify({ status: "stopped" }));
 

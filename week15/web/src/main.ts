@@ -1,5 +1,6 @@
 import { tap } from "rxjs";
 import { appendDiagnosticsError, updateDiagnosticsState } from "./features/diagnostics";
+import { initGameUI } from "./features/game";
 import { initOperatorUI, updateOperatorUI } from "./features/operator";
 import { initPlaybackUI, updatePlaybackUI } from "./features/playback";
 import { initSimulationUI, updateSimulationUI } from "./features/simulation";
@@ -12,6 +13,7 @@ initSwitchboardUI();
 initOperatorUI();
 initSimulationUI();
 initPlaybackUI();
+initGameUI();
 
 state$.pipe(tap(updateDiagnosticsState)).subscribe();
 

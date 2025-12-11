@@ -92,7 +92,6 @@ function startStreamingLoop(address: string): void {
 export function stopPcmStream(): void {
   console.log("Stopping PCM stream");
   isStreaming = false;
-  currentStreamAddress = null;
   pcmBuffer = [];
   consolidatedBuffer = Buffer.alloc(0);
 }
