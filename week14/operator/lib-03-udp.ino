@@ -48,9 +48,12 @@ void initializeUdp() {
   udpSend->begin(laptopAddress, laptopRxPort);
   udpReceive->begin(UDP_RECEIVE_PORT);
 
-  // Create stream copiers
-  transmitCopier = new StreamCopy(*udpSend, i2sMic);
-  receiveCopier = new StreamCopy(i2sSpeaker, *udpReceive, 1024);
+  // Create stream copiers based on current I2S mode
+  if (micActive) {
+    transmitCopier = new StreamCopy(*udpSend, i2sStream);
+  } else {
+    receiveCopier = new StreamCopy(i2sStream, *udpReceive, 1024);
+  }
 
   udpConfigured = true;
   
@@ -66,23 +69,18 @@ void initializeUdp() {
 
 
 // =============================================================================
-// Audio Stream Processing
+// Audio Stream Processing - Only one stream active at a time
 // =============================================================================
 
-void processAudioStreams(bool isTransmitting) {
+void processAudioStreams() {
   if (!udpConfigured) {
     return;
   }
 
-  if (isTransmitting && transmitCopier) {
+  // Process only the active stream (mic OR speaker, never both)
+  if (micActive && transmitCopier) {
     transmitCopier->copy();
-  } else {
-    // Drain mic buffer to prevent overflow when not transmitting
-    uint8_t dummyBuffer[512];
-    i2sMic.readBytes(dummyBuffer, sizeof(dummyBuffer));
-  }
-  
-  if (receiveCopier) {
+  } else if (!micActive && receiveCopier) {
     receiveCopier->copy();
   }
 }

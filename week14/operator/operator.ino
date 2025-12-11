@@ -50,8 +50,8 @@ bool oldDeviceConnected = false;
 // Audio Variables
 AudioInfo audioInfo(SAMPLE_RATE, CHANNELS, BITS_PER_SAMPLE);
 
-I2SStream i2sMic;
-I2SStream i2sSpeaker;
+// Single I2S stream - only one mode active at a time (mic OR speaker)
+I2SStream i2sStream;
 UDPStream* udpSend = nullptr;
 UDPStream* udpReceive = nullptr;
 
@@ -59,6 +59,7 @@ StreamCopy* transmitCopier = nullptr;
 StreamCopy* receiveCopier = nullptr;
 
 bool isTransmitting = false;
+bool micActive = false;  // Track current I2S mode
 
 // Forward declarations
 void handleBleMessage(String message);
@@ -71,9 +72,14 @@ void handleBleConnectionStateChange();
 String readProbeValue();
 void sendProbeToBLE(String probeValue);
 void handleAnnounceSelfRxAddress(String message);
-void processAudioStreams(bool isTransmitting);
+void processAudioStreams();
 void updateButtonStates();
 void sendButtonsToBLE();
+bool startMicrophone();
+bool startSpeaker();
+void stopI2S();
+void switchToMicrophone();
+void switchToSpeaker();
 
 // =============================================================================
 // BLE Message Handler - Routes incoming messages based on type
@@ -139,9 +145,11 @@ void setup() {
   
   connectToWiFi();
 
-  // Initialize audio I/O
-  initializeMicrophone();
-  initializeSpeaker();
+  // Start in speaker mode by default (listening when button not pressed)
+  micActive = false;
+  if (!startSpeaker()) {
+    Serial.println("Speaker start failed - check board/config");
+  }
 
   Serial.println("Walkie-talkie + BLE ready!");
   Serial.println("Waiting for laptop address via BLE...");
@@ -164,6 +172,13 @@ void loop() {
   updateButtonStates();
   sendButtonsToBLE();
 
+  // Switch I2S mode based on transmit state (button hold = mic, release = speaker)
+  if (isTransmitting && !micActive) {
+    switchToMicrophone();
+  } else if (!isTransmitting && micActive) {
+    switchToSpeaker();
+  }
+
   // Process audio streams
-  processAudioStreams(isTransmitting);
+  processAudioStreams();
 }
