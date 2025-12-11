@@ -115,7 +115,7 @@ export function handleAISendText(): Handler {
   };
 }
 
-export function handleAIAudio(): UDPHandler {
+export function handleUserAudio(): UDPHandler {
   return (msg) => {
     if (!sessionReady || !realtimeWs || realtimeWs.readyState !== WebSocket.OPEN) return;
     if (msg.data.length === 0) return;
@@ -297,7 +297,7 @@ export function streamAudioToAI(pcmData: Buffer): void {
   );
 }
 
-export function sendAudioStreamEnd(): void {
+function sendAudioStreamEnd(): void {
   if (!realtimeWs || !sessionReady || realtimeWs.readyState !== WebSocket.OPEN) {
     return;
   }
@@ -326,27 +326,19 @@ export function isAISessionReady(): boolean {
   return sessionReady;
 }
 
-export function startManualVoiceActivity(): void {
+export function handleSpeechStart(): void {
   // For OpenAI with VAD disabled, we just need to clear the buffer before new input
   if (!realtimeWs || !sessionReady || realtimeWs.readyState !== WebSocket.OPEN) {
     return;
   }
+  realtimeWs.send(JSON.stringify({ type: "response.cancel" }));
+  audioPlayer.stop();
   realtimeWs.send(JSON.stringify({ type: "input_audio_buffer.clear" }));
   console.log("🎤 Started manual voice activity");
 }
 
-export function stopManualVoiceActivity(): void {
+export function handleSpeechStop(): void {
   // For OpenAI with VAD disabled, commit buffer and trigger response
   sendAudioStreamEnd();
   console.log("🔇 Stopped manual voice activity");
-}
-
-export function interrupt(): void {
-  if (!realtimeWs || !sessionReady || realtimeWs.readyState !== WebSocket.OPEN) {
-    return;
-  }
-  // Cancel any in-progress response
-  realtimeWs.send(JSON.stringify({ type: "response.cancel" }));
-  audioPlayer.stop();
-  console.log("⚡ Interrupted response");
 }

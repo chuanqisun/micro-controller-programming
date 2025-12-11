@@ -5,14 +5,12 @@ import { createButtonStateMachine } from "./features/buttons";
 import {
   aiAudioPart$,
   aiResponse$,
-  handleAIAudio,
   handleAISendText,
   handleConnectAI,
   handleDisconnectAI,
-  interrupt,
-  sendAudioStreamEnd,
-  startManualVoiceActivity,
-  stopManualVoiceActivity,
+  handleSpeechStart,
+  handleSpeechStop,
+  handleUserAudio,
 } from "./features/gemini-live";
 import { createHttpServer } from "./features/http";
 import {
@@ -34,13 +32,13 @@ import { silenceStart$, speakStart$ } from "./features/silence-detection";
 import { broadcast, handleSSE, newSseClient$ } from "./features/sse";
 import { appState$, updateState } from "./features/state";
 import { handleBlinkLED, handleConnectSwitchboard, handleDisconnectSwitchboard, handleLEDAllOff } from "./features/switchboard";
-import { createUDPServer, sendPcm16UDP } from "./features/udp";
+import { createUDPServer, sendPcm16UDP, stopPcmStream } from "./features/udp";
 
 async function main() {
   const operator = new BLEDevice(opMac);
   const switchboard = new BLEDevice(swMac);
 
-  createUDPServer([handleAIAudio()], LAPTOP_UDP_RX_PORT);
+  createUDPServer([handleUserAudio()], LAPTOP_UDP_RX_PORT);
 
   createHttpServer(
     [
@@ -84,9 +82,9 @@ async function main() {
   aiAudioPart$.pipe(tap((buf) => sendPcm16UDP(buf, appState$.value.opAddress))).subscribe();
   aiResponse$.pipe(tap((text) => console.log("AI Response:", text))).subscribe();
 
-  operataorButtons.leaveIdle$.pipe(tap(interrupt)).subscribe();
-  silenceStart$.pipe(tap(sendAudioStreamEnd), tap(stopManualVoiceActivity)).subscribe();
-  speakStart$.pipe(tap(startManualVoiceActivity)).subscribe();
+  operataorButtons.leaveIdle$.pipe(tap(stopPcmStream)).subscribe();
+  silenceStart$.pipe(tap(handleSpeechStop)).subscribe();
+  speakStart$.pipe(tap(handleSpeechStart)).subscribe();
 }
 
 main();

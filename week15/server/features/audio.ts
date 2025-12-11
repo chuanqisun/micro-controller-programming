@@ -9,6 +9,7 @@ export interface AudioPlayerConfig {
 export class StreamingAudioPlayer {
   private ffmpegPlayer: ChildProcessWithoutNullStreams | null = null;
   private config: AudioPlayerConfig;
+  private isStopping = false;
 
   constructor(config: AudioPlayerConfig = { format: "s16le", sampleRate: 24000, channels: 1 }) {
     this.config = config;
@@ -46,12 +47,26 @@ export class StreamingAudioPlayer {
     this.ffmpegPlayer.on("close", (code) => {
       console.log(`FFmpeg process exited with code ${code}`);
       this.ffmpegPlayer = null;
+      this.isStopping = false;
+    });
+
+    // Handle stdin errors (e.g., write after end)
+    this.ffmpegPlayer.stdin.on("error", (err) => {
+      if (this.isStopping) {
+        // Ignore errors during shutdown
+        return;
+      }
+      console.error("❌ FFmpeg stdin error:", err);
     });
 
     console.log("✓ Audio player started");
   }
 
   push(data: Buffer): void {
+    if (this.isStopping) {
+      return;
+    }
+
     if (!this.ffmpegPlayer) {
       this.startAudioPlayer();
     }
@@ -63,6 +78,7 @@ export class StreamingAudioPlayer {
 
   stop(): void {
     if (this.ffmpegPlayer && !this.ffmpegPlayer.killed) {
+      this.isStopping = true;
       this.ffmpegPlayer.stdin.end();
       this.ffmpegPlayer.kill("SIGTERM");
       this.ffmpegPlayer = null;

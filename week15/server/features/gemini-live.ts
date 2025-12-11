@@ -102,7 +102,7 @@ export function handleAISendText(): Handler {
   };
 }
 
-export function handleAIAudio(): UDPHandler {
+export function handleUserAudio(): UDPHandler {
   return (msg) => {
     if (!sessionReady || !session) return;
     if (msg.data.length === 0) return;
@@ -158,12 +158,11 @@ async function connectGeminiLive(): Promise<void> {
 }
 
 function handleGeminiMessage(message: any) {
-  // Handle audio response - play it back (message.data is the primary audio source)
   if (message.data) {
     const audioBuffer = Buffer.from(message.data, "base64");
     audioPlayer.push(audioBuffer);
     aiAudioPart$.next(audioBuffer);
-    return; // Don't process further if we got direct audio data
+    return;
   }
 
   // Handle text response
@@ -209,7 +208,7 @@ export function streamAudioToAI(pcmData: Buffer): void {
   });
 }
 
-export function sendAudioStreamEnd(): void {
+function sendAudioStreamEnd(): void {
   if (!session || !sessionReady) {
     return;
   }
@@ -234,23 +233,16 @@ export function isAISessionReady(): boolean {
   return sessionReady;
 }
 
-export function startManualVoiceActivity() {
-  session?.sendRealtimeInput({
-    activityStart: {},
-  });
-}
-
-export function stopManualVoiceActivity() {
-  session?.sendRealtimeInput({
-    activityEnd: {},
-  });
-}
-
-export function interrupt(): void {
-  // In Gemini, sending activityStart interrupts the current response
+export function handleSpeechStart() {
   session?.sendRealtimeInput({
     activityStart: {},
   });
   audioPlayer.stop();
-  console.log("⚡ Interrupted response");
+}
+
+export function handleSpeechStop() {
+  session?.sendRealtimeInput({
+    activityEnd: {},
+  });
+  sendAudioStreamEnd();
 }
