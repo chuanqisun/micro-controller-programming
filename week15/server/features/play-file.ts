@@ -3,8 +3,8 @@ import { existsSync, statSync } from "fs";
 import path from "path";
 import { CHANNELS, SAMPLE_RATE } from "../config";
 import type { Handler } from "./http";
-import { sendPcm16UDP } from "./udp";
 import { appState$ } from "./state";
+import { sendPcm16UDP } from "./udp";
 
 const WAV_FILE = path.resolve(__dirname, "../sound/audio.wav");
 const RAW_FILE = path.resolve(__dirname, "../sound/audio.raw");
