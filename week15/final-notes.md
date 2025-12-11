@@ -13,3 +13,9 @@ if (shouldSend && isTransmitting) {
 
 shouldSend = !shouldSend;
 ```
+
+# Plans
+
+1. Make sure speaker makes sound
+2. Test computer streaming sound to speaker
+3. Add microphone to stream via UDP
