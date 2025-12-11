@@ -1,4 +1,4 @@
-import { filter, map, type Observable, scan } from "rxjs";
+import { filter, map, merge, type Observable, scan } from "rxjs";
 
 // Button state machine
 // States: "idle" | "one" | "both"
@@ -62,36 +62,38 @@ export function createButtonStateMachine(buttons$: Observable<ButtonInput>) {
           event,
         };
       },
-      { state: "idle" as ButtonState, wasInBoth: false, event: null as ButtonEvent },
-    ),
+      { state: "idle" as ButtonState, wasInBoth: false, event: null as ButtonEvent }
+    )
   );
 
   const oneButtonUp$ = buttonState$.pipe(
     filter((s) => s.event === "oneUp"),
-    map(() => void 0),
+    map(() => void 0)
   );
 
   const twoButtonUp$ = buttonState$.pipe(
     filter((s) => s.event === "twoUp"),
-    map(() => void 0),
+    map(() => void 0)
   );
 
   const someButtonDown$ = buttons$.pipe(filter(({ btn1, btn2 }) => btn1 || btn2));
 
   const leaveIdle$ = buttonState$.pipe(
-    filter((s) => s.state !== "idle"),
     scan((prev, curr) => ({ prevState: prev.currState, currState: curr.state }), {
       prevState: "idle" as ButtonState,
       currState: "idle" as ButtonState,
     }),
     filter(({ prevState }) => prevState === "idle"),
-    map(() => void 0),
+    map(() => void 0)
   );
+
+  const enterIdle$ = merge(oneButtonUp$, twoButtonUp$);
 
   return {
     oneButtonUp$,
     twoButtonUp$,
     someButtonDown$,
     leaveIdle$,
+    enterIdle$,
   };
 }

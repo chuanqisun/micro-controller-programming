@@ -90,6 +90,7 @@ function startStreamingLoop(address: string): void {
  * Stop the streaming loop
  */
 export function stopPcmStream(): void {
+  console.log("Stopping PCM stream");
   isStreaming = false;
   currentStreamAddress = null;
   pcmBuffer = [];
@@ -104,7 +105,10 @@ export function sendPcm16UDP(data: Buffer, address: string): void {
 
   // Add data to buffer
   pcmBuffer.push(data);
+}
 
+export function startPcmStream(address: string) {
+  console.log(`Starting PCM stream to ${address}`);
   // Start streaming loop if not already running
   if (!isStreaming || currentStreamAddress !== address) {
     if (currentStreamAddress !== address) {

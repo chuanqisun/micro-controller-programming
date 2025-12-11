@@ -187,7 +187,6 @@ function handleGeminiMessage(message: any) {
   // Handle interruption
   if (message.serverContent?.interrupted) {
     console.log("⚡ Gemini response interrupted");
-    audioPlayer.stop();
   }
 }
 
@@ -208,7 +207,8 @@ export function streamAudioToAI(pcmData: Buffer): void {
   });
 }
 
-function sendAudioStreamEnd(): void {
+/** Only needed with Auto AVD */
+export function sendAudioStreamEnd(): void {
   if (!session || !sessionReady) {
     return;
   }
@@ -244,5 +244,4 @@ export function handleSpeechStop() {
   session?.sendRealtimeInput({
     activityEnd: {},
   });
-  sendAudioStreamEnd();
 }
