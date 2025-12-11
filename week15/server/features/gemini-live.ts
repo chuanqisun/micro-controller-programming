@@ -296,3 +296,12 @@ export function resetAIAudio() {
   stopPcmStream();
   startPcmStream(appState$.value.opAddress);
 }
+
+export function stopAIAudio() {
+  audioPlayer.stop();
+  stopPcmStream();
+}
+
+export function startAIAudio() {
+  startPcmStream(appState$.value.opAddress);
+}

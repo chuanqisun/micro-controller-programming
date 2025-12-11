@@ -12,8 +12,9 @@ import {
   handleSpeechStart,
   handleSpeechStop,
   handleUserAudio,
-  resetAIAudio,
   sendAIText,
+  startAIAudio,
+  stopAIAudio,
 } from "./features/gemini-live";
 import { createHttpServer } from "./features/http";
 import {
@@ -136,9 +137,11 @@ async function main() {
     .pipe(
       tap((num) => {
         if (num === 7) {
-          resetAIAudio();
+          stopAIAudio();
           return;
         }
+
+        startAIAudio();
 
         if (phase$.value === "exploration") {
           if (!sceneObjects.value.includes(num)) {
