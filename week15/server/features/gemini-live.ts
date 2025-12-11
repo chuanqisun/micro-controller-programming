@@ -15,16 +15,16 @@ const audioPlayer = new StreamingAudioPlayer({ format: "s16le", sampleRate: 2400
 const debugBuffer = new DebugAudioBuffer();
 
 const responseSubject = new Subject<string>();
-export const geminiResponse$ = responseSubject.asObservable();
+export const aiResponse$ = responseSubject.asObservable();
 
 const transcriptSubject = new Subject<string>();
-export const geminiTranscript$ = transcriptSubject.asObservable();
+export const aiTranscript$ = transcriptSubject.asObservable();
 
-export const geminiAudioPart$ = new Subject<Buffer>();
+export const aiAudioPart$ = new Subject<Buffer>();
 
-export function handleConnectGemini(): Handler {
+export function handleConnectAI(): Handler {
   return async (req, res) => {
-    if (req.method !== "POST" || req.url !== "/api/gemini/connect") return false;
+    if (req.method !== "POST" || req.url !== "/api/ai/connect") return false;
 
     updateState((state) => ({ ...state, aiConnection: "busy" }));
     try {
@@ -42,13 +42,13 @@ export function handleConnectGemini(): Handler {
   };
 }
 
-export function handleDisconnectGemini(): Handler {
+export function handleDisconnectAI(): Handler {
   return async (req, res) => {
-    if (req.method !== "POST" || req.url !== "/api/gemini/disconnect") return false;
+    if (req.method !== "POST" || req.url !== "/api/ai/disconnect") return false;
 
     updateState((state) => ({ ...state, aiConnection: "busy" }));
     stopSilenceDetection();
-    disconnectGeminiLive();
+    disconnectAI();
     resetSpeechState();
     updateState((state) => ({ ...state, aiConnection: "disconnected" }));
 
@@ -59,14 +59,14 @@ export function handleDisconnectGemini(): Handler {
 }
 
 /**
- * POST /api/gemini/send-text
+ * POST /api/ai/send-text
  *
  * payload: { text: string }
  * */
 
-export function handleGeminiSendText(): Handler {
+export function handleAISendText(): Handler {
   return async (req, res) => {
-    if (req.method !== "POST" || req.url !== "/api/gemini/send-text") return false;
+    if (req.method !== "POST" || req.url !== "/api/ai/send-text") return false;
 
     const payloadText = await new Promise<string>((resolve, reject) => {
       let body = "";
@@ -91,9 +91,9 @@ export function handleGeminiSendText(): Handler {
         turns: payloadText,
         turnComplete: true,
       });
-      console.log(`📤 Sent text to Gemini: ${payloadText}`);
+      console.log(`📤 Sent text to AI: ${payloadText}`);
     } else {
-      console.warn("⚠️ Cannot send text, Gemini session not ready");
+      console.warn("⚠️ Cannot send text, AI session not ready");
     }
 
     res.writeHead(200);
@@ -102,12 +102,12 @@ export function handleGeminiSendText(): Handler {
   };
 }
 
-export function handleGeminiAudio(): UDPHandler {
+export function handleAIAudio(): UDPHandler {
   return (msg) => {
     if (!sessionReady || !session) return;
     if (msg.data.length === 0) return;
 
-    streamAudioToGemini(msg.data);
+    streamAudioToAI(msg.data);
     recordAudioActivity();
     debugBuffer.push(Buffer.from(msg.data));
   };
@@ -162,9 +162,7 @@ function handleGeminiMessage(message: any) {
   if (message.data) {
     const audioBuffer = Buffer.from(message.data, "base64");
     audioPlayer.push(audioBuffer);
-    console.log(`🎧 Playing Gemini audio response (${audioBuffer.length} bytes)`);
-
-    geminiAudioPart$.next(audioBuffer);
+    aiAudioPart$.next(audioBuffer);
     return; // Don't process further if we got direct audio data
   }
 
@@ -194,7 +192,7 @@ function handleGeminiMessage(message: any) {
   }
 }
 
-export function streamAudioToGemini(pcmData: Buffer): void {
+export function streamAudioToAI(pcmData: Buffer): void {
   if (!session || !sessionReady) {
     return;
   }
@@ -222,16 +220,17 @@ export function sendAudioStreamEnd(): void {
   console.log("📤 Sent audio stream end signal");
 }
 
-export function disconnectGeminiLive(): void {
+export function disconnectAI(): void {
   if (session) {
     session.close();
     session = null;
     sessionReady = false;
-    console.log("✓ Gemini Live session closed");
+    audioPlayer.stop();
+    console.log("✓ AI session closed");
   }
 }
 
-export function isGeminiSessionReady(): boolean {
+export function isAISessionReady(): boolean {
   return sessionReady;
 }
 
@@ -245,4 +244,13 @@ export function stopManualVoiceActivity() {
   session?.sendRealtimeInput({
     activityEnd: {},
   });
+}
+
+export function interrupt(): void {
+  // In Gemini, sending activityStart interrupts the current response
+  session?.sendRealtimeInput({
+    activityStart: {},
+  });
+  audioPlayer.stop();
+  console.log("⚡ Interrupted response");
 }

@@ -7,9 +7,9 @@ const aiSendBtn = document.getElementById("aiSend") as HTMLButtonElement;
 export function initSimulationUI() {
   connectBtnSim.addEventListener("click", async () => {
     if (connectBtnSim.textContent === "Connect") {
-      fetch("http://localhost:3000/api/gemini/connect", { method: "POST" });
+      fetch("http://localhost:3000/api/ai/connect", { method: "POST" });
     } else {
-      fetch("http://localhost:3000/api/gemini/disconnect", { method: "POST" });
+      fetch("http://localhost:3000/api/ai/disconnect", { method: "POST" });
     }
   });
 
@@ -25,7 +25,7 @@ function sendAiText() {
   const text = aiTextInput.value.trim();
   if (!text) return;
 
-  fetch("http://localhost:3000/api/gemini/send-text", {
+  fetch("http://localhost:3000/api/ai/send-text", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ text }),

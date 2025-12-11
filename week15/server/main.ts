@@ -3,12 +3,13 @@ import { HTTP_PORT, LAPTOP_UDP_RX_PORT } from "./config";
 import { BLEDevice, opMac, swMac } from "./features/ble";
 import { createButtonStateMachine } from "./features/buttons";
 import {
-  geminiAudioPart$,
-  geminiResponse$,
-  handleConnectGemini,
-  handleDisconnectGemini,
-  handleGeminiAudio,
-  handleGeminiSendText,
+  aiAudioPart$,
+  aiResponse$,
+  handleAIAudio,
+  handleAISendText,
+  handleConnectAI,
+  handleDisconnectAI,
+  interrupt,
   sendAudioStreamEnd,
   startManualVoiceActivity,
   stopManualVoiceActivity,
@@ -39,7 +40,7 @@ async function main() {
   const operator = new BLEDevice(opMac);
   const switchboard = new BLEDevice(swMac);
 
-  createUDPServer([handleGeminiAudio()], LAPTOP_UDP_RX_PORT);
+  createUDPServer([handleAIAudio()], LAPTOP_UDP_RX_PORT);
 
   createHttpServer(
     [
@@ -54,9 +55,9 @@ async function main() {
       handleProbeApi(),
       handleBtnApi(),
 
-      handleConnectGemini(),
-      handleDisconnectGemini(),
-      handleGeminiSendText(),
+      handleConnectAI(),
+      handleDisconnectAI(),
+      handleAISendText(),
 
       handlePlayFile(),
       handleStopPlayback(),
@@ -80,12 +81,12 @@ async function main() {
 
   const operataorButtons = createButtonStateMachine(operatorButtons$);
 
-  geminiAudioPart$.pipe(tap((buf) => sendPcm16UDP(buf, appState$.value.opAddress))).subscribe();
-  geminiResponse$.pipe(tap((text) => console.log("Gemini Response:", text))).subscribe();
+  aiAudioPart$.pipe(tap((buf) => sendPcm16UDP(buf, appState$.value.opAddress))).subscribe();
+  aiResponse$.pipe(tap((text) => console.log("AI Response:", text))).subscribe();
 
-  operataorButtons.leaveIdle$.pipe(tap()).subscribe(); // add gemini interrupt
+  operataorButtons.leaveIdle$.pipe(tap(interrupt)).subscribe();
   silenceStart$.pipe(tap(sendAudioStreamEnd), tap(stopManualVoiceActivity)).subscribe();
-  speakStart$.pipe(tap(startManualVoiceActivity)).subscribe(); // add gemini record activity
+  speakStart$.pipe(tap(startManualVoiceActivity)).subscribe();
 }
 
 main();
