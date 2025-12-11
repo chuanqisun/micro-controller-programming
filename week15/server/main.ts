@@ -27,6 +27,7 @@ import {
   operatorButtons$,
   operatorProbeNum$,
 } from "./features/operator";
+import { handlePlayFile, handleStopPlayback } from "./features/play-file";
 import { silenceStart$, speakStart$ } from "./features/silence-detection";
 import { broadcast, handleSSE, newSseClient$ } from "./features/sse";
 import { appState$, updateState } from "./features/state";
@@ -55,6 +56,9 @@ async function main() {
       handleConnectGemini(),
       handleDisconnectGemini(),
       handleGeminiSendText(),
+
+      handlePlayFile(),
+      handleStopPlayback(),
     ],
     HTTP_PORT
   );
