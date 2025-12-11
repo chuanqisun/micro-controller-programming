@@ -258,7 +258,7 @@ function configureSession(ws: WebSocket) {
     session: {
       type: "realtime",
       model: MODEL,
-      output_modalities: ["audio", "text"],
+      output_modalities: ["audio"],
       instructions: "You are a dedicated Dungeons & Dragons game master",
       audio: {
         input: {
@@ -272,6 +272,7 @@ function configureSession(ws: WebSocket) {
         output: {
           format: {
             type: "audio/pcm",
+            rate: 24000,
           },
           voice: "alloy",
         },
