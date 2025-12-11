@@ -21,7 +21,7 @@ const char *urls[] = {
   "http://streaming.swisstxt.ch/m/drsvirus/mp3_128"
 };
 const char *wifi = "MLDEV";
-const char *password = "{{replace with actual password}}";
+const char *password = "";
 
 URLStream urlStream(wifi, password);
 AudioSourceURL source(urlStream, urls, "audio/mp3");
