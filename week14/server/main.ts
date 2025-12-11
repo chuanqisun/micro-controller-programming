@@ -4,6 +4,7 @@ import { commitOption, handleStartTextAdventures, previewOption, textGenerated$ 
 import { BLEDevice, opMac, swMac } from "./features/ble";
 import { createButtonStateMachine } from "./features/buttons";
 import {
+  geminiAudioPart$,
   geminiResponse$,
   geminiTranscript$,
   handleConnectGemini,
@@ -40,7 +41,7 @@ import {
   turnOffAllLED,
   turnOnLED,
 } from "./features/switchboard";
-import { createUDPServer } from "./features/udp";
+import { createUDPServer, sendPcm16UDP } from "./features/udp";
 
 async function main() {
   const operator = new BLEDevice(opMac);
@@ -102,6 +103,14 @@ async function main() {
   // Gemini Live API subscriptions
   geminiTranscript$.pipe(tap((text) => console.log(`🎤 Transcript: ${text}`))).subscribe();
   geminiResponse$.pipe(tap((text) => console.log(`🤖 Gemini: ${text}`))).subscribe();
+  geminiAudioPart$
+    .pipe(
+      tap((buffer) => {
+        console.log(`🔊 Gemini audio part received: ${buffer.length} bytes`);
+        sendPcm16UDP(buffer, appState$.value.opAddress);
+      }),
+    )
+    .subscribe();
 
   // Text adventures subscriptions
   textGenerated$.pipe(concatMap((index) => turnOnLED(switchboard, index))).subscribe();

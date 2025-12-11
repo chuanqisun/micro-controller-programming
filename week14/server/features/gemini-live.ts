@@ -25,6 +25,8 @@ export const geminiResponse$ = responseSubject.asObservable();
 const transcriptSubject = new Subject<string>();
 export const geminiTranscript$ = transcriptSubject.asObservable();
 
+export const geminiAudioPart$ = new Subject<Buffer>();
+
 export function handleConnectGemini(): Handler {
   return async (req, res) => {
     if (req.method !== "POST" || req.url !== "/api/gemini/connect") return false;
@@ -163,6 +165,8 @@ function handleGeminiMessage(message: any) {
     const audioBuffer = Buffer.from(message.data, "base64");
     audioPlayer.push(audioBuffer);
     console.log(`🎧 Playing Gemini audio response (${audioBuffer.length} bytes)`);
+
+    geminiAudioPart$.next(audioBuffer);
     return; // Don't process further if we got direct audio data
   }
 
