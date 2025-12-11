@@ -124,6 +124,7 @@ async function connectGeminiLive(): Promise<void> {
   const config: LiveConnectConfig = {
     responseModalities: [Modality.AUDIO],
     systemInstruction: "You are a dedicated Dungeons & Dragons game master",
+    thinkingConfig: { thinkingBudget: 0 },
     realtimeInputConfig: {
       automaticActivityDetection: {
         disabled: true,

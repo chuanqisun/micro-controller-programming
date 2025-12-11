@@ -4,6 +4,7 @@ import { BLEDevice, opMac, swMac } from "./features/ble";
 import { createButtonStateMachine } from "./features/buttons";
 import {
   geminiAudioPart$,
+  geminiResponse$,
   handleConnectGemini,
   handleDisconnectGemini,
   handleGeminiAudio,
@@ -80,6 +81,7 @@ async function main() {
   const operataorButtons = createButtonStateMachine(operatorButtons$);
 
   geminiAudioPart$.pipe(tap((buf) => sendPcm16UDP(buf, appState$.value.opAddress))).subscribe();
+  geminiResponse$.pipe(tap((text) => console.log("Gemini Response:", text))).subscribe();
 
   operataorButtons.leaveIdle$.pipe(tap()).subscribe(); // add gemini interrupt
   silenceStart$.pipe(tap(sendAudioStreamEnd), tap(stopManualVoiceActivity)).subscribe();
