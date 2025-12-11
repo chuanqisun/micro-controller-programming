@@ -1,0 +1,45 @@
+{
+  "name": "demo",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:web\" \"npm run dev:server\"",
+    "dev:web": "vite ./web",
+    "build:web": "tsc -p ./web && vite build ./web",
+    "dev:op": "npm run build:op && npm run upload:op && concurrently \"npm run monitor\"",
+    "build:op": "arduino-cli compile -b esp32:esp32:XIAO_ESP32C3 ./operator",
+    "upload:op": "arduino-cli upload -p /dev/ttyACM0 -b esp32:esp32:XIAO_ESP32C3 ./operator",
+    "dev:sw": "npm run build:sw && npm run upload:sw && concurrently \"npm run monitor\"",
+    "build:sw": "arduino-cli compile -b esp32:esp32:XIAO_ESP32C3 ./switchboard",
+    "upload:sw": "arduino-cli upload -p /dev/ttyACM0 -b esp32:esp32:XIAO_ESP32C3 ./switchboard",
+    "monitor": "arduino-cli monitor -p /dev/ttyACM0 -c baudrate=115200",
+    "monitor:b": "arduino-cli monitor -p /dev/ttyACM1 -c baudrate=115200",
+    "serve": "node  --env-file .env server-v0/server.mjs",
+    "dev:server": "tsx watch --env-file .env server/main.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "prettier": "^3.7.3",
+    "typescript": "~5.9.3",
+    "vite": "^7.2.4"
+  },
+  "dependencies": {
+    "@google/genai": "^1.30.0",
+    "@openai/agents": "^0.3.3",
+    "@streamparser/json": "^0.0.22",
+    "lit-html": "^3.3.1",
+    "node-ble": "^1.13.0",
+    "od": "^6.0.2",
+    "openai": "^6.9.1",
+    "rxjs": "^7.8.2",
+    "tsx": "^4.21.0",
+    "ws": "^8.18.3",
+    "zod": "^4.1.13",
+    "zod-to-json-schema": "^3.25.0"
+  }
+}

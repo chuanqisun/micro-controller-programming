@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>web</title>
+  </head>
+  <body>
+    <h2>Voice agents</h2>
+    <div>
+      <button id="connectBtnSim">Connect</button>
+    </div>
+    <div id="aiTextInput">
+      <input type="text" id="aiText" placeholder="Type a message..." />
+      <button id="aiSend">Send</button>
+    </div>
+
+    <h2>Operator</h2>
+    <div>
+      <button id="connectBtnOp">Connect</button>
+    </div>
+
+    <div id="probeControls">
+      <button id="probe0">Probe 0</button>
+      <button id="probe1">Probe 1</button>
+      <button id="probe2">Probe 2</button>
+      <button id="probe3">Probe 3</button>
+      <button id="probe4">Probe 4</button>
+      <button id="probe5">Probe 5</button>
+      <button id="probe6">Probe 6</button>
+      <button id="probe7">Probe 7</button>
+    </div>
+
+    <div id="btnControls">
+      <button id="btnBtn1">Btn 1</button>
+      <button id="btnBtn2">Btn 2</button>
+      <button id="btnBoth">Both</button>
+    </div>
+
+    <div class="data-list" id="probeDisplay"></div>
+
+    <h2>Switchboard</h2>
+
+    <div>
+      <button id="connectBtnSw">Connect</button>
+    </div>
+
+    <div id="ledControls">
+      <button id="offAll">All off</button>
+      <button id="led0">LED 0</button>
+      <button id="led1">LED 1</button>
+      <button id="led2">LED 2</button>
+      <button id="led3">LED 3</button>
+      <button id="led4">LED 4</button>
+      <button id="led5">LED 5</button>
+      <button id="led6">LED 6</button>
+    </div>
+
+    <div></div>
+
+    <div class="log" id="rawState"></div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
