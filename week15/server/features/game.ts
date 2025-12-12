@@ -9,7 +9,7 @@ import type { Handler } from "./http";
 import { operatorProbeNum$ } from "./operator";
 import { broadcast, newSseClient$ } from "./sse";
 import { appState$ } from "./state";
-import { blinkOnLED, pulseOnLED, turnOffAllLED, turnOnLED } from "./switchboard";
+import { blinkOnLED, pulseOnLED, turnOffAllLED } from "./switchboard";
 import { startPcmStream } from "./udp";
 
 const storyOptionsSchema = z.object({
@@ -152,7 +152,7 @@ export const toolHandlers: Record<string, ToolHandler> = {
     const optionA = (params?.optionA as string) || "";
     const optionB = (params?.optionB as string) || "";
     actionOptions$.next({ a: optionA, b: optionB });
-    return "Transitioned to action phase";
+    return "Transitioned to action phase, ask player to choose an option";
   },
   start_exploration: async (params) => {
     if (phase$.value !== "exploration") {
@@ -170,7 +170,7 @@ export const toolHandlers: Record<string, ToolHandler> = {
 
     setupScene$.next({ elements });
 
-    return "Transitioned to exploration phase";
+    return "Transitioned to exploration phase, ask player to explore.";
   },
 };
 
@@ -198,8 +198,9 @@ When player explicitly commits, you must immediately call start_exploration tool
 ### Exploration
 One or more turns of investigation, ending with action.
 Player can ask questions about the environment
-They can investigate up to 3 elements in the scene
+Player can explore exactly 3 elements in the scene
 Do NOT trigger an action when Player can ask about the scene and elements
+Do NOT tell player about the interactive elements in the scene
 To exit, they must explicitly take an action related to the scene 
 
 ### Action
@@ -213,12 +214,13 @@ Player must make a choice in one turn. You will describe the outcome, advance th
 Follow the [GM HINT] to use the right tool at the right time. Do NOT use any tool unless instructed by the [GM HINT].
 
 ### start_exploration tool
-Set the scene and up to three interactive elements in the scene
+Set the scene and exactly three interactive elements in the scene
 Make sure each scene element can lead to plot development
 Depending on the scene and previous action, the elements can be concrete characters, artifacts, places, or abstract ideas, strategies, plans. The key requirement is that they must be investigatable.
 As story advances, scene and elements should change accordingly to offer new paths of exploration
-After calling this tool, you must describe the scene in just short sentence, but you must NOT reveal the interactive elements. 
-The player will discover the elements by explicitly explorating the scene.
+After calling this tool, you must describe the scene in just short sentence
+You must NOT mention any the interactive elements. 
+Leave it to the player to discover the elements as they explicitly explore the scene.
 
 ### start_action tool
 Call this tool when player explicitly acts on the scene element
@@ -328,7 +330,7 @@ export function startGameLoop(switchboard: BLEDevice) {
         }
         sceneElements$.next(newSceneElements);
 
-        threeRandomProbes.forEach((probe) => setTimeout(() => turnOnLED(switchboard, probe), 1000 + Math.random() * 2000));
+        threeRandomProbes.forEach((probe) => setTimeout(() => pulseOnLED(switchboard, probe), 1000 + Math.random() * 2000));
       })
     )
     .subscribe();
