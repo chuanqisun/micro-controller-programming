@@ -22,6 +22,7 @@ const message$ = new Subject<UDPMessage>();
 let pcmBuffer: Buffer[] = [];
 let isStreaming = false;
 let currentStreamAddress: string | null = null;
+let streamTimeoutId: NodeJS.Timeout | null = null;
 
 export function createUDPServer(handlers: UDPHandler[], rxPort: number) {
   udpSocket.bind(rxPort);
@@ -80,7 +81,7 @@ function startStreamingLoop(address: string): void {
       consolidatedBuffer = consolidatedBuffer.subarray(UDP_CHUNK_SIZE);
     }
 
-    setTimeout(sendNextChunk, SEND_INTERVAL_MS);
+    streamTimeoutId = setTimeout(sendNextChunk, SEND_INTERVAL_MS);
   };
 
   sendNextChunk();
@@ -92,8 +93,16 @@ function startStreamingLoop(address: string): void {
 export function stopPcmStream(): void {
   console.log("Stopping PCM stream");
   isStreaming = false;
+  
+  // Clear the timeout to fully cancel the loop
+  if (streamTimeoutId !== null) {
+    clearTimeout(streamTimeoutId);
+    streamTimeoutId = null;
+  }
+  
   pcmBuffer = [];
   consolidatedBuffer = Buffer.alloc(0);
+  currentStreamAddress = null;
 }
 
 /**
@@ -107,12 +116,12 @@ export function sendPcm16UDP(data: Buffer, address: string): void {
 }
 
 export function startPcmStream(address: string) {
-  console.log(`Starting PCM stream to ${address}`);
   // Start streaming loop if not already running
   if (!isStreaming || currentStreamAddress !== address) {
     if (currentStreamAddress !== address) {
       stopPcmStream();
     }
+    console.log(`Starting PCM stream to ${address}`);
     startStreamingLoop(address);
   }
 }
