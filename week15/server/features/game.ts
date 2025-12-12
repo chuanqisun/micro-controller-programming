@@ -302,7 +302,7 @@ export function startGameLoop(switchboard: BLEDevice) {
     .pipe(
       tap(async (option) => {
         if (phase$.value === "setup" && option.text !== null) {
-          setTimeout(() => pulseOnLED(switchboard, option.probeId), Math.random() * 1000);
+          setTimeout(() => pulseOnLED(switchboard, option.probeId), Math.random() * 500);
         }
       })
     )
