@@ -53,6 +53,10 @@ export async function turnOnLED(switchboard: BLEDevice, id: number) {
   await switchboard.send(`fadeon:${id}`);
 }
 
+export async function blinkOnLED(switchboard: BLEDevice, id: number) {
+  await switchboard.send(`blinkon:${id}`);
+}
+
 export async function turnOffAllLED(switchboard: BLEDevice) {
   await switchboard.send(`fadeoff:all`);
 }

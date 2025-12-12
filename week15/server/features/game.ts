@@ -96,7 +96,7 @@ export function startGameLoop(switchboard: BLEDevice) {
         explorationRound++;
         await turnOffAllLED(switchboard);
         const currentProbe = appState$.value.probeNum;
-        const availableProbes = [0, 1, 2, 4, 5, 6].filter((p) => p !== currentProbe);
+        const availableProbes = [0, 1, 2, 3, 4, 5, 6].filter((p) => p !== currentProbe);
         const threeRandomProbes = availableProbes.sort(() => 0.5 - Math.random()).slice(0, 3);
         sceneObjects.next(threeRandomProbes);
         threeRandomProbes.forEach((probe) => setTimeout(() => turnOnLED(switchboard, probe), 1000 + Math.random() * 2000));
@@ -108,7 +108,7 @@ export function startGameLoop(switchboard: BLEDevice) {
     .pipe(
       tap(async () => {
         await turnOffAllLED(switchboard);
-        turnOnLED(switchboard, 3); // turn on center LED for action
+        turnOnLED(switchboard, appState$.value.probeNum); // turn on center LED for action
       })
     )
     .subscribe();
