@@ -46,7 +46,7 @@ export type ToolHandler = (params?: Record<string, unknown>) => Promise<string>;
 export const toolHandlers: Record<string, ToolHandler> = {
   start_action: async () => {
     phase$.next("action");
-    return "Game phase changed to action. Wait for user to engage in the action scene. Don't say anything else.";
+    return "Game phase changed to action. Use at least one more turn to guide the player to take specific action. When finished, first tell the player the outcome, then use start_exploration tool to transition back to exploration phase.";
   },
   start_exploration: async () => {
     phase$.next("exploration");
@@ -57,7 +57,7 @@ export const toolHandlers: Record<string, ToolHandler> = {
 export function getDungeonMasterPrompt(): string {
   return `
 # Role & Objective
-You are an expert Dungeon Master for Dungeons & Dragons 5th Edition.
+You are an expert Dungeon Master for Dungeons & Dragons.
 
 ## Style
 You only respond only in very short verbal utterance, typically just a few words to a half sentence. The minimalist leaves room fo players to imagine the scene.
@@ -67,6 +67,16 @@ You will receive [GM HINT] messages that are only visit to you. You must follow 
 
 ## Game format
 Loop: player exploration -> Player action -> Repeat
+
+### Exploration
+Player can ask questions about the environment
+They can investigate up to 3 elements in the scene
+To exit, they must explicitly take an action related to the scene 
+
+### Action
+Player can interact with the elements they investigated
+The action leads to an outcome and informs their next exploration
+To exit, player must have explicitly described the action and heard the outcome
 
 ## Tools
 Follow the [GM HINT] to use the right tool at the right time. Do NOT use any tool unless instructed by the [GM HINT].
@@ -130,16 +140,6 @@ export function startGameLoop(switchboard: BLEDevice) {
             gmHint$.next(
               `Player investigated element (id=${explorationRound + num}) in the scene. Use your imagination to describe the element. Be consistent if user investigated the same id again. It could an object, place, character, etc.`
             );
-          }
-        }
-
-        if (phase$.value === "action") {
-          if (num === 3) {
-            gmHint$.next(
-              `Player started the action. Wait for player to finish the action, then summarize the output. When players are done with the action, use start_exploration to start the next turn.`
-            );
-          } else {
-            gmHint$.next(`Player tried to leave the action. Warn them to not leave the action until it's over.`);
           }
         }
       })
