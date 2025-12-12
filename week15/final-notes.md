@@ -21,3 +21,9 @@ shouldSend = !shouldSend;
 3. Add microphone to stream via UDP
 4. Debug undrained buffer played after button up
 5. Add one distinct voice per story
+
+## Gemini hacks
+
+- Function calling seems to cause double response
+- Use Non-blocking functions with SILENT response removes doube response but function request is ignored
+- Add a manual non-terminiating text message to model fixed the missing tool result

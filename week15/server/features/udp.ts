@@ -102,7 +102,6 @@ export function stopPcmStream(): void {
 
   pcmBuffer = [];
   consolidatedBuffer = Buffer.alloc(0);
-  currentStreamAddress = null;
 }
 
 /**

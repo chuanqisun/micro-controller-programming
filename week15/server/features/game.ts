@@ -229,6 +229,11 @@ The player can't read the options. You must immediately announce each option to 
 Player cannot refuse to choose one of the options
 As soon as player speaks, you must summarize outcome and use start_exploration tool to transition to exploration.
 You must record the specific action option taken by the player in the previousActionChoice parameter of start_exploration tool
+
+# IMPORANT
+
+Always use the tool first, then narrate after.
+You must transition out from the action phase immediately. If player doesn't make a choice, you will force an action and use start_exploration tool right away.
 `;
 }
 

@@ -1,4 +1,4 @@
-import { GoogleGenAI, LiveServerMessage, Modality, type LiveConnectConfig, type Session } from "@google/genai";
+import { Behavior, FunctionResponseScheduling, GoogleGenAI, LiveServerMessage, Modality, type LiveConnectConfig, type Session } from "@google/genai";
 import { Subject } from "rxjs";
 import { audioPlayer } from "./audio";
 import { DebugAudioBuffer } from "./debug-audio";
@@ -112,6 +112,14 @@ export async function sendAIText(text: string) {
   }
 }
 
+export async function sendAITextSilent(text: string) {
+  if (session && sessionReady) {
+    session.sendClientContent({
+      turns: text,
+    });
+  }
+}
+
 export function handleUserAudio(): UDPHandler {
   return (msg) => {
     if (!sessionReady || !session) return;
@@ -141,7 +149,7 @@ async function connectGeminiLive(): Promise<void> {
       },
     },
     tools: tools.map((tool) => ({
-      functionDeclarations: [tool],
+      functionDeclarations: [{ ...tool, behavior: Behavior.NON_BLOCKING }],
     })),
   };
 
@@ -156,6 +164,7 @@ async function connectGeminiLive(): Promise<void> {
         sessionReady = true;
       },
       onmessage: (message) => {
+        console.log("DEBUG", message.serverContent);
         handleGeminiMessage(message);
       },
       onerror: (error: any) => {
@@ -175,6 +184,7 @@ async function handleGeminiMessage(message: LiveServerMessage) {
     const audioBuffer = Buffer.from(message.data, "base64");
     audioPlayer.push(audioBuffer);
     aiAudioPart$.next(audioBuffer);
+    console.log(`[DEBUG] Audio data received: ${audioBuffer.length} bytes`);
     return;
   }
 
@@ -225,6 +235,7 @@ async function handleGeminiMessage(message: LiveServerMessage) {
         .then((response) => {
           session?.sendToolResponse({
             functionResponses: {
+              scheduling: FunctionResponseScheduling.SILENT,
               id: fc.id,
               name: fc.name!,
               response,
