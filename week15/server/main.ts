@@ -32,7 +32,7 @@ import { handlePlayFile, handleStopPlayback } from "./features/play-file";
 import { silenceStart$, speakStart$ } from "./features/silence-detection";
 import { broadcast, handleSSE, newSseClient$ } from "./features/sse";
 import { appState$, updateState } from "./features/state";
-import { handleBlinkLED, handleConnectSwitchboard, handleDisconnectSwitchboard, handleLEDAllOff } from "./features/switchboard";
+import { handleBlinkLED, handleBlinkOnLED, handleConnectSwitchboard, handleDisconnectSwitchboard, handleLEDAllOff } from "./features/switchboard";
 import { createUDPServer, sendPcm16UDP, startPcmStream, stopPcmStream } from "./features/udp";
 
 async function main() {
@@ -45,6 +45,7 @@ async function main() {
     [
       handleSSE(),
       handleBlinkLED(switchboard),
+      handleBlinkOnLED(switchboard),
       handleLEDAllOff(switchboard),
       handleConnectSwitchboard(switchboard),
       handleDisconnectSwitchboard(switchboard),

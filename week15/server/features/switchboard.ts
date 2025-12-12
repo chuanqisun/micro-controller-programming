@@ -20,6 +20,23 @@ export function handleBlinkLED(switchboard: BLEDevice): Handler {
   };
 }
 
+/**
+ * /api/sw/blinkon?id=num
+ */
+export function handleBlinkOnLED(switchboard: BLEDevice): Handler {
+  return (req, res) => {
+    const url = new URL(req.url!, `http://${req.headers.host}`);
+
+    if (req.method !== "POST" || url.pathname !== "/api/sw/blinkon") return false;
+    const id = url.searchParams.get("id");
+    switchboard.send(`blinkon:${id}`);
+    res.writeHead(200);
+    res.end(JSON.stringify({ status: "ok" }));
+
+    return true;
+  };
+}
+
 export function handleLEDAllOff(switchboard: BLEDevice): Handler {
   return async (req, res) => {
     if (req.method !== "POST" || req.url !== "/api/sw/all-off") return false;

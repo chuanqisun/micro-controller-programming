@@ -16,6 +16,10 @@ export function initOperatorUI() {
     (document.getElementById(`led${i}`) as HTMLButtonElement).addEventListener("click", () => {
       fetch(`http://localhost:3000/api/sw/blink?id=${i}`, { method: "POST" });
     });
+
+    (document.getElementById(`blinkOn${i}`) as HTMLButtonElement).addEventListener("click", () => {
+      fetch(`http://localhost:3000/api/sw/blinkon?id=${i}`, { method: "POST" });
+    });
   }
 
   for (let i = 0; i < 8; i++) {
