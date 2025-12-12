@@ -16,11 +16,17 @@ shouldSend = !shouldSend;
 
 # Plans
 
+1. Laser cut unit-1/2 or fabricate a vinly cut sticky
+1. Reduce audio band width with either ADPCM or lower sample rate to 16kHz
+1. Debug undrained buffer played after button up
+1. Add one distinct voice per story
+1. Produce unit-2
+
+# DONE
+
 1. Make sure speaker makes sound
 2. Test computer streaming sound to speaker
 3. Add microphone to stream via UDP
-4. Debug undrained buffer played after button up
-5. Add one distinct voice per story
 
 ## Gemini hacks
 
