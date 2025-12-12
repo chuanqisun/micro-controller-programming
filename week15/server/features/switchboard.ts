@@ -37,6 +37,23 @@ export function handleBlinkOnLED(switchboard: BLEDevice): Handler {
   };
 }
 
+/**
+ * /api/sw/pulseon?id=num
+ */
+export function handlePulseOnLED(switchboard: BLEDevice): Handler {
+  return (req, res) => {
+    const url = new URL(req.url!, `http://${req.headers.host}`);
+
+    if (req.method !== "POST" || url.pathname !== "/api/sw/pulseon") return false;
+    const id = url.searchParams.get("id");
+    switchboard.send(`pulseon:${id}`);
+    res.writeHead(200);
+    res.end(JSON.stringify({ status: "ok" }));
+
+    return true;
+  };
+}
+
 export function handleLEDAllOff(switchboard: BLEDevice): Handler {
   return async (req, res) => {
     if (req.method !== "POST" || req.url !== "/api/sw/all-off") return false;
@@ -55,6 +72,10 @@ export async function turnOnLED(switchboard: BLEDevice, id: number) {
 
 export async function blinkOnLED(switchboard: BLEDevice, id: number) {
   await switchboard.send(`blinkon:${id}`);
+}
+
+export async function pulseOnLED(switchboard: BLEDevice, id: number) {
+  await switchboard.send(`pulseon:${id}`);
 }
 
 export async function turnOffAllLED(switchboard: BLEDevice) {

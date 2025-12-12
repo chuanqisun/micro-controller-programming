@@ -20,3 +20,4 @@ shouldSend = !shouldSend;
 2. Test computer streaming sound to speaker
 3. Add microphone to stream via UDP
 4. Debug undrained buffer played after button up
+5. Add one distinct voice per story

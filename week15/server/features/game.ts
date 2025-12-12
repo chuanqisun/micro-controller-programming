@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { JSONParser } from "@streamparser/json";
-import { BehaviorSubject, combineLatest, filter, Subject, tap } from "rxjs";
+import { BehaviorSubject, combineLatest, filter, scan, Subject, tap } from "rxjs";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { BLEDevice } from "./ble";
@@ -9,11 +9,11 @@ import type { Handler } from "./http";
 import { operatorProbeNum$ } from "./operator";
 import { broadcast, newSseClient$ } from "./sse";
 import { appState$ } from "./state";
-import { blinkOnLED, turnOffAllLED, turnOnLED } from "./switchboard";
+import { blinkOnLED, pulseOnLED, turnOffAllLED, turnOnLED } from "./switchboard";
 import { startPcmStream } from "./udp";
 
 const storyOptionsSchema = z.object({
-  storyOptions: z.array(z.string().describe("A story beginning for a text adventure game.")),
+  storyOptions: z.array(z.string().describe("A story beginning for a text adventure game.")).length(7),
 });
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
@@ -22,6 +22,7 @@ export interface StoryOption {
   text: string | null;
 }
 
+export const storyOptionGenerated$ = new Subject<StoryOption>();
 export const storyOptions$ = new BehaviorSubject<StoryOption[]>([]);
 
 export function handleNewGame(): Handler {
@@ -29,8 +30,8 @@ export function handleNewGame(): Handler {
     if (req.method !== "POST" || req.url !== "/api/game/new") return false;
 
     // Start a new game session
-    startPcmStream(appState$.value.opAddress);
     phase$.next("setup");
+    startPcmStream(appState$.value.opAddress);
 
     // Generate story options
     await generateStoryOptions();
@@ -42,12 +43,11 @@ export function handleNewGame(): Handler {
 }
 
 async function generateStoryOptions() {
-  // Initialize story options with 3 random probe IDs
-  const availableProbes = [0, 1, 2, 3, 4, 5, 6];
-  const threeRandomProbes = availableProbes.sort(() => 0.5 - Math.random()).slice(0, 3);
+  // Initialize story options with all 7 probe IDs
+  const allProbes = [0, 1, 2, 3, 4, 5, 6];
 
   storyOptions$.next(
-    threeRandomProbes.map((probeId) => ({
+    allProbes.map((probeId) => ({
       probeId,
       text: null,
     }))
@@ -60,20 +60,14 @@ async function generateStoryOptions() {
     if (typeof entry.key === "number" && typeof entry.value === "string") {
       console.log("Story option:", entry.value);
 
-      if (optionIndex < threeRandomProbes.length) {
-        const probeId = threeRandomProbes[optionIndex];
-        const currentOptions = storyOptions$.value;
+      if (optionIndex < allProbes.length) {
+        const probeId = allProbes[optionIndex];
 
-        storyOptions$.next(
-          currentOptions.map((opt) =>
-            opt.probeId === probeId
-              ? {
-                  ...opt,
-                  text: entry.value as string,
-                }
-              : opt
-          )
-        );
+        // Emit individual option as it becomes available
+        storyOptionGenerated$.next({
+          probeId,
+          text: entry.value as string,
+        });
 
         optionIndex++;
       }
@@ -82,7 +76,7 @@ async function generateStoryOptions() {
 
   const response = await ai.models.generateContentStream({
     model: "gemini-2.5-flash",
-    contents: `Generate 3 different story beginnings for a text adventure game quest. Each option should be just a few words to setup scene and mood.`,
+    contents: `Generate 7 different story beginnings for a text adventure game quest. Each option should be just a few words to setup scene and mood.`,
     config: {
       responseMimeType: "application/json",
       responseJsonSchema: zodToJsonSchema(storyOptionsSchema as any),
@@ -198,8 +192,8 @@ Setup -> Loop: (Player exploration -> Player action -> Repeat)
 
 ### Setup
 Initial story selection phase.
-Player probes story options to hear them announced.
-When player verbally commits to a story option, you must immediately call start_exploration tool to begin the game with the chosen story premise.
+Player listens to story options. After announcing each, ask player whether to take on the adventure.
+When player explicitly commits, you must immediately call start_exploration tool to begin the game with the chosen story premise.
 
 ### Exploration
 One or more turns of investigation, ending with action.
@@ -209,9 +203,9 @@ Do NOT trigger an action when Player can ask about the scene and elements
 To exit, they must explicitly take an action related to the scene 
 
 ### Action
-**Single** turn of choice.
-Player can interact with the elements they investigated
-Once entered action phase, Plan and immediately announce choice A and choice B to the player. Player cannot refuse to choose
+Only a **single** turn
+Player must choose how to interact with the element they were investigating
+Once entered action phase, announce choice A and choice B to the player. Player cannot refuse to choose
 The action options must lead to outcome that drives the story
 Player must make a choice in one turn. You will describe the outcome, advance the plot, and immediately transition to exploration using start_exploration tool.
 
@@ -221,6 +215,7 @@ Follow the [GM HINT] to use the right tool at the right time. Do NOT use any too
 ### start_exploration tool
 Set the scene and up to three interactive elements in the scene
 Make sure each scene element can lead to plot development
+Depending on the scene and previous action, the elements can be concrete characters, artifacts, places, or abstract ideas, strategies, plans. The key requirement is that they must be investigatable.
 As story advances, scene and elements should change accordingly to offer new paths of exploration
 After calling this tool, you must describe the scene in just short sentence, but you must NOT reveal the interactive elements. 
 The player will discover the elements by explicitly explorating the scene.
@@ -263,6 +258,18 @@ export function startGameLoop(switchboard: BLEDevice) {
   /** Game logic */
   gmHint$.pipe(tap((hint) => sendAIText(`[GM HINT] ${hint}`))).subscribe();
 
+  // Accumulate individual story options into the full list
+  storyOptionGenerated$
+    .pipe(
+      scan((_acc, option) => {
+        const currentOptions = storyOptions$.value;
+        const updatedOptions = currentOptions.map((opt) => (opt.probeId === option.probeId ? option : opt));
+        return updatedOptions;
+      }, storyOptions$.value),
+      tap((options) => storyOptions$.next(options))
+    )
+    .subscribe();
+
   // Broadcast game state on change
   combineLatest([phase$, sceneElements$, sceneName$, lastActionChoice$, actionOptions$, storyOptions$])
     .pipe(
@@ -290,21 +297,12 @@ export function startGameLoop(switchboard: BLEDevice) {
     )
     .subscribe();
 
-  // Note: Removed enterExploration$ gmHint$ since the DM prompt already instructs
-  // Gemini what to do after calling start_exploration tool. Sending another hint
-  // here causes double responses.
-
-  // Handle story options LED updates during setup
-  storyOptions$
+  // Light up LED as each story option becomes available
+  storyOptionGenerated$
     .pipe(
-      tap(async (options) => {
-        if (phase$.value === "setup" && options.length > 0) {
-          await turnOffAllLED(switchboard);
-          options.forEach((option) => {
-            if (option.text !== null) {
-              setTimeout(() => turnOnLED(switchboard, option.probeId), 1000 + Math.random() * 2000);
-            }
-          });
+      tap(async (option) => {
+        if (phase$.value === "setup" && option.text !== null) {
+          setTimeout(() => pulseOnLED(switchboard, option.probeId), Math.random() * 1000);
         }
       })
     )
@@ -368,7 +366,7 @@ export function startGameLoop(switchboard: BLEDevice) {
 
           if (option && option.text !== null) {
             gmHint$.next(
-              `Player is considering the story option: "${option.text}". Announce this option to the player in your own words, setup the scene and mood in just a few words. Make it an enticing beginning to quest.`
+              `Tell player about the quest "${option.text}". Announce this option to the player in your own words, setup the scene and mood in just a few words. Make it an enticing beginning to quest.`
             );
           } else {
             gmHint$.next(`Player probed an invalid option. Tell them to choose one of the available story options.`);

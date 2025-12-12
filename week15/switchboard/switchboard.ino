@@ -22,6 +22,7 @@ const int numLeds = 7;
 const int PERIOD_US = 1000;
 const int FADE_STEP_MS = 2;  // Time between brightness steps
 const int BLINK_STEP_MS = 1; // Faster speed for blinking
+const int PULSE_STEP_MS = 4; // Slower speed for pulsing (2 seconds = 255 steps * 4ms * 2)
 
 // Track LED on/off state
 bool ledOn[7] = {false};
@@ -166,12 +167,22 @@ void startFadeOn(int ledIndex) {
 
 // Start blink on for a specific LED
 void startBlinkOn(int ledIndex) {
+    startLoopingFade(ledIndex, BLINK_STEP_MS);
+}
+
+// Start pulse on for a specific LED (slower than blink)
+void startPulseOn(int ledIndex) {
+    startLoopingFade(ledIndex, PULSE_STEP_MS);
+}
+
+// Helper function to start a looping fade with specified step delay
+void startLoopingFade(int ledIndex, int stepDelay) {
     fadeStates[ledIndex].active = true;
     fadeStates[ledIndex].fadingOn = true;
     fadeStates[ledIndex].brightness = 0;
     fadeStates[ledIndex].lastStepTime = millis();
     fadeStates[ledIndex].looping = true;
-    fadeStates[ledIndex].stepDelay = BLINK_STEP_MS;
+    fadeStates[ledIndex].stepDelay = stepDelay;
 }
 
 // Start fade off for a specific LED (only if currently on or blinking)
@@ -310,6 +321,15 @@ class MyRxCallbacks: public BLECharacteristicCallbacks {
                     Serial.print("Blinking on LED ");
                     Serial.println(ledIndex);
                     startBlinkOn(ledIndex);
+                } else {
+                    Serial.println("Invalid LED index");
+                }
+            } else if (rxValue.startsWith("pulseon:")) {
+                int ledIndex = rxValue.substring(8).toInt();
+                if (ledIndex >= 0 && ledIndex < numLeds) {
+                    Serial.print("Pulsing on LED ");
+                    Serial.println(ledIndex);
+                    startPulseOn(ledIndex);
                 } else {
                     Serial.println("Invalid LED index");
                 }
