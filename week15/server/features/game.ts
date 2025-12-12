@@ -4,7 +4,7 @@ import { sendAIText, startAIAudio, stopAIAudio } from "./gemini-live";
 import type { Handler } from "./http";
 import { operatorProbeNum$ } from "./operator";
 import { appState$ } from "./state";
-import { turnOffAllLED, turnOnLED } from "./switchboard";
+import { blinkOnLED, turnOffAllLED, turnOnLED } from "./switchboard";
 
 export function handleNewGame(): Handler {
   return async (req, res) => {
@@ -71,12 +71,13 @@ Loop: player exploration -> Player action -> Repeat
 ### Exploration
 Player can ask questions about the environment
 They can investigate up to 3 elements in the scene
+Player can ask about the scene and elements without triggering an action
 To exit, they must explicitly take an action related to the scene 
 
 ### Action
 Player can interact with the elements they investigated
 The action leads to an outcome and informs their next exploration
-To exit, player must have explicitly described the action and heard the outcome
+Once entered action phase, you must wrap it up within 1-2 turns and transition back to exploration phase
 
 ## Tools
 Follow the [GM HINT] to use the right tool at the right time. Do NOT use any tool unless instructed by the [GM HINT].
@@ -118,7 +119,7 @@ export function startGameLoop(switchboard: BLEDevice) {
     .pipe(
       tap(async () => {
         await turnOffAllLED(switchboard);
-        turnOnLED(switchboard, appState$.value.probeNum); // turn on center LED for action
+        blinkOnLED(switchboard, appState$.value.probeNum); // turn on center LED for action
       })
     )
     .subscribe();
@@ -138,7 +139,7 @@ export function startGameLoop(switchboard: BLEDevice) {
             gmHint$.next(`Player investigated the wrong thing. Tell them there is nothing there.`);
           } else {
             gmHint$.next(
-              `Player investigated element (id=${explorationRound + num}) in the scene. Use your imagination to describe the element. Be consistent if user investigated the same id again. It could an object, place, character, etc.`
+              `Player investigated element (id=${explorationRound + num}) in the scene. Use your imagination to describe the element. It must be an interactive object, tool, place, character, etc. If user revisits the same id, be consistent with what you said before.`
             );
           }
         }
