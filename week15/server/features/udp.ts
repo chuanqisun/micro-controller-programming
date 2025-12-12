@@ -93,13 +93,13 @@ function startStreamingLoop(address: string): void {
 export function stopPcmStream(): void {
   console.log("Stopping PCM stream");
   isStreaming = false;
-  
+
   // Clear the timeout to fully cancel the loop
   if (streamTimeoutId !== null) {
     clearTimeout(streamTimeoutId);
     streamTimeoutId = null;
   }
-  
+
   pcmBuffer = [];
   consolidatedBuffer = Buffer.alloc(0);
   currentStreamAddress = null;
