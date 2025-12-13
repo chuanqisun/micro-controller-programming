@@ -4,32 +4,15 @@ import { updateState } from "./state";
 import { withTimeout } from "./timeout";
 
 /**
- * /api/blink?id=num
- */
-export function handleBlinkLED(switchboard: BLEDevice): Handler {
-  return (req, res) => {
-    const url = new URL(req.url!, `http://${req.headers.host}`);
-
-    if (req.method !== "POST" || url.pathname !== "/api/sw/blink") return false;
-    const id = url.searchParams.get("id");
-    switchboard.send(`blink:${id}`);
-    res.writeHead(200);
-    res.end(JSON.stringify({ status: "ok" }));
-
-    return true;
-  };
-}
-
-/**
  * /api/sw/blinkon?id=num
  */
 export function handleBlinkOnLED(switchboard: BLEDevice): Handler {
-  return (req, res) => {
+  return async (req, res) => {
     const url = new URL(req.url!, `http://${req.headers.host}`);
 
     if (req.method !== "POST" || url.pathname !== "/api/sw/blinkon") return false;
     const id = url.searchParams.get("id");
-    switchboard.send(`blinkon:${id}`);
+    await switchboard.send(`blinkon:${id}`);
     res.writeHead(200);
     res.end(JSON.stringify({ status: "ok" }));
 
@@ -41,12 +24,12 @@ export function handleBlinkOnLED(switchboard: BLEDevice): Handler {
  * /api/sw/pulseon?id=num
  */
 export function handlePulseOnLED(switchboard: BLEDevice): Handler {
-  return (req, res) => {
+  return async (req, res) => {
     const url = new URL(req.url!, `http://${req.headers.host}`);
 
     if (req.method !== "POST" || url.pathname !== "/api/sw/pulseon") return false;
     const id = url.searchParams.get("id");
-    switchboard.send(`pulseon:${id}`);
+    await switchboard.send(`pulseon:${id}`);
     res.writeHead(200);
     res.end(JSON.stringify({ status: "ok" }));
 

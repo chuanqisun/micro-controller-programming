@@ -29,14 +29,7 @@ import { handlePlayFile, handleStopPlayback } from "./features/play-file";
 import { silenceStart$, speakStart$ } from "./features/silence-detection";
 import { broadcast, handleSSE, newSseClient$ } from "./features/sse";
 import { appState$, createDefaultOperatorState, getActiveOperator, updateOperatorByIndex, updateState } from "./features/state";
-import {
-  handleBlinkLED,
-  handleBlinkOnLED,
-  handleConnectSwitchboard,
-  handleDisconnectSwitchboard,
-  handleLEDAllOff,
-  handlePulseOnLED,
-} from "./features/switchboard";
+import { handleBlinkOnLED, handleConnectSwitchboard, handleDisconnectSwitchboard, handleLEDAllOff, handlePulseOnLED } from "./features/switchboard";
 import { createUDPServer, sendPcm16UDP, startPcmStream, stopPcmStream } from "./features/udp";
 
 async function main() {
@@ -57,7 +50,6 @@ async function main() {
   createHttpServer(
     [
       handleSSE(),
-      handleBlinkLED(switchboard),
       handleBlinkOnLED(switchboard),
       handlePulseOnLED(switchboard),
       handleLEDAllOff(switchboard),

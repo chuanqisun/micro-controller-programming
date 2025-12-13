@@ -244,23 +244,7 @@ class MyRxCallbacks: public BLECharacteristicCallbacks {
             Serial.print("Received: ");
             Serial.println(rxValue);
             
-            if (rxValue.startsWith("blink:")) {
-                int ledIndex = rxValue.substring(6).toInt();
-                if (ledIndex >= 0 && ledIndex < numLeds) {
-                    Serial.print("Blinking LED ");
-                    Serial.println(ledIndex);
-                    digitalWrite(ledPins[ledIndex], HIGH);
-                    delay(500);
-                    digitalWrite(ledPins[ledIndex], LOW);
-                    
-                    // Send acknowledgment
-                    String ack = "ACK:blinked " + String(ledIndex);
-                    pTxCharacteristic->setValue((uint8_t*)ack.c_str(), ack.length());
-                    pTxCharacteristic->notify();
-                } else {
-                    Serial.println("Invalid LED index");
-                }
-            } else if (rxValue.startsWith("on:")) {
+            if (rxValue.startsWith("on:")) {
                 int ledIndex = rxValue.substring(3).toInt();
                 if (ledIndex >= 0 && ledIndex < numLeds) {
                     Serial.print("Turning on LED ");

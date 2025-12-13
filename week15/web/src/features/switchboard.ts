@@ -17,13 +17,8 @@ export function initSwitchboardUI() {
     fetch("http://localhost:3000/api/sw/all-off", { method: "POST" });
   });
 
-  // LED blink buttons
+  // Blink On buttons
   for (let i = 0; i < 7; i++) {
-    const ledBtn = document.getElementById(`led${i}`) as HTMLButtonElement | null;
-    ledBtn?.addEventListener("click", () => {
-      fetch(`http://localhost:3000/api/sw/blink?id=${i}`, { method: "POST" });
-    });
-
     const blinkOnBtn = document.getElementById(`blinkOn${i}`) as HTMLButtonElement | null;
     blinkOnBtn?.addEventListener("click", () => {
       fetch(`http://localhost:3000/api/sw/blinkon?id=${i}`, { method: "POST" });
