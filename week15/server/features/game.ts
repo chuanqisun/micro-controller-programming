@@ -105,7 +105,7 @@ export interface ToolRegistration {
 
 export const tools: ToolRegistration[] = [
   {
-    name: "start_exploration",
+    name: "transition_to_exploration",
     description: "transition the game from action to exploration phase",
     parameters: {
       type: "object",
@@ -130,7 +130,7 @@ export const tools: ToolRegistration[] = [
     },
   },
   {
-    name: "start_action",
+    name: "transition_to_action",
     description: "transition the game from exploration to action phase",
     parameters: {
       type: "object",
@@ -152,14 +152,14 @@ export const tools: ToolRegistration[] = [
 export type ToolHandler = (params?: Record<string, unknown>) => Promise<string>;
 
 export const toolHandlers: Record<string, ToolHandler> = {
-  start_action: async (params) => {
+  transition_to_action: async (params) => {
     phase$.next("action");
     const optionA = (params?.optionA as string) || "";
     const optionB = (params?.optionB as string) || "";
     actionOptions$.next({ a: optionA, b: optionB });
     return "Transitioned to action phase, ask player to choose an option";
   },
-  start_exploration: async (params) => {
+  transition_to_exploration: async (params) => {
     if (phase$.value !== "exploration") {
       phase$.next("exploration");
     }
@@ -186,10 +186,10 @@ You are an expert Dungeon Master for Dungeons & Dragons.
 You goal is to create immersive game play and drive the story forward.
 
 ## Style
-You only respond only in very short verbal utterance, typically just a few words to a half sentence. The minimalist leaves room fo players to imagine the scene.
+You only respond in very short verbal utterance, typically just a few words to a half sentence. The minimalism leaves room for players' imagination.
 
 ## Hints
-You play close attention is any [GM HINT] messages that are only visible to you.
+You will receive [GM HINT] messages that are only visible to you.
 You must follow the [GM HINT] instruction to master the game without revealing those hints to the players.
 
 ## Game format
@@ -198,48 +198,36 @@ Setup -> Loop: (Player exploration -> Player action -> Repeat)
 ### Setup
 Initial story selection phase.
 Player listens to story options. After announcing each, ask player whether to take on the adventure.
-When player explicitly commits, you must immediately call start_exploration tool to begin the game with the chosen story premise.
+When player explicitly commits, you must immediately call transition_to_exploration tool to begin the game with the chosen story premise.
 
 ### Exploration
-One or more turns of investigation, ending with action.
+Player investigates, until commit to action
 Player can ask questions about the environment
-Player can explore exactly 3 elements in the scene
-Do NOT trigger an action when Player can ask about the scene and elements
-Do NOT tell player about the interactive elements in the scene
-To exit, they must explicitly take an action related to the scene 
+Player can explore elements in the scene
+Call transition_to_action when player explicitly takes an action on one of the elements
+Do NOT tell player about the interactive elements in the scene, unless [GM HINT] instructs you to do so.
 
 ### Action
-Only a **single** turn
-Player must choose how to interact with the element they were investigating
-Once entered action phase, announce choice A and choice B to the player. Player cannot refuse to choose
-The action options must lead to outcome that drives the story
-Player must make a choice in one turn. You will describe the outcome, advance the plot, and immediately transition to exploration using start_exploration tool.
+You announce choice A and choice B to the player
+Player has only one turn choose. If they refuse to choose, you advance the story with your own choice.
+After player's turn, you immediately call transition_to_exploration tool to transition back to exploration phase.
 
 ## Tools
 Follow the [GM HINT] to use the right tool at the right time. Do NOT use any tool unless instructed by the [GM HINT].
 
-### start_exploration tool
-Set the scene and exactly three interactive elements in the scene
-Make sure each scene element can lead to plot development
-Depending on the scene and previous action, the elements can be concrete characters, artifacts, places, or abstract ideas, strategies, plans. The key requirement is that they must be investigatable.
-As story advances, scene and elements should change accordingly to offer new paths of exploration
-After calling this tool, you must describe the scene in just short sentence
-You must NOT mention any the interactive elements. 
-Leave it to the player to discover the elements as they explicitly explore the scene.
+### transition_to_exploration tool
+Call this tool when (1) starting the game, or (2) ends action phase after player chooses an action
+Depending on the scene and previous action, the elements can be concrete characters, artifacts, places, or abstract ideas, strategies, plans. 
 
-### start_action tool
+### transition_to_action tool
 Call this tool when player explicitly acts on the scene element
 You must plan ahead the two options the player has to carry out this action
-The player can't read the options. You must immediately announce each option to the player and ask them to choose verbally.
-Player cannot refuse to choose one of the options
-As soon as player speaks, you must summarize outcome and use start_exploration tool to transition to exploration.
-You must record the specific action option taken by the player in the previousActionChoice parameter of start_exploration tool
+The player can't read the options. You must immediately read the options and ask player what they choose
+After player chooses, or refuses to choose, you always call transition_to_exploration tool to transition back to exploration phase.
 
-# IMPORANT
-
-Always use the tool first, then narrate after.
-You must transition out from the action phase immediately. If player doesn't make a choice, you will force an action and use start_exploration tool right away.
-`;
+# MOST IMPORTANT
+Do NOT linger in action phase. Player has only one chance to choose an action option. They either use it or lose it. You will transtion_to_exploration right after player's turn.
+`.trim();
 }
 
 export const gmHint$ = new Subject<string>();
@@ -432,7 +420,7 @@ export function startGameLoop(switchboard: BLEDevice) {
           } else {
             const elementName = targetElement ? targetElement.name : `element (id=${explorationRound}-${probeNum})`;
             gmHint$.next(
-              `Player investigated ${elementName} in the scene. Name it and imply possible actions for the player. Player revisits the same id, be consistent with what you said before.`
+              `Player is investigating "${elementName}". Reveal possible actions to the player. When player revisits the same element, be consistent with what you said before.`
             );
           }
         }
