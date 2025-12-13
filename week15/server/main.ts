@@ -1,6 +1,6 @@
 import { map, tap } from "rxjs";
 import { HTTP_PORT, LAPTOP_UDP_RX_PORT } from "./config";
-import { BLEDevice, opMac, swMac } from "./features/ble";
+import { BLEDevice, opMacUnit2, swMac } from "./features/ble";
 import { createButtonStateMachine } from "./features/buttons";
 import { handleNewGame, startGameLoop } from "./features/game";
 import {
@@ -43,7 +43,7 @@ import {
 import { createUDPServer, sendPcm16UDP, startPcmStream, stopPcmStream } from "./features/udp";
 
 async function main() {
-  const operator = new BLEDevice(opMac);
+  const operatorUnit2 = new BLEDevice(opMacUnit2);
   const switchboard = new BLEDevice(swMac);
 
   createUDPServer([handleUserAudio()], LAPTOP_UDP_RX_PORT);
@@ -57,9 +57,9 @@ async function main() {
       handleLEDAllOff(switchboard),
       handleConnectSwitchboard(switchboard),
       handleDisconnectSwitchboard(switchboard),
-      handleConnectOperator(operator),
-      handleDisconnectOperator(operator),
-      handleRequestOperatorAddress(operator),
+      handleConnectOperator(operatorUnit2),
+      handleDisconnectOperator(operatorUnit2),
+      handleRequestOperatorAddress(operatorUnit2),
       handleProbeApi(),
       handleBtnApi(),
 
@@ -84,7 +84,7 @@ async function main() {
 
   newSseClient$.pipe(tap(() => broadcast({ state: appState$.value }))).subscribe();
 
-  operator.message$.pipe(tap(logOperatorMessage), tap(handleProbeMessage()), tap(handleOpAddressMessage()), tap(handleButtonsMessage())).subscribe();
+  operatorUnit2.message$.pipe(tap(logOperatorMessage), tap(handleProbeMessage()), tap(handleOpAddressMessage()), tap(handleButtonsMessage())).subscribe();
   operatorProbeNum$.pipe(tap((num) => updateState((state) => ({ ...state, probeNum: num })))).subscribe();
   operatorAddress$.pipe(tap((address) => updateState((state) => ({ ...state, opAddress: address })))).subscribe();
   operatorButtons$.pipe(tap((buttons) => updateState((state) => ({ ...state, btn1: buttons.btn1, btn2: buttons.btn2 })))).subscribe();

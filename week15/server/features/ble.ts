@@ -1,7 +1,8 @@
 import NodeBle, { createBluetooth } from "node-ble";
 import { BehaviorSubject, concatMap, Subject, Subscription } from "rxjs";
 
-export const opMac = "B0:81:84:04:70:E2";
+export const opMacUnit1 = "B0:81:84:04:70:E2";
+export const opMacUnit2 = "94:A9:90:7A:83:E6";
 export const swMac = "B0:81:84:04:59:DE";
 export const uartServiceUuid = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
 export const commonTxCharacteristicId = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
@@ -73,9 +74,7 @@ export class BLEDevice {
 
     device.on("disconnect", disconnectHandler);
 
-    this.sendQueueSub = this.sendQueue$
-      .pipe(concatMap(async (message) => this.txCharacteristic?.writeValue(Buffer.from(message, "utf-8"))))
-      .subscribe();
+    this.sendQueueSub = this.sendQueue$.pipe(concatMap(async (message) => this.txCharacteristic?.writeValue(Buffer.from(message, "utf-8")))).subscribe();
 
     return this;
   }
