@@ -77,3 +77,23 @@ When I was engraving the switchboard, the rapid back and forth motion shifted th
 - Two hypothesis that we can test in the future
   - The curved lines prevents laser to build up heat
   - The FDM process creates directional surfaces.
+
+# Core Game Loop
+
+## Character customization
+
+- AI generates 7 distinct characters, based on story telling archetypes
+- Single or two players plug into the switchboard to connect to a character
+- When all the buttons on all the operators are pressed, story begins
+
+## Exploration phase
+
+- Each player can investigate pulsing lights on the switchboard to gather information
+- When they are ready, one of them commit to take action
+- Light blinks under all players, indicating action
+
+## Action phase
+
+- AI provides action options
+- One of the players take action
+- AI will force transition to Exploration phase after action is taken
