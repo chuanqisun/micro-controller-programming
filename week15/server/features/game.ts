@@ -1,15 +1,17 @@
 import { GoogleGenAI } from "@google/genai";
 import { JSONParser } from "@streamparser/json";
-import { BehaviorSubject, combineLatest, filter, scan, Subject, tap } from "rxjs";
+import { BehaviorSubject, combineLatest, distinctUntilChanged, filter, map, scan, Subject, tap } from "rxjs";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { BLEDevice } from "./ble";
 import { sendAIText, startAIAudio, stopAIAudio } from "./gemini-live";
 import type { Handler } from "./http";
-import { operatorProbeNum$ } from "./operator";
+import { operatorButtons$, operatorProbeNum$ } from "./operator";
+import { cancelAllSpeakerPlayback, playAudioThroughSpeakers } from "./speaker";
 import { broadcast, newSseClient$ } from "./sse";
 import { appState$, getActiveOperator } from "./state";
 import { blinkOnLED, pulseOnLED, turnOffAllLED } from "./switchboard";
+import { GenerateOpenAISpeech } from "./tts";
 import { startPcmStream } from "./udp";
 
 const characterSchema = z.object({
@@ -32,6 +34,7 @@ export interface StoryOption {
   voiceActor: string | null;
   archetype: string | null;
   gender: string | null;
+  audioBuffer: Promise<Buffer> | null;
 }
 
 export const storyOptionGenerated$ = new Subject<StoryOption>();
@@ -70,6 +73,7 @@ async function generateStoryOptions() {
       voiceActor: null,
       archetype: null,
       gender: null,
+      audioBuffer: null,
     }))
   );
 
@@ -91,6 +95,7 @@ async function generateStoryOptions() {
           voiceActor: charData.voiceActor,
           archetype: charData.archetype,
           gender: charData.gender,
+          audioBuffer: GenerateOpenAISpeech(charData.intro),
         };
 
         storyOptionGenerated$.next(option);
@@ -204,58 +209,6 @@ export const toolHandlers: Record<string, ToolHandler> = {
     return "Transitioned to exploration phase, ask player to explore.";
   },
 };
-
-export function getDungeonMasterPrompt(): string {
-  return `
-# Role & Objective
-You are an expert Dungeon Master for Dungeons & Dragons.
-You goal is to create immersive game play and drive the story forward.
-
-## Style
-You only respond in very short verbal utterance, always just a few words. The minimalism leaves room for players' imagination.
-Never prompt the player with "what do you do?" or similar phrases. The player will initiate action or inquiry on their own.
-
-## Hints
-You will receive [GM HINT] messages that are only visible to you.
-You must follow the [GM HINT] instruction to master the game without revealing those hints to the players.
-
-## Game format
-Setup -> Loop: (Player exploration -> Player action -> Repeat)
-
-### Setup
-Initial story selection phase.
-Player listens to story options. After announcing each, ask player whether to take on the adventure.
-When player explicitly commits, you must immediately call transition_to_exploration tool to begin the game with the chosen story premise.
-
-### Exploration
-Player investigates, until commit to action
-Player can ask questions about the environment
-Player can explore elements in the scene
-Call transition_to_action when player explicitly takes an action on one of the elements
-Do NOT tell player about the interactive elements in the scene, unless [GM HINT] instructs you to do so.
-
-### Action
-You announce choice A and choice B to the player
-Player has only one turn choose. If they refuse to choose, you advance the story with your own choice.
-After player's turn, you immediately call transition_to_exploration tool to transition back to exploration phase.
-
-## Tools
-Follow the [GM HINT] to use the right tool at the right time. Do NOT use any tool unless instructed by the [GM HINT].
-
-### transition_to_exploration tool
-Call this tool when (1) starting the game, or (2) ends action phase after player chooses an action
-Depending on the scene and previous action, the elements can be concrete characters, artifacts, places, or abstract ideas, strategies, plans. 
-
-### transition_to_action tool
-Call this tool when player explicitly acts on the scene element
-You must plan ahead the two options the player has to carry out this action
-The player can't read the options. You must immediately read the options and ask player what they choose
-After player chooses, or refuses to choose, you always call transition_to_exploration tool to transition back to exploration phase.
-
-# MOST IMPORTANT
-Do NOT linger in action phase. Player has only one chance to choose an action option. They either use it or lose it. You will transtion_to_exploration right after player's turn.
-`.trim();
-}
 
 export const gmHint$ = new Subject<string>();
 export const phase$ = new BehaviorSubject<Phase>("setup");
@@ -399,26 +352,96 @@ export function startGameLoop(switchboard: BLEDevice) {
     )
     .subscribe();
 
+  // Character selection confirmation: all operators must have both buttons pressed
+  // Track when all operators have both buttons down
+  const allOperatorsConfirmed$ = operatorButtons$.pipe(
+    // Map each button event to update an accumulated state of all operators
+    scan((acc, { operatorIndex, btn1, btn2 }) => {
+      const newAcc = new Map(acc);
+      newAcc.set(operatorIndex, btn1 && btn2);
+      return newAcc;
+    }, new Map<number, boolean>()),
+    // Check if all connected operators have both buttons pressed
+    map((buttonStates) => {
+      const operators = appState$.value.operators;
+      if (operators.length === 0) return false;
+
+      // All operators must have both buttons down
+      for (let i = 0; i < operators.length; i++) {
+        const confirmed = buttonStates.get(i) ?? false;
+        if (!confirmed) return false;
+      }
+      return true;
+    }),
+    distinctUntilChanged(),
+    filter((allConfirmed) => allConfirmed && phase$.value === "setup")
+  );
+
+  // Handle character selection confirmation
+  allOperatorsConfirmed$
+    .pipe(
+      tap(async () => {
+        console.log("All operators confirmed character selection!");
+        cancelAllSpeakerPlayback();
+
+        // Collect selected characters for each operator
+        const operators = appState$.value.operators;
+        const selectedCharacters: string[] = [];
+
+        for (const op of operators) {
+          if (op.probeNum !== 7) {
+            const option = characterOptions.value.find((opt) => opt.probeId === op.probeNum);
+            if (option && option.intro) {
+              selectedCharacters.push(option.intro);
+            }
+          }
+        }
+
+        if (selectedCharacters.length === 0) {
+          console.log("No valid character selections found");
+          return;
+        }
+
+        // Transition to exploration phase
+        phase$.next("exploration");
+        await turnOffAllLED(switchboard);
+
+        // Send GM HINT with selected characters and ask for first scene
+        const characterList = selectedCharacters.map((intro, i) => `Player ${i + 1}: "${intro}"`).join(", ");
+        gmHint$.next(`Players have selected their characters. ${characterList}. Call transition_to_exploration to begin the adventure with the first scene.`);
+      })
+    )
+    .subscribe();
+
   operatorProbeNum$
     .pipe(
-      tap(({ operatorIndex: _operatorIndex, probeNum }) => {
+      tap(async ({ operatorIndex: _operatorIndex, probeNum }) => {
+        // Cancel any ongoing playback when user unplugs or changes probe
+        cancelAllSpeakerPlayback();
         stopAIAudio();
+
         if (probeNum === 7) return;
 
-        startAIAudio();
-
         if (phase$.value === "setup") {
-          // Handle story option probing during setup phase
+          // Handle story option probing during setup phase - play pre-generated audio
           const option = characterOptions.value.find((opt) => opt.probeId === probeNum);
 
-          if (option && option.intro !== null && option.voiceActor !== null && option.archetype !== null && option.gender !== null) {
-            gmHint$.next(
-              `Read the intro "${option.intro}" (${option.archetype}, ${option.gender === "M" ? "male" : "female"}). Use the voice: ${option.voiceActor}.`
-            );
+          if (option && option.intro !== null && option.audioBuffer !== null) {
+            try {
+              const audioBuffer = await option.audioBuffer;
+              // Check if still on the same probe after async wait
+              const currentProbe = getActiveOperatorProbeNum();
+              if (currentProbe === probeNum) {
+                await playAudioThroughSpeakers(audioBuffer);
+              }
+            } catch (err) {
+              console.error("Failed to play character intro:", err);
+            }
           } else {
-            gmHint$.next(`Player probed an invalid option. Tell them to choose one of the available story options.`);
+            console.log("Player probed an option that is not ready yet");
           }
         } else if (phase$.value === "exploration") {
+          startAIAudio();
           const elements = sceneElements$.value;
           const targetElement = elements.find((e) => e.probeId === probeNum);
 

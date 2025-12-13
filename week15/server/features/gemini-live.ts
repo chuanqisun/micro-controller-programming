@@ -2,8 +2,9 @@ import { Behavior, FunctionResponseScheduling, GoogleGenAI, LiveServerMessage, M
 import { Subject } from "rxjs";
 import { audioPlayer } from "./audio";
 import { DebugAudioBuffer } from "./debug-audio";
-import { getDungeonMasterPrompt, toolHandlers, tools, type ToolHandler } from "./game";
+import { toolHandlers, tools, type ToolHandler } from "./game";
 import type { Handler } from "./http";
+import { getDungeonMasterPrompt } from "./prompt";
 import { recordAudioActivity, resetSpeechState, startSilenceDetection, stopSilenceDetection } from "./silence-detection";
 import { appState$, getActiveOperator, updateState } from "./state";
 import { startPcmStream, stopPcmStream, type UDPHandler } from "./udp";
