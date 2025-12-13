@@ -12,18 +12,30 @@ import { appState$, getActiveOperator } from "./state";
 import { blinkOnLED, pulseOnLED, turnOffAllLED } from "./switchboard";
 import { startPcmStream } from "./udp";
 
-const storyOptionsSchema = z.object({
-  storyOptions: z.array(z.string().describe("A story beginning for a text adventure game.")).length(7),
+const characterSchema = z.object({
+  intro: z.string().describe("In only a few words, introduce yourself with 'I am...', including profession and trait. Remain anonymous"),
+  voiceActor: z.string().describe("Description of the voice quality and characteristics"),
+  archetype: z
+    .enum(["hero", "magician", "lover", "jester", "explorer", "sage", "innocent", "creator", "caregiver", "outlaw", "orphan", "seducer"])
+    .describe("Character archetype"),
+  gender: z.enum(["M", "F"]).describe("Character gender: M for male, F for female"),
+});
+
+const characterOptionsSchema = z.object({
+  characterOptions: z.array(characterSchema).length(7),
 });
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
 export interface StoryOption {
   probeId: number;
-  text: string | null;
+  intro: string | null;
+  voiceActor: string | null;
+  archetype: string | null;
+  gender: string | null;
 }
 
 export const storyOptionGenerated$ = new Subject<StoryOption>();
-export const storyOptions$ = new BehaviorSubject<StoryOption[]>([]);
+export const characterOptions = new BehaviorSubject<StoryOption[]>([]);
 
 export function handleNewGame(): Handler {
   return async (req, res) => {
@@ -51,40 +63,54 @@ async function generateStoryOptions() {
   // Initialize story options with all 7 probe IDs
   const allProbes = [0, 1, 2, 3, 4, 5, 6];
 
-  storyOptions$.next(
+  characterOptions.next(
     allProbes.map((probeId) => ({
       probeId,
-      text: null,
+      intro: null,
+      voiceActor: null,
+      archetype: null,
+      gender: null,
     }))
   );
 
   const parser = new JSONParser();
-  let optionIndex = 0;
+  const characters: Partial<StoryOption>[] = [];
 
   parser.onValue = (entry) => {
-    if (typeof entry.key === "number" && typeof entry.value === "string") {
-      console.log("Story option:", entry.value);
+    // Handle array elements: characterOptions[0], characterOptions[1], etc.
+    if (typeof entry.key === "number" && typeof entry.value === "object" && entry.value !== null) {
+      const charData = entry.value as { intro?: string; voiceActor?: string; archetype?: string; gender?: string };
+      const probeId = allProbes[entry.key];
 
-      if (optionIndex < allProbes.length) {
-        const probeId = allProbes[optionIndex];
+      if (charData.intro && charData.voiceActor && charData.archetype && charData.gender) {
+        console.log("Character generated:", { probeId, ...charData });
 
-        // Emit individual option as it becomes available
-        storyOptionGenerated$.next({
+        const option: StoryOption = {
           probeId,
-          text: entry.value as string,
-        });
+          intro: charData.intro,
+          voiceActor: charData.voiceActor,
+          archetype: charData.archetype,
+          gender: charData.gender,
+        };
 
-        optionIndex++;
+        storyOptionGenerated$.next(option);
+        characters.push(option);
       }
     }
   };
 
   const response = await ai.models.generateContentStream({
     model: "gemini-2.5-flash",
-    contents: `Generate 7 different story beginnings for a text adventure game quest. Each option should be just a few words to setup scene and mood.`,
+    contents: `Generate exactly seven (7) distinct fantasy game characters for a quest. For each character provide:
+- intro: A compelling one-sentence introduction starting with "I am..." that captures their essence. ONLY a few words.
+- voiceActor: A vivid description of their voice quality (e.g., "deep and gravelly", "soft and melodic", "crackling with energy")
+- archetype: Choose from hero, magician, lover, jester, explorer, sage, innocent, creator, caregiver, outlaw, orphan, or seducer
+- gender: Either "M" for male or "F" for female
+
+Make sure the characters have synergy with each other and cover diverse archetypes.`,
     config: {
       responseMimeType: "application/json",
-      responseJsonSchema: zodToJsonSchema(storyOptionsSchema as any),
+      responseJsonSchema: zodToJsonSchema(characterOptionsSchema as any),
     },
   });
 
@@ -279,16 +305,16 @@ export function startGameLoop(switchboard: BLEDevice) {
   storyOptionGenerated$
     .pipe(
       scan((_acc, option) => {
-        const currentOptions = storyOptions$.value;
+        const currentOptions = characterOptions.value;
         const updatedOptions = currentOptions.map((opt) => (opt.probeId === option.probeId ? option : opt));
         return updatedOptions;
-      }, storyOptions$.value),
-      tap((options) => storyOptions$.next(options))
+      }, characterOptions.value),
+      tap((options) => characterOptions.next(options))
     )
     .subscribe();
 
   // Broadcast game state on change
-  combineLatest([phase$, sceneElements$, sceneName$, lastActionChoice$, actionOptions$, storyOptions$])
+  combineLatest([phase$, sceneElements$, sceneName$, lastActionChoice$, actionOptions$, characterOptions])
     .pipe(
       tap(([phase, elements, sceneName, lastActionChoice, actionOptions, storyOptions]) => {
         broadcast({ type: "gameState", phase, elements, sceneName, lastActionChoice, actionOptions, storyOptions });
@@ -307,7 +333,7 @@ export function startGameLoop(switchboard: BLEDevice) {
           sceneName: sceneName$.value,
           lastActionChoice: lastActionChoice$.value,
           actionOptions: actionOptions$.value,
-          storyOptions: storyOptions$.value,
+          storyOptions: characterOptions.value,
         };
         client.write(`data: ${JSON.stringify(state)}\n\n`);
       })
@@ -318,7 +344,7 @@ export function startGameLoop(switchboard: BLEDevice) {
   storyOptionGenerated$
     .pipe(
       tap(async (option) => {
-        if (phase$.value === "setup" && option.text !== null) {
+        if (phase$.value === "setup" && option.intro !== null) {
           setTimeout(() => pulseOnLED(switchboard, option.probeId), Math.random() * 500);
         }
       })
@@ -383,11 +409,11 @@ export function startGameLoop(switchboard: BLEDevice) {
 
         if (phase$.value === "setup") {
           // Handle story option probing during setup phase
-          const option = storyOptions$.value.find((opt) => opt.probeId === probeNum);
+          const option = characterOptions.value.find((opt) => opt.probeId === probeNum);
 
-          if (option && option.text !== null) {
+          if (option && option.intro !== null && option.voiceActor !== null && option.archetype !== null && option.gender !== null) {
             gmHint$.next(
-              `Tell player about the quest "${option.text}". Announce this option to the player in your own words, setup the scene and mood in just a few words. Make it an enticing beginning to quest.`
+              `Read the intro "${option.intro}" (${option.archetype}, ${option.gender === "M" ? "male" : "female"}). Use the voice: ${option.voiceActor}.`
             );
           } else {
             gmHint$.next(`Player probed an invalid option. Tell them to choose one of the available story options.`);
