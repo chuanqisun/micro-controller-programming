@@ -1,6 +1,6 @@
 import { map, tap } from "rxjs";
 import { HTTP_PORT, LAPTOP_UDP_RX_PORT } from "./config";
-import { BLEDevice, opMacUnit2, swMac } from "./features/ble";
+import { BLEDevice, opMacUnit1, swMac } from "./features/ble";
 import { createButtonStateMachine } from "./features/buttons";
 import { handleNewGame, startGameLoop } from "./features/game";
 import {
@@ -43,7 +43,7 @@ import {
 import { createUDPServer, sendPcm16UDP, startPcmStream, stopPcmStream } from "./features/udp";
 
 async function main() {
-  const operatorUnit2 = new BLEDevice(opMacUnit2);
+  const operatorUnit2 = new BLEDevice(opMacUnit1);
   const switchboard = new BLEDevice(swMac);
 
   createUDPServer([handleUserAudio()], LAPTOP_UDP_RX_PORT);
