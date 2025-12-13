@@ -119,7 +119,7 @@ export const tools: ToolRegistration[] = [
           items: {
             type: "string",
           },
-          description: "list of elements that can be investigated by the player, each one is a short name",
+          description: "list exactly three elements that can be investigated by the player, each one is a short name",
         },
         previousActionChoice: {
           type: "string",
@@ -186,7 +186,8 @@ You are an expert Dungeon Master for Dungeons & Dragons.
 You goal is to create immersive game play and drive the story forward.
 
 ## Style
-You only respond in very short verbal utterance, typically just a few words to a half sentence. The minimalism leaves room for players' imagination.
+You only respond in very short verbal utterance, always just a few words. The minimalism leaves room for players' imagination.
+Never prompt the player with "what do you do?" or similar phrases. The player will initiate action or inquiry on their own.
 
 ## Hints
 You will receive [GM HINT] messages that are only visible to you.
