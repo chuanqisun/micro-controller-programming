@@ -33,3 +33,47 @@ shouldSend = !shouldSend;
 - Function calling seems to cause double response
 - Use Non-blocking functions with SILENT response removes doube response but function request is ignored
 - Add a manual non-terminiating text message to model fixed the missing tool result
+
+## Adding laser engraved graphic design
+
+- Charactered CO2 laser on PLA plaster
+- Power: 10%, 15%, 20%
+- Speed: 700mm/s, 775/s, 850/s
+
+![Characterization matrix](./media/engraving-01.webp)
+**Characterization matrix**
+
+- Ideal engraving setting: 700mm/s, 15% power, 50 lines/cm
+- Also characterized scoring, best setting: 200mm/s, 40% power
+
+![Operator Unit-01 Engraved](./media/operator-unit-01.webp)
+**Operator Unit-01 Engraved**
+
+![Operator Unit-02 Engraved and Scored](./media/operator-unit-02.webp)
+**Operator Unit-02 Engraved and Scored**
+
+- Learning
+  - Found that over-powering causes white smoky residue
+  - Alan mentioned that fiber laser would create a much better surface contrast on black plastic. I should try that in the future
+  - Color is a key factor in engraving/scoring outcomes:
+    - Red
+      - Engraving: great
+      - Scoring: great
+    - White
+      - Engraving: invisible
+      - Scoring: great
+    - Black
+      - Engraving: ok
+      - Scoring: ok
+
+When I was engraving the switchboard, the rapid back and forth motion shifted the material. I attempted to overlay with multiple passes of engraving and scoring, only to make matters worse.
+
+![Switchboard](./media/switchboard.webp)
+**After multiple passes, the Switchboard looks terrible**
+
+- For letter scoring, straight lines are much more pronounced than curves
+  - I, T, W look great
+  - S, C, O does not have enough contrast
+- Two hypothesis that we can test in the future
+  - The curved lines prevents laser to build up heat
+  - The FDM process creates directional surfaces.
