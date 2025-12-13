@@ -1,6 +1,6 @@
-import { map, tap } from "rxjs";
+import { filter, map, tap } from "rxjs";
 import { HTTP_PORT, LAPTOP_UDP_RX_PORT } from "./config";
-import { BLEDevice, opMacUnit1, swMac } from "./features/ble";
+import { BLEDevice, opMacUnit1, opMacUnit2, swMac } from "./features/ble";
 import { createButtonStateMachine } from "./features/buttons";
 import { handleNewGame, startGameLoop } from "./features/game";
 import {
@@ -15,14 +15,11 @@ import {
 } from "./features/gemini-live";
 import { createHttpServer } from "./features/http";
 import {
+  activeOperatorIndex$,
+  createOperatorHandlers,
+  createOperatorMessageHandlers,
   handleBtnApi,
-  handleButtonsMessage,
-  handleConnectOperator,
-  handleDisconnectOperator,
-  handleOpAddressMessage,
   handleProbeApi,
-  handleProbeMessage,
-  handleRequestOperatorAddress,
   logOperatorMessage,
   operatorAddress$,
   operatorButtons$,
@@ -31,7 +28,7 @@ import {
 import { handlePlayFile, handleStopPlayback } from "./features/play-file";
 import { silenceStart$, speakStart$ } from "./features/silence-detection";
 import { broadcast, handleSSE, newSseClient$ } from "./features/sse";
-import { appState$, updateState } from "./features/state";
+import { appState$, createDefaultOperatorState, getActiveOperator, updateOperatorByIndex, updateState } from "./features/state";
 import {
   handleBlinkLED,
   handleBlinkOnLED,
@@ -43,10 +40,19 @@ import {
 import { createUDPServer, sendPcm16UDP, startPcmStream, stopPcmStream } from "./features/udp";
 
 async function main() {
-  const operatorUnit2 = new BLEDevice(opMacUnit1);
+  const operatorDevices = [new BLEDevice(opMacUnit1), new BLEDevice(opMacUnit2)];
+
+  updateState((state) => ({
+    ...state,
+    operators: operatorDevices.map((device) => createDefaultOperatorState(device.mac)),
+    activeOperatorIndex: 0,
+  }));
+
   const switchboard = new BLEDevice(swMac);
 
   createUDPServer([handleUserAudio()], LAPTOP_UDP_RX_PORT);
+
+  const operatorHttpHandlers = operatorDevices.flatMap((device, index) => createOperatorHandlers(device, index).handlers);
 
   createHttpServer(
     [
@@ -57,9 +63,7 @@ async function main() {
       handleLEDAllOff(switchboard),
       handleConnectSwitchboard(switchboard),
       handleDisconnectSwitchboard(switchboard),
-      handleConnectOperator(operatorUnit2),
-      handleDisconnectOperator(operatorUnit2),
-      handleRequestOperatorAddress(operatorUnit2),
+      ...operatorHttpHandlers,
       handleProbeApi(),
       handleBtnApi(),
 
@@ -84,28 +88,96 @@ async function main() {
 
   newSseClient$.pipe(tap(() => broadcast({ state: appState$.value }))).subscribe();
 
-  operatorUnit2.message$.pipe(tap(logOperatorMessage), tap(handleProbeMessage()), tap(handleOpAddressMessage()), tap(handleButtonsMessage())).subscribe();
-  operatorProbeNum$.pipe(tap((num) => updateState((state) => ({ ...state, probeNum: num })))).subscribe();
-  operatorAddress$.pipe(tap((address) => updateState((state) => ({ ...state, opAddress: address })))).subscribe();
-  operatorButtons$.pipe(tap((buttons) => updateState((state) => ({ ...state, btn1: buttons.btn1, btn2: buttons.btn2 })))).subscribe();
+  operatorDevices.forEach((device, index) => {
+    const messageHandlers = createOperatorMessageHandlers(index, device.mac);
+    device.message$
+      .pipe(
+        tap(logOperatorMessage(index)),
+        tap(messageHandlers.handleProbeMessage()),
+        tap(messageHandlers.handleOpAddressMessage()),
+        tap(messageHandlers.handleButtonsMessage())
+      )
+      .subscribe();
 
-  const operataorButtons = createButtonStateMachine(operatorButtons$);
+    device.disconnect$
+      .pipe(
+        tap(() => {
+          console.log(`[Main] Operator ${index} disconnected, updating state`);
+          updateState((state) =>
+            updateOperatorByIndex(state, index, (op) => ({
+              ...op,
+              connection: "disconnected",
+              address: "", // Clear address on disconnect
+            }))
+          );
+        })
+      )
+      .subscribe();
+  });
 
-  aiAudioPart$.pipe(tap((buf) => sendPcm16UDP(buf, appState$.value.opAddress))).subscribe();
+  // Update state when probe numbers change (scoped to operator index)
+  operatorProbeNum$
+    .pipe(tap(({ operatorIndex, probeNum }) => updateState((state) => updateOperatorByIndex(state, operatorIndex, (op) => ({ ...op, probeNum })))))
+    .subscribe();
+
+  // Update state when addresses change (scoped to operator index)
+  operatorAddress$
+    .pipe(tap(({ operatorIndex, address }) => updateState((state) => updateOperatorByIndex(state, operatorIndex, (op) => ({ ...op, address })))))
+    .subscribe();
+
+  // Update state when buttons change (scoped to operator index)
+  operatorButtons$
+    .pipe(tap(({ operatorIndex, btn1, btn2 }) => updateState((state) => updateOperatorByIndex(state, operatorIndex, (op) => ({ ...op, btn1, btn2 })))))
+    .subscribe();
+
+  // Track active operator - update state when activity occurs
+  activeOperatorIndex$
+    .pipe(
+      tap((operatorIndex) => {
+        updateState((state) => ({ ...state, activeOperatorIndex: operatorIndex }));
+      })
+    )
+    .subscribe();
+
+  // For button state machine, use the active operator's buttons
+  // Filter to only respond to the active operator's buttons
+  const activeOperatorButtons$ = operatorButtons$.pipe(filter(({ operatorIndex }) => operatorIndex === appState$.value.activeOperatorIndex));
+
+  const operatorButtonsMachine = createButtonStateMachine(activeOperatorButtons$.pipe(map(({ btn1, btn2 }) => ({ btn1, btn2 }))));
+
+  // Send audio to the active operator's address
+  aiAudioPart$
+    .pipe(
+      tap((buf) => {
+        const activeOp = getActiveOperator(appState$.value);
+        if (activeOp?.address) {
+          sendPcm16UDP(buf, activeOp.address);
+        }
+      })
+    )
+    .subscribe();
+
   aiResponse$.pipe(tap((text) => console.log("AI Response:", text))).subscribe();
 
-  operataorButtons.leaveIdle$
+  operatorButtonsMachine.leaveIdle$
     .pipe(
       tap(() => console.log("leave idle")),
       tap(stopPcmStream)
     )
     .subscribe();
-  operataorButtons.enterIdle$
+
+  operatorButtonsMachine.enterIdle$
     .pipe(
       tap(() => console.log("enter idle")),
-      tap(() => startPcmStream(appState$.value.opAddress))
+      tap(() => {
+        const activeOp = getActiveOperator(appState$.value);
+        if (activeOp?.address) {
+          startPcmStream(activeOp.address);
+        }
+      })
     )
     .subscribe();
+
   silenceStart$.pipe(tap(handleSpeechStop)).subscribe();
   speakStart$.pipe(tap(handleSpeechStart)).subscribe();
 

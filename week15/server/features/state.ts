@@ -2,26 +2,96 @@ import { BehaviorSubject } from "rxjs";
 
 export type ConnectionStatus = "connected" | "busy" | "disconnected";
 
+/**
+ * State for a single operator device.
+ * Each operator is identified by its MAC address and can have its own UDP address for audio streaming.
+ */
+export interface OperatorState {
+  /** BLE MAC address - unique identifier for the device */
+  mac: string;
+  /** Connection status of this operator */
+  connection: ConnectionStatus;
+  /** UDP address (ip:port) for audio streaming to/from this operator */
+  address: string;
+  /** Current probe number (0-7) */
+  probeNum: number;
+  /** Button 1 state */
+  btn1: boolean;
+  /** Button 2 state */
+  btn2: boolean;
+}
+
+/**
+ * Creates a default operator state for a given MAC address.
+ */
+export function createDefaultOperatorState(mac: string): OperatorState {
+  return {
+    mac,
+    connection: "disconnected",
+    address: "",
+    probeNum: 7,
+    btn1: false,
+    btn2: false,
+  };
+}
+
 export interface AppState {
   aiConnection: ConnectionStatus;
-  opConnection: ConnectionStatus;
-  opAddress: string;
-  probeNum: number;
-  btn1: boolean;
-  btn2: boolean;
   swConnection: ConnectionStatus;
+  /** Array of operator devices - scalable for 2+ operators */
+  operators: OperatorState[];
+  /** Index of the currently active operator for audio I/O (0-based) */
+  activeOperatorIndex: number;
   // Text adventure state
   storyHistory: string[];
 }
 
+/**
+ * Helper to get the active operator state, or undefined if no operators or invalid index.
+ */
+export function getActiveOperator(state: AppState): OperatorState | undefined {
+  return state.operators[state.activeOperatorIndex];
+}
+
+/**
+ * Helper to find an operator by MAC address.
+ */
+export function findOperatorByMac(state: AppState, mac: string): OperatorState | undefined {
+  return state.operators.find((op) => op.mac === mac);
+}
+
+/**
+ * Helper to find an operator index by MAC address.
+ */
+export function findOperatorIndexByMac(state: AppState, mac: string): number {
+  return state.operators.findIndex((op) => op.mac === mac);
+}
+
+/**
+ * Helper to update a specific operator by index.
+ */
+export function updateOperatorByIndex(state: AppState, index: number, updateFn: (op: OperatorState) => OperatorState): AppState {
+  if (index < 0 || index >= state.operators.length) return state;
+  const newOperators = [...state.operators];
+  newOperators[index] = updateFn(newOperators[index]);
+  return { ...state, operators: newOperators };
+}
+
+/**
+ * Helper to update a specific operator by MAC address.
+ */
+export function updateOperatorByMac(state: AppState, mac: string, updateFn: (op: OperatorState) => OperatorState): AppState {
+  const index = findOperatorIndexByMac(state, mac);
+  if (index === -1) return state;
+  return updateOperatorByIndex(state, index, updateFn);
+}
+
+// Initial state with empty operators array - operators will be registered in main.ts
 export const appState$ = new BehaviorSubject<AppState>({
   aiConnection: "disconnected",
-  opConnection: "disconnected",
   swConnection: "disconnected",
-  opAddress: "",
-  probeNum: 7,
-  btn1: false,
-  btn2: false,
+  operators: [],
+  activeOperatorIndex: 0,
   storyHistory: [],
 });
 

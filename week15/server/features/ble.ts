@@ -11,7 +11,8 @@ export const commonRxCharacteristicId = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
 const { bluetooth, destroy } = createBluetooth();
 
 export class BLEDevice {
-  private mac: string;
+  /** Public MAC address for device identification */
+  public readonly mac: string;
 
   constructor(mac: string) {
     this.mac = mac;
@@ -20,6 +21,7 @@ export class BLEDevice {
   device$ = new BehaviorSubject<NodeBle.Device | null>(null);
 
   private internalMessage$ = new Subject<string>();
+  private internalDisconnect$ = new Subject<void>();
   private rxCharacteristic: NodeBle.GattCharacteristic | null = null;
   private txCharacteristic: NodeBle.GattCharacteristic | null = null;
 
@@ -27,6 +29,8 @@ export class BLEDevice {
   private sendQueueSub: Subscription | null = null;
 
   message$ = this.internalMessage$.asObservable();
+  /** Emits when the device disconnects (either intentionally or unexpectedly) */
+  disconnect$ = this.internalDisconnect$.asObservable();
 
   async connect() {
     if (this.rxCharacteristic) {
@@ -66,6 +70,7 @@ export class BLEDevice {
     const disconnectHandler = () => {
       console.log(`[BLE] disconnected ${this.mac}`);
       this.device$.next(null);
+      this.internalDisconnect$.next();
       this.rxCharacteristic?.removeAllListeners("valuechanged");
       this.rxCharacteristic = null;
       this.txCharacteristic = null;

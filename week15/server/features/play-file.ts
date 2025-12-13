@@ -15,6 +15,7 @@ const UDP_CHUNK_SIZE = 1024;
 const SEND_INTERVAL_MS = Math.floor((UDP_CHUNK_SIZE / (SAMPLE_RATE * CHANNELS * 2)) * 1000);
 
 let isPlaying = false;
+let currentPlayingOperatorIndex: number | null = null;
 
 /**
  * Convert WAV to raw PCM using ffmpeg
@@ -100,24 +101,28 @@ async function streamRawFileUDP(address: string): Promise<void> {
 }
 
 /**
- * POST /api/play-file
- * Plays ./sound/audio.wav over UDP to the operator
+ * POST /api/play-file?op=<index>
+ * Plays ./sound/audio.wav over UDP to the specified operator
  */
 export function handlePlayFile(): Handler {
   return async (req, res) => {
-    if (req.method !== "POST" || req.url !== "/api/play-file") return false;
+    if (req.method !== "POST" || !req.url?.startsWith("/api/play-file")) return false;
 
-    const opAddress = appState$.value.opAddress;
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const operatorIndex = parseInt(url.searchParams.get("op") ?? "0", 10);
+
+    const operator = appState$.value.operators[operatorIndex];
+    const opAddress = operator?.address;
 
     if (!opAddress) {
       res.writeHead(400);
-      res.end(JSON.stringify({ error: "Operator address not set" }));
+      res.end(JSON.stringify({ error: `Operator ${operatorIndex} address not set` }));
       return true;
     }
 
     if (isPlaying) {
       res.writeHead(409);
-      res.end(JSON.stringify({ error: "Already playing" }));
+      res.end(JSON.stringify({ error: "Already playing", currentOperator: currentPlayingOperatorIndex }));
       return true;
     }
 
@@ -126,17 +131,20 @@ export function handlePlayFile(): Handler {
       await convertWavToRaw();
 
       isPlaying = true;
+      currentPlayingOperatorIndex = operatorIndex;
       res.writeHead(200);
-      res.end(JSON.stringify({ status: "playing" }));
+      res.end(JSON.stringify({ status: "playing", operator: operatorIndex }));
 
       startPcmStream(opAddress);
       // Stream audio in background (don't await)
       streamRawFileUDP(opAddress).catch((err) => {
         console.error("Error streaming audio:", err);
         isPlaying = false;
+        currentPlayingOperatorIndex = null;
       });
     } catch (error) {
       isPlaying = false;
+      currentPlayingOperatorIndex = null;
       res.writeHead(500);
       res.end(JSON.stringify({ error: (error as Error).message }));
     }
@@ -146,14 +154,28 @@ export function handlePlayFile(): Handler {
 }
 
 /**
- * POST /api/stop-playback
- * Stops the current file playback
+ * POST /api/stop-playback?op=<index>
+ * Stops the current file playback (optionally for a specific operator)
  */
 export function handleStopPlayback(): Handler {
   return async (req, res) => {
-    if (req.method !== "POST" || req.url !== "/api/stop-playback") return false;
+    if (req.method !== "POST" || !req.url?.startsWith("/api/stop-playback")) return false;
+
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const requestedOperator = url.searchParams.get("op");
+
+    // If a specific operator is requested, only stop if it matches
+    if (requestedOperator !== null) {
+      const operatorIndex = parseInt(requestedOperator, 10);
+      if (currentPlayingOperatorIndex !== null && currentPlayingOperatorIndex !== operatorIndex) {
+        res.writeHead(200);
+        res.end(JSON.stringify({ status: "not-playing-on-this-operator", currentOperator: currentPlayingOperatorIndex }));
+        return true;
+      }
+    }
 
     isPlaying = false;
+    currentPlayingOperatorIndex = null;
     stopPcmStream();
     res.writeHead(200);
     res.end(JSON.stringify({ status: "stopped" }));

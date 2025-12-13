@@ -88,7 +88,7 @@ export function handleConnectSwitchboard(switchboard: BLEDevice): Handler {
 
     updateState((state) => ({ ...state, swConnection: "busy" }));
     try {
-      await withTimeout(switchboard.connect(), 10000);
+      await withTimeout(switchboard.connect(), 15000);
       turnOffAllLED(switchboard);
       updateState((state) => ({ ...state, swConnection: "connected" }));
     } catch (error) {
@@ -108,7 +108,7 @@ export function handleDisconnectSwitchboard(switchboard: BLEDevice): Handler {
 
     updateState((state) => ({ ...state, swConnection: "busy" }));
     try {
-      await withTimeout(switchboard.disconnect(), 10000);
+      await withTimeout(switchboard.disconnect(), 15000);
     } catch (error) {
       console.error("Error disconnecting switchboard:", error);
     } finally {

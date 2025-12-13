@@ -5,7 +5,7 @@ import { DebugAudioBuffer } from "./debug-audio";
 import { getDungeonMasterPrompt, toolHandlers, tools, type ToolHandler } from "./game";
 import type { Handler } from "./http";
 import { recordAudioActivity, resetSpeechState, startSilenceDetection, stopSilenceDetection } from "./silence-detection";
-import { appState$, updateState } from "./state";
+import { appState$, getActiveOperator, updateState } from "./state";
 import { startPcmStream, stopPcmStream, type UDPHandler } from "./udp";
 
 const MODEL = "gemini-2.5-flash-native-audio-preview-09-2025";
@@ -305,7 +305,10 @@ export function handleSpeechStop() {
 export function resetAIAudio() {
   audioPlayer.stop();
   stopPcmStream();
-  startPcmStream(appState$.value.opAddress);
+  const activeOp = getActiveOperator(appState$.value);
+  if (activeOp?.address) {
+    startPcmStream(activeOp.address);
+  }
 }
 
 export function stopAIAudio() {
@@ -314,5 +317,8 @@ export function stopAIAudio() {
 }
 
 export function startAIAudio() {
-  startPcmStream(appState$.value.opAddress);
+  const activeOp = getActiveOperator(appState$.value);
+  if (activeOp?.address) {
+    startPcmStream(activeOp.address);
+  }
 }

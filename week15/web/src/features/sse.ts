@@ -33,7 +33,7 @@ export function createSSEObservable(url: string): Observable<any> {
     };
   }).pipe(
     retry({
-      delay: (error, retryCount) => {
+      delay: (_error, retryCount) => {
         console.log(`Reconnecting in 3 seconds... (Attempt ${retryCount})`);
         return timer(3000);
       },

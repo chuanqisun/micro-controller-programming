@@ -8,7 +8,7 @@ import { sendAIText, startAIAudio, stopAIAudio } from "./gemini-live";
 import type { Handler } from "./http";
 import { operatorProbeNum$ } from "./operator";
 import { broadcast, newSseClient$ } from "./sse";
-import { appState$ } from "./state";
+import { appState$, getActiveOperator } from "./state";
 import { blinkOnLED, pulseOnLED, turnOffAllLED } from "./switchboard";
 import { startPcmStream } from "./udp";
 
@@ -31,7 +31,12 @@ export function handleNewGame(): Handler {
 
     // Start a new game session
     phase$.next("setup");
-    startPcmStream(appState$.value.opAddress);
+
+    // Start PCM stream to the active operator
+    const activeOp = getActiveOperator(appState$.value);
+    if (activeOp?.address) {
+      startPcmStream(activeOp.address);
+    }
 
     // Generate story options
     await generateStoryOptions();
@@ -261,6 +266,22 @@ export const enterAction$ = phase$.pipe(filter((phase) => phase === "action"));
 
 let explorationRound = 0;
 
+/**
+ * Gets all probe numbers currently in use by any connected operator.
+ * Excludes probe 7 (unplugged).
+ */
+function getActiveProbeNums(): number[] {
+  return appState$.value.operators.map((op) => op.probeNum).filter((num) => num !== 7);
+}
+
+/**
+ * Gets the probe number of the currently active operator.
+ */
+function getActiveOperatorProbeNum(): number {
+  const activeOp = getActiveOperator(appState$.value);
+  return activeOp?.probeNum ?? 7;
+}
+
 export function startGameLoop(switchboard: BLEDevice) {
   /** Game logic */
   gmHint$.pipe(tap((hint) => sendAIText(`[GM HINT] ${hint}`))).subscribe();
@@ -320,11 +341,15 @@ export function startGameLoop(switchboard: BLEDevice) {
       tap(async ({ elements }) => {
         explorationRound++;
         await turnOffAllLED(switchboard);
-        const currentProbe = appState$.value.probeNum;
-        const availableProbes = [0, 1, 2, 3, 4, 5, 6].filter((p) => p !== currentProbe);
+
+        // Exclude all probes currently in use by any operator
+        const activeProbes = getActiveProbeNums();
+        const availableProbes = [0, 1, 2, 3, 4, 5, 6].filter((p) => !activeProbes.includes(p));
         const threeRandomProbes = availableProbes.sort(() => 0.5 - Math.random()).slice(0, 3);
         sceneObjects.next(threeRandomProbes);
 
+        // Check if any active probe is exploring
+        const currentProbe = getActiveOperatorProbeNum();
         const newSceneElements: SceneElementState[] = [];
         for (let i = 0; i < Math.min(elements.length, threeRandomProbes.length); i++) {
           newSceneElements.push({
@@ -344,7 +369,7 @@ export function startGameLoop(switchboard: BLEDevice) {
     .pipe(
       tap(async () => {
         await turnOffAllLED(switchboard);
-        const currentProbe = appState$.value.probeNum;
+        const currentProbe = getActiveOperatorProbeNum();
         blinkOnLED(switchboard, currentProbe); // turn on center LED for action
 
         const elements = sceneElements$.value;
@@ -361,15 +386,15 @@ export function startGameLoop(switchboard: BLEDevice) {
 
   operatorProbeNum$
     .pipe(
-      tap((num) => {
+      tap(({ operatorIndex: _operatorIndex, probeNum }) => {
         stopAIAudio();
-        if (num === 7) return;
+        if (probeNum === 7) return;
 
         startAIAudio();
 
         if (phase$.value === "setup") {
           // Handle story option probing during setup phase
-          const option = storyOptions$.value.find((opt) => opt.probeId === num);
+          const option = storyOptions$.value.find((opt) => opt.probeId === probeNum);
 
           if (option && option.text !== null) {
             gmHint$.next(
@@ -380,11 +405,11 @@ export function startGameLoop(switchboard: BLEDevice) {
           }
         } else if (phase$.value === "exploration") {
           const elements = sceneElements$.value;
-          const targetElement = elements.find((e) => e.probeId === num);
+          const targetElement = elements.find((e) => e.probeId === probeNum);
 
           let updated = false;
           const newElements = elements.map((e) => {
-            if (e.probeId === num) {
+            if (e.probeId === probeNum) {
               if (e.status === "unexplored" || e.status === "explored") {
                 updated = true;
                 return { ...e, status: "exploring" as ElementStatus };
@@ -402,10 +427,10 @@ export function startGameLoop(switchboard: BLEDevice) {
             sceneElements$.next(newElements);
           }
 
-          if (!sceneObjects.value.includes(num)) {
+          if (!sceneObjects.value.includes(probeNum)) {
             gmHint$.next(`Player investigated the wrong thing. Tell them there is nothing there.`);
           } else {
-            const elementName = targetElement ? targetElement.name : `element (id=${explorationRound + num})`;
+            const elementName = targetElement ? targetElement.name : `element (id=${explorationRound}-${probeNum})`;
             gmHint$.next(
               `Player investigated ${elementName} in the scene. Name it and imply possible actions for the player. Player revisits the same id, be consistent with what you said before.`
             );

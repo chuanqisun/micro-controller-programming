@@ -28,65 +28,95 @@
       <div id="sceneElements"></div>
     </div>
 
-    <h2>Operator</h2>
-    <div>
-      <button id="connectBtnOp">Connect</button>
-    </div>
+    <h2>Devices</h2>
+    <fieldset class="operator-panel" data-operator="0">
+      <legend>Unit-01</legend>
+      <div>
+        <button class="connectBtnOp">Connect</button>
+      </div>
 
-    <div id="probeControls">
-      <button id="probe0">Probe 0</button>
-      <button id="probe1">Probe 1</button>
-      <button id="probe2">Probe 2</button>
-      <button id="probe3">Probe 3</button>
-      <button id="probe4">Probe 4</button>
-      <button id="probe5">Probe 5</button>
-      <button id="probe6">Probe 6</button>
-      <button id="probe7">Probe 7</button>
-    </div>
+      <div class="command-bar">
+        <button class="probe" data-probe="0">Probe 0</button>
+        <button class="probe" data-probe="1">Probe 1</button>
+        <button class="probe" data-probe="2">Probe 2</button>
+        <button class="probe" data-probe="3">Probe 3</button>
+        <button class="probe" data-probe="4">Probe 4</button>
+        <button class="probe" data-probe="5">Probe 5</button>
+        <button class="probe" data-probe="6">Probe 6</button>
+        <button class="probe" data-probe="7">Probe 7</button>
+      </div>
 
-    <div id="btnControls">
-      <button id="btnBtn1">Btn 1</button>
-      <button id="btnBtn2">Btn 2</button>
-      <button id="btnBoth">Both</button>
-    </div>
+      <div class="command-bar">
+        <button class="btnBtn1">Btn 1</button>
+        <button class="btnBtn2">Btn 2</button>
+        <button class="btnBoth">Both</button>
+      </div>
 
-    <div id="playbackControls">
-      <button id="playFileBtn">Play File</button>
-      <button id="stopPlaybackBtn">Stop</button>
-    </div>
+      <div class="command-bar">
+        <button class="playFileBtn">Play File</button>
+        <button class="stopPlaybackBtn">Stop</button>
+      </div>
+    </fieldset>
 
-    <div class="data-list" id="probeDisplay"></div>
+    <fieldset class="operator-panel" data-operator="1">
+      <legend>Unit-02</legend>
+      <div>
+        <button class="connectBtnOp">Connect</button>
+      </div>
 
-    <h2>Switchboard</h2>
+      <div class="command-bar">
+        <button class="probe" data-probe="0">Probe 0</button>
+        <button class="probe" data-probe="1">Probe 1</button>
+        <button class="probe" data-probe="2">Probe 2</button>
+        <button class="probe" data-probe="3">Probe 3</button>
+        <button class="probe" data-probe="4">Probe 4</button>
+        <button class="probe" data-probe="5">Probe 5</button>
+        <button class="probe" data-probe="6">Probe 6</button>
+        <button class="probe" data-probe="7">Probe 7</button>
+      </div>
 
-    <div>
-      <button id="connectBtnSw">Connect</button>
-    </div>
+      <div class="command-bar">
+        <button class="btnBtn1">Btn 1</button>
+        <button class="btnBtn2">Btn 2</button>
+        <button class="btnBoth">Both</button>
+      </div>
 
-    <div id="ledControls">
-      <button id="offAll">All off</button>
-      <button id="led0">LED 0</button>
-      <button id="led1">LED 1</button>
-      <button id="led2">LED 2</button>
-      <button id="led3">LED 3</button>
-      <button id="led4">LED 4</button>
-      <button id="led5">LED 5</button>
-      <button id="led6">LED 6</button>
-    </div>
+      <div class="command-bar">
+        <button class="playFileBtn">Play File</button>
+        <button class="stopPlaybackBtn">Stop</button>
+      </div>
+    </fieldset>
 
-    <div id="blinkOnControls">
-      <span>Blink On:</span>
-      <button id="blinkOn0">0</button>
-      <button id="blinkOn1">1</button>
-      <button id="blinkOn2">2</button>
-      <button id="blinkOn3">3</button>
-      <button id="blinkOn4">4</button>
-      <button id="blinkOn5">5</button>
-      <button id="blinkOn6">6</button>
-    </div>
+    <fieldset>
+      <legend>Switchboard</legend>
+      <div>
+        <button id="connectBtnSw">Connect</button>
+      </div>
 
-    <div></div>
+      <div id="ledControls" class="command-bar">
+        <button id="offAll">All off</button>
+        <button id="led0">LED 0</button>
+        <button id="led1">LED 1</button>
+        <button id="led2">LED 2</button>
+        <button id="led3">LED 3</button>
+        <button id="led4">LED 4</button>
+        <button id="led5">LED 5</button>
+        <button id="led6">LED 6</button>
+      </div>
 
+      <div id="blinkOnControls" class="command-bar">
+        <span>Blink On:</span>
+        <button id="blinkOn0">0</button>
+        <button id="blinkOn1">1</button>
+        <button id="blinkOn2">2</button>
+        <button id="blinkOn3">3</button>
+        <button id="blinkOn4">4</button>
+        <button id="blinkOn5">5</button>
+        <button id="blinkOn6">6</button>
+      </div>
+    </fieldset>
+
+    <h2>Diagnostics</h2>
     <div class="log" id="rawState"></div>
 
     <script type="module" src="/src/main.ts"></script>
