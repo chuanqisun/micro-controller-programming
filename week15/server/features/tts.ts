@@ -26,20 +26,46 @@ export async function generateGeminiSpeech(text: string, signal?: AbortSignal) {
   return audioBuffer;
 }
 
-export async function GenerateOpenAISpeech(text: string, signal?: AbortSignal) {
+export async function GenerateOpenAISpeech(text: string, options?: { signal?: AbortSignal; voice?: string; instructions?: string }) {
   const wave = await openai.audio.speech.create(
     {
       model: "gpt-4o-mini-tts",
-      voice: "onyx",
+      voice: options?.voice ?? "onyx",
       input: text,
-      instructions: "Deep coarse male Dungeon master voice with immersive fantasy role-play style",
+      instructions: options?.instructions ?? "Robotic monotone voice.",
       response_format: "wav",
     },
     {
-      signal,
-    },
+      signal: options?.signal,
+    }
   );
 
   const buffer = Buffer.from(await wave.arrayBuffer());
   return buffer;
+}
+
+const femaleVoices = ["alloy", "coral", "nova", "sage", "shimmer"];
+const maleVoices = ["ash", "ballad", "echo", "fable", "onyx", "verse"];
+
+function shuffle<T>(arr: T[]): T[] {
+  return [...arr].sort(() => 0.5 - Math.random());
+}
+
+export function* getRandomVoiceGenerator() {
+  let females = shuffle(femaleVoices);
+  let males = shuffle(maleVoices);
+  let pickFemale = Math.random() < 0.5; // Random starting gender
+
+  while (true) {
+    // Refill if empty
+    if (females.length === 0) females = shuffle(femaleVoices);
+    if (males.length === 0) males = shuffle(maleVoices);
+
+    if (pickFemale) {
+      yield females.pop()!;
+    } else {
+      yield males.pop()!;
+    }
+    pickFemale = !pickFemale; // Alternate gender
+  }
 }

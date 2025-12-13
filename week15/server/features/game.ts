@@ -11,16 +11,17 @@ import { cancelAllSpeakerPlayback, playAudioThroughSpeakers } from "./speaker";
 import { broadcast, newSseClient$ } from "./sse";
 import { appState$, getActiveOperator } from "./state";
 import { blinkOnLED, pulseOnLED, turnOffAllLED } from "./switchboard";
-import { GenerateOpenAISpeech } from "./tts";
+import { GenerateOpenAISpeech, getRandomVoiceGenerator } from "./tts";
 import { startPcmStream } from "./udp";
 
 const characterSchema = z.object({
-  intro: z.string().describe("In only a few words, introduce yourself with 'I am...', including profession and trait. Remain anonymous"),
+  intro: z
+    .string()
+    .describe("In only a few words, introduce yourself with 'I am...', including a trait (adjective) and a profession (noun). Remain anonymous."),
   voiceActor: z.string().describe("Description of the voice quality and characteristics"),
   archetype: z
     .enum(["hero", "magician", "lover", "jester", "explorer", "sage", "innocent", "creator", "caregiver", "outlaw", "orphan", "seducer"])
     .describe("Character archetype"),
-  gender: z.enum(["M", "F"]).describe("Character gender: M for male, F for female"),
 });
 
 const characterOptionsSchema = z.object({
@@ -33,7 +34,7 @@ export interface StoryOption {
   intro: string | null;
   voiceActor: string | null;
   archetype: string | null;
-  gender: string | null;
+  voice: string | null;
   audioBuffer: Promise<Buffer> | null;
 }
 
@@ -72,10 +73,13 @@ async function generateStoryOptions() {
       intro: null,
       voiceActor: null,
       archetype: null,
-      gender: null,
+      voice: null,
       audioBuffer: null,
     }))
   );
+
+  // Create a new voice generator for this game session
+  const voiceGenerator = getRandomVoiceGenerator();
 
   const parser = new JSONParser();
   const characters: Partial<StoryOption>[] = [];
@@ -83,19 +87,20 @@ async function generateStoryOptions() {
   parser.onValue = (entry) => {
     // Handle array elements: characterOptions[0], characterOptions[1], etc.
     if (typeof entry.key === "number" && typeof entry.value === "object" && entry.value !== null) {
-      const charData = entry.value as { intro?: string; voiceActor?: string; archetype?: string; gender?: string };
+      const charData = entry.value as { intro?: string; voiceActor?: string; archetype?: string };
       const probeId = allProbes[entry.key];
 
-      if (charData.intro && charData.voiceActor && charData.archetype && charData.gender) {
-        console.log("Character generated:", { probeId, ...charData });
+      if (charData.intro && charData.voiceActor && charData.archetype) {
+        const voice = voiceGenerator.next().value as string;
+        console.log("Character generated:", { probeId, voice, ...charData });
 
         const option: StoryOption = {
           probeId,
           intro: charData.intro,
           voiceActor: charData.voiceActor,
           archetype: charData.archetype,
-          gender: charData.gender,
-          audioBuffer: GenerateOpenAISpeech(charData.intro),
+          voice,
+          audioBuffer: GenerateOpenAISpeech(charData.intro, { voice, instructions: charData.voiceActor }),
         };
 
         storyOptionGenerated$.next(option);
@@ -107,10 +112,9 @@ async function generateStoryOptions() {
   const response = await ai.models.generateContentStream({
     model: "gemini-2.5-flash",
     contents: `Generate exactly seven (7) distinct fantasy game characters for a quest. For each character provide:
-- intro: A compelling one-sentence introduction starting with "I am..." that captures their essence. ONLY a few words.
-- voiceActor: A vivid description of their voice quality (e.g., "deep and gravelly", "soft and melodic", "crackling with energy")
 - archetype: Choose from hero, magician, lover, jester, explorer, sage, innocent, creator, caregiver, outlaw, orphan, or seducer
-- gender: Either "M" for male or "F" for female
+- intro: A compelling one-sentence intro grounded in archetype, starting with "I am..." that captures their essence, including a trait (adjective) and a profession (noun). ONLY a few words.
+- voiceActor: A vivid description of their voice quality (e.g., "deep and gravelly", "soft and melodic", "crackling with energy"), grounded in their archetype and intro.
 
 Make sure the characters have synergy with each other and cover diverse archetypes.`,
     config: {
