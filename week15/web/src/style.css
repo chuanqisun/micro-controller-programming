@@ -15,6 +15,8 @@
 
 * {
   box-sizing: border-box;
+  font-size: inherit;
+  font-family: inherit;
 }
 
 h1,
@@ -37,6 +39,31 @@ body {
   gap: 1rem;
 }
 
+button {
+  background: #444;
+  border: 1px solid #666;
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: 2px;
+
+  &:hover,
+  &:focus-visible {
+    background: #666;
+  }
+}
+
+input {
+  padding: 4px 8px;
+  border: 1px solid #666;
+
+  &:hover,
+  &:focus-visible {
+    background-color: #111;
+    border-color: #888;
+    outline: none;
+  }
+}
+
 .data-list {
   display: grid;
 }
@@ -53,4 +80,55 @@ textarea {
   flex-wrap: wrap;
   gap: 0.5rem;
   margin-top: 0.5rem;
+}
+
+/* Switchboard LED button animations */
+#blinkOnControls button {
+  transition: background-color 0.2s ease;
+  will-change: background-color;
+}
+
+/* Blink animation: fast alternating between black and dark red (510ms cycle) */
+@keyframes blink {
+  0%,
+  100% {
+    background-color: #000;
+  }
+  50% {
+    background-color: #8b0000;
+  }
+}
+
+#blinkOnControls button.blinkon {
+  animation: blink 510ms infinite;
+}
+
+/* Fade on animation: fade from black to dark red once and stay (510ms duration) */
+@keyframes fadeon {
+  from {
+    background-color: #000;
+  }
+  to {
+    background-color: #8b0000;
+  }
+}
+
+#blinkOnControls button.fadeon {
+  animation: fadeon 510ms ease-out forwards;
+  background-color: #8b0000;
+}
+
+/* Pulse animation: smooth breathing between black and dark red (2040ms cycle) */
+@keyframes pulse {
+  0%,
+  100% {
+    background-color: #000;
+  }
+  50% {
+    background-color: #8b0000;
+  }
+}
+
+#blinkOnControls button.pulseon {
+  animation: pulse 2040ms ease-in-out infinite;
 }

@@ -29,4 +29,20 @@ export function initSwitchboardUI() {
 export function updateSwitchboardUI(stateChange: StateChange) {
   connectBtnSw.textContent = stateChange.current.swConnection === "connected" ? "Disconnect" : "Connect";
   connectBtnSw.disabled = stateChange.current.swConnection === "busy";
+
+  // Update LED button animations based on state
+  for (let i = 0; i < 7; i++) {
+    const btn = document.getElementById(`blinkOn${i}`) as HTMLButtonElement | null;
+    if (btn && stateChange.current.leds) {
+      const ledStatus = stateChange.current.leds[i];
+      
+      // Remove all animation classes
+      btn.classList.remove("off", "fadeon", "blinkon", "pulseon");
+      
+      // Add the current state class
+      if (ledStatus) {
+        btn.classList.add(ledStatus);
+      }
+    }
+  }
 }
