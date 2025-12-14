@@ -3,6 +3,15 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Launch via NPM",
+      "request": "launch",
+      "runtimeArgs": ["run-script", "dev"],
+      "runtimeExecutable": "npm",
+      "cwd": "${workspaceFolder}/week15",
+      "skipFiles": ["<node_internals>/**"],
+      "type": "node"
+    },
+    {
       "command": "./debug.sh",
       "name": "deploy to device",
       "request": "launch",
