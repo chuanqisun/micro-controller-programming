@@ -145,7 +145,16 @@ async function main() {
     .subscribe();
 
   operatorAddress$
-    .pipe(tap(({ operatorIndex, address }) => updateState((state) => updateOperatorByIndex(state, operatorIndex, (op) => ({ ...op, address })))))
+    .pipe(
+      tap(({ operatorIndex, address }) => {
+        updateState((state) => updateOperatorByIndex(state, operatorIndex, (op) => ({ ...op, address })));
+        // Auto-start PCM stream when active operator reports its address
+        if (operatorIndex === appState$.value.activeOperatorIndex) {
+          console.log(`[Main] Operator ${operatorIndex} connected with address ${address}, starting PCM stream`);
+          startPcmStream(address);
+        }
+      })
+    )
     .subscribe();
 
   operatorButtons$
