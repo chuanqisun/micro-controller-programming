@@ -52,6 +52,7 @@ import {
   handleLEDAllOff,
   handlePulseOnLED,
 } from "./features/switchboard";
+import { handleSetAudioOutputMode } from "./features/audio-output";
 import { createUDPServer, sendPcm16UDP, startPcmStream, stopPcmStream } from "./features/udp";
 
 async function main() {
@@ -92,6 +93,7 @@ async function main() {
 
       handlePlayFile(),
       handleStopPlayback(),
+      handleSetAudioOutputMode(),
     ],
     HTTP_PORT
   );
@@ -165,9 +167,15 @@ async function main() {
   realtimeOutputAudio$
     .pipe(
       tap((buf) => {
-        const activeOp = getActiveOperator(appState$.value);
-        if (activeOp?.address) {
+        const state = appState$.value;
+        const activeOp = getActiveOperator(state);
+        const mode = state.audioOutputMode;
+        
+        if (activeOp?.address && (mode === "controller" || mode === "both")) {
           sendPcm16UDP(buf, activeOp.address);
+        }
+        
+        if (mode === "laptop" || mode === "both") {
           audioPlayer.push(buf);
         }
       })

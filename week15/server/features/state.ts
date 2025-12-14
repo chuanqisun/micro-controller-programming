@@ -36,6 +36,7 @@ export function createDefaultOperatorState(mac: string): OperatorState {
 }
 
 export type LEDStatus = "off" | "fadeon" | "blinkon" | "pulseon";
+export type AudioOutputMode = "controller" | "laptop" | "both";
 
 export interface AppState {
   aiConnection: ConnectionStatus;
@@ -46,6 +47,8 @@ export interface AppState {
   activeOperatorIndex: number;
   /** LED states for all 7 LEDs - array index is LED id (0-6) */
   leds: LEDStatus[];
+  /** Audio output routing mode */
+  audioOutputMode: AudioOutputMode;
   // Text adventure state
   storyHistory: string[];
 }
@@ -126,6 +129,7 @@ export const appState$ = new BehaviorSubject<AppState>({
   operators: [],
   activeOperatorIndex: 0,
   leds: createDefaultLEDStates(),
+  audioOutputMode: "both",
   storyHistory: [],
 });
 
