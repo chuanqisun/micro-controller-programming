@@ -39,7 +39,7 @@ import { getDungeonMasterPrompt } from "./features/prompt";
 import { silenceStart$, speakStart$ } from "./features/silence-detection";
 import { broadcast, handleSSE, newSseClient$ } from "./features/sse";
 import { appState$, createDefaultOperatorState, getActiveOperator, updateOperatorByIndex, updateState } from "./features/state";
-import { handleBlinkOnLED, handleConnectSwitchboard, handleDisconnectSwitchboard, handleLEDAllOff, handlePulseOnLED } from "./features/switchboard";
+import { handleBlinkOnLED, handleConnectSwitchboard, handleDisconnectSwitchboard, handleFadeOffLED, handleFadeOnLED, handleLEDAllOff, handlePulseOnLED } from "./features/switchboard";
 import { createUDPServer, sendPcm16UDP, startPcmStream, stopPcmStream } from "./features/udp";
 
 async function main() {
@@ -61,6 +61,8 @@ async function main() {
     [
       handleSSE(),
       handleBlinkOnLED(switchboard),
+      handleFadeOnLED(switchboard),
+      handleFadeOffLED(switchboard),
       handlePulseOnLED(switchboard),
       handleLEDAllOff(switchboard),
       handleConnectSwitchboard(switchboard),

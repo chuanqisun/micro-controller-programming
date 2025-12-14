@@ -35,6 +35,7 @@ struct FadeState {
     unsigned long lastStepTime;
     bool looping;
     int stepDelay;
+    int maxBrightness;  // Peak brightness (255 for full, lower for dimmer effects)
 };
 FadeState fadeStates[7];
 
@@ -125,7 +126,7 @@ void updateFades() {
                 // Update brightness
                 if (fadeStates[i].fadingOn) {
                     fadeStates[i].brightness++;
-                    if (fadeStates[i].brightness >= 255) {
+                    if (fadeStates[i].brightness >= fadeStates[i].maxBrightness) {
                         if (fadeStates[i].looping) {
                             fadeStates[i].fadingOn = false;
                         } else {
@@ -163,26 +164,28 @@ void startFadeOn(int ledIndex) {
     fadeStates[ledIndex].lastStepTime = millis();
     fadeStates[ledIndex].looping = false;
     fadeStates[ledIndex].stepDelay = FADE_STEP_MS;
+    fadeStates[ledIndex].maxBrightness = 255;
 }
 
 // Start blink on for a specific LED
 void startBlinkOn(int ledIndex) {
-    startLoopingFade(ledIndex, BLINK_STEP_MS);
+    startLoopingFade(ledIndex, BLINK_STEP_MS, 255);
 }
 
 // Start pulse on for a specific LED (slower than blink)
 void startPulseOn(int ledIndex) {
-    startLoopingFade(ledIndex, PULSE_STEP_MS);
+    startLoopingFade(ledIndex, PULSE_STEP_MS, 128);  // Lower peak brightness for pulse
 }
 
-// Helper function to start a looping fade with specified step delay
-void startLoopingFade(int ledIndex, int stepDelay) {
+// Helper function to start a looping fade with specified step delay and max brightness
+void startLoopingFade(int ledIndex, int stepDelay, int maxBrightness) {
     fadeStates[ledIndex].active = true;
     fadeStates[ledIndex].fadingOn = true;
     fadeStates[ledIndex].brightness = 0;
     fadeStates[ledIndex].lastStepTime = millis();
     fadeStates[ledIndex].looping = true;
     fadeStates[ledIndex].stepDelay = stepDelay;
+    fadeStates[ledIndex].maxBrightness = maxBrightness;
 }
 
 // Start fade off for a specific LED (only if currently on or blinking)
@@ -198,6 +201,7 @@ void startFadeOff(int ledIndex) {
         fadeStates[ledIndex].lastStepTime = millis();
         fadeStates[ledIndex].looping = false;
         fadeStates[ledIndex].stepDelay = FADE_STEP_MS;
+        fadeStates[ledIndex].maxBrightness = 255;
     }
 }
 

@@ -22,6 +22,42 @@ export function handleBlinkOnLED(switchboard: BLEDevice): Handler {
 }
 
 /**
+ * /api/sw/fadeon?id=num
+ */
+export function handleFadeOnLED(switchboard: BLEDevice): Handler {
+  return async (req, res) => {
+    const url = new URL(req.url!, `http://${req.headers.host}`);
+
+    if (req.method !== "POST" || url.pathname !== "/api/sw/fadeon") return false;
+    const id = url.searchParams.get("id");
+    await switchboard.send(`fadeon:${id}`);
+    updateLEDState(Number(id), "fadeon");
+    res.writeHead(200);
+    res.end(JSON.stringify({ status: "ok" }));
+
+    return true;
+  };
+}
+
+/**
+ * /api/sw/fadeoff?id=num
+ */
+export function handleFadeOffLED(switchboard: BLEDevice): Handler {
+  return async (req, res) => {
+    const url = new URL(req.url!, `http://${req.headers.host}`);
+
+    if (req.method !== "POST" || url.pathname !== "/api/sw/fadeoff") return false;
+    const id = url.searchParams.get("id");
+    await switchboard.send(`fadeoff:${id}`);
+    updateLEDState(Number(id), "off");
+    res.writeHead(200);
+    res.end(JSON.stringify({ status: "ok" }));
+
+    return true;
+  };
+}
+
+/**
  * /api/sw/pulseon?id=num
  */
 export function handlePulseOnLED(switchboard: BLEDevice): Handler {

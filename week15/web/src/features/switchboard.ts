@@ -17,11 +17,33 @@ export function initSwitchboardUI() {
     fetch("http://localhost:3000/api/sw/all-off", { method: "POST" });
   });
 
-  // Blink On buttons
+  // LED cycle buttons (off -> pulseon -> blinkon -> fadeon -> off)
   for (let i = 0; i < 7; i++) {
     const blinkOnBtn = document.getElementById(`blinkOn${i}`) as HTMLButtonElement | null;
     blinkOnBtn?.addEventListener("click", () => {
-      fetch(`http://localhost:3000/api/sw/blinkon?id=${i}`, { method: "POST" });
+      // Get current state from the button's class
+      const currentState = blinkOnBtn.classList.contains("pulseon")
+        ? "pulseon"
+        : blinkOnBtn.classList.contains("blinkon")
+        ? "blinkon"
+        : blinkOnBtn.classList.contains("fadeon")
+        ? "fadeon"
+        : "off";
+
+      // Cycle to next state
+      if (currentState === "off") {
+        // off -> pulseon
+        fetch(`http://localhost:3000/api/sw/pulseon?id=${i}`, { method: "POST" });
+      } else if (currentState === "pulseon") {
+        // pulseon -> blinkon
+        fetch(`http://localhost:3000/api/sw/blinkon?id=${i}`, { method: "POST" });
+      } else if (currentState === "blinkon") {
+        // blinkon -> fadeon
+        fetch(`http://localhost:3000/api/sw/fadeon?id=${i}`, { method: "POST" });
+      } else {
+        // fadeon -> off
+        fetch(`http://localhost:3000/api/sw/fadeoff?id=${i}`, { method: "POST" });
+      }
     });
   }
 }
