@@ -1,5 +1,6 @@
 import { filter, map, tap } from "rxjs";
-import { HTTP_PORT, LAPTOP_UDP_RX_PORT } from "./config";
+import { HTTP_PORT, LAPTOP_UDP_RX_PORT, SAMPLE_RATE } from "./config";
+import { downsamplePcm16 } from "./features/audio";
 import { BLEDevice, opMacUnit1, opMacUnit2, swMac } from "./features/ble";
 import { createButtonStateMachine } from "./features/buttons";
 import { handleNewGame, phase$, startGameLoop } from "./features/game";
@@ -137,9 +138,10 @@ async function main() {
 
   const operatorButtonsMachine = createButtonStateMachine(activeOperatorButtons$.pipe(map(({ btn1, btn2 }) => ({ btn1, btn2 }))));
 
-  // Send audio to the active operator's address
+  // Send audio to the active operator's address (downsample from Gemini's 24kHz to operator's 16kHz)
   aiAudioPart$
     .pipe(
+      map((buf) => downsamplePcm16(buf, 24000, SAMPLE_RATE)),
       tap((buf) => {
         const activeOp = getActiveOperator(appState$.value);
         if (activeOp?.address) {

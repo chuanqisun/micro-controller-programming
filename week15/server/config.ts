@@ -1,4 +1,4 @@
-export const SAMPLE_RATE = 24000;
+export const SAMPLE_RATE = 16000;
 export const CHANNELS = 1;
 export const BITS_PER_SAMPLE = 16;
 export const LAPTOP_UDP_RX_PORT = 8888;

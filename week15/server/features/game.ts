@@ -11,7 +11,7 @@ import { cancelAllSpeakerPlayback, playAudioThroughSpeakers } from "./speaker";
 import { broadcast, newSseClient$ } from "./sse";
 import { appState$, getActiveOperator, getActiveOperatorIndices } from "./state";
 import { blinkOnLED, pulseOnLED, turnOffAllLED } from "./switchboard";
-import { GenerateOpenAISpeech, getRandomVoiceGenerator } from "./tts";
+import { generateOpenAISpeech, getRandomVoiceGenerator } from "./tts";
 import { sendPcm16UDP, startPcmStream } from "./udp";
 
 const characterSchema = z.object({
@@ -107,7 +107,7 @@ async function generateStoryOptions() {
           voiceActor: charData.voiceActor,
           archetype: charData.archetype,
           voice,
-          audioBuffer: GenerateOpenAISpeech(charData.intro, { voice, instructions: charData.voiceActor }),
+          audioBuffer: generateOpenAISpeech(charData.intro, { voice, instructions: charData.voiceActor }),
         };
 
         storyOptionGenerated$.next(option);

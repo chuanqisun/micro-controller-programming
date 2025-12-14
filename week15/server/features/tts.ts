@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { OpenAI } from "openai";
+import { downsamplePcm16 } from "./audio";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
@@ -23,17 +24,18 @@ export async function generateGeminiSpeech(text: string, signal?: AbortSignal) {
   if (!data) throw new Error("No audio data received from TTS model");
   console.log("Generated speech for text:", text);
   const audioBuffer = Buffer.from(data, "base64");
-  return audioBuffer;
+  // Downsample from 24kHz to 16kHz for device playback
+  return downsamplePcm16(audioBuffer, 24000, 16000);
 }
 
-export async function GenerateOpenAISpeech(text: string, options?: { signal?: AbortSignal; voice?: string; instructions?: string }) {
+export async function generateOpenAISpeech(text: string, options?: { signal?: AbortSignal; voice?: string; instructions?: string }) {
   const wave = await openai.audio.speech.create(
     {
       model: "gpt-4o-mini-tts",
       voice: options?.voice ?? "onyx",
       input: text,
       instructions: options?.instructions ?? "Robotic monotone voice.",
-      response_format: "wav",
+      response_format: "pcm",
     },
     {
       signal: options?.signal,
@@ -41,7 +43,8 @@ export async function GenerateOpenAISpeech(text: string, options?: { signal?: Ab
   );
 
   const buffer = Buffer.from(await wave.arrayBuffer());
-  return buffer;
+  // Downsample from 24kHz to 16kHz for device playback
+  return downsamplePcm16(buffer, 24000, 16000);
 }
 
 const femaleVoices = ["alloy", "coral", "nova", "sage", "shimmer"];

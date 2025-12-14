@@ -17,7 +17,7 @@
 #define UART_TX_UUID      "6e400003-b5a3-f393-e0a9-e50e24dcca9e"  // notify: ESP32 -> browser
 #define UART_RX_UUID      "6e400002-b5a3-f393-e0a9-e50e24dcca9e"  // write: browser -> ESP32
 
-const int SAMPLE_RATE = 24000;
+const int SAMPLE_RATE = 16000;
 const int CHANNELS = 1;
 const int BITS_PER_SAMPLE = 16;
 const int UDP_RECEIVE_PORT = 8889;

@@ -92,3 +92,33 @@ export class StreamingAudioPlayer {
 }
 
 export const audioPlayer = new StreamingAudioPlayer({ format: "s16le", sampleRate: 24000, channels: 1 });
+
+/**
+ * Downsample 16-bit PCM audio from one sample rate to another
+ * Uses linear interpolation for better quality
+ */
+export function downsamplePcm16(input: Buffer, fromRate: number, toRate: number): Buffer {
+  if (fromRate === toRate) return input;
+
+  const ratio = fromRate / toRate;
+  const inputSamples = input.length / 2; // 16-bit = 2 bytes per sample
+  const outputSamples = Math.floor(inputSamples / ratio);
+  const output = Buffer.alloc(outputSamples * 2);
+
+  for (let i = 0; i < outputSamples; i++) {
+    const srcIndex = i * ratio;
+    const srcIndexFloor = Math.floor(srcIndex);
+    const srcIndexCeil = Math.min(srcIndexFloor + 1, inputSamples - 1);
+    const fraction = srcIndex - srcIndexFloor;
+
+    // Read 16-bit signed samples
+    const sample1 = input.readInt16LE(srcIndexFloor * 2);
+    const sample2 = input.readInt16LE(srcIndexCeil * 2);
+
+    // Linear interpolation
+    const interpolated = Math.round(sample1 + (sample2 - sample1) * fraction);
+    output.writeInt16LE(interpolated, i * 2);
+  }
+
+  return output;
+}
