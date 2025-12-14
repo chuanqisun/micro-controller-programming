@@ -2,7 +2,7 @@ import { Behavior, FunctionResponseScheduling, GoogleGenAI, LiveServerMessage, M
 import { Subject } from "rxjs";
 import { audioPlayer } from "./audio";
 import { DebugAudioBuffer } from "./debug-audio";
-import { phase$, toolHandlers, tools, type ToolHandler } from "./game.ts.bak";
+import { phase$, toolHandlers, tools, type ToolHandler } from "./game.ts";
 import type { Handler } from "./http";
 import { getDungeonMasterPrompt } from "./prompt";
 import { recordAudioActivity, resetSpeechState, startSilenceDetection, stopSilenceDetection } from "./silence-detection";
