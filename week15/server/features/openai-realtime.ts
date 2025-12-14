@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { Subject } from "rxjs";
 import { WebSocket } from "ws";
-import { openaiTools, openaiToolHandlers, type ToolHandler } from "./game-v2";
+import { openaiTools, toolHandlers, type ToolHandler } from "./game";
 import type { Handler } from "./http";
 import { getDungeonMasterPrompt } from "./prompt";
 import { updateState } from "./state";
@@ -238,7 +238,7 @@ function handleFunctionCalls(event: any, ws: WebSocket) {
       continue;
     }
 
-    const handler = openaiToolHandlers[functionName] as ToolHandler | undefined;
+    const handler = toolHandlers[functionName] as ToolHandler | undefined;
     if (!handler) {
       console.warn(`⚠️ No handler for tool: ${functionName}`);
       sendFunctionCallResult(ws, callId, { error: `Unknown function: ${functionName}` });

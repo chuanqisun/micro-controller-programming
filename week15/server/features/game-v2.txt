@@ -90,9 +90,7 @@ export interface LedState {
   status: "off" | "pulsing" | "blinking";
 }
 
-export const ledStateV2$ = new BehaviorSubject<LedState[]>(
-  [0, 1, 2, 3, 4, 5, 6].map((id) => ({ id, status: "off" as const }))
-);
+export const ledStateV2$ = new BehaviorSubject<LedState[]>([0, 1, 2, 3, 4, 5, 6].map((id) => ({ id, status: "off" as const })));
 
 export const openaiToolHandlers: Record<string, ToolHandler> = {
   update_leds: async (params) => {

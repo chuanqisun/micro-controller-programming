@@ -3,11 +3,9 @@ import { HTTP_PORT, LAPTOP_UDP_RX_PORT } from "./config";
 import { transcriber } from "./features/azure-stt";
 import { BLEDevice, opMacUnit1, opMacUnit2, swMac } from "./features/ble";
 import { createButtonStateMachine } from "./features/buttons";
-import { handleNewGame, phase$, startGameLoop } from "./features/game";
-import { handleUserAudioV2, saveDebugBuffer, userMessage$ } from "./features/game-v2";
-import { aiAudioPart$, aiResponse$, handleDisconnectAI } from "./features/gemini-live";
+import { handleNewGame, handleUserAudio, phase$, saveDebugBuffer, startGameLoop, userMessage$ } from "./features/game";
 import { createHttpServer } from "./features/http";
-import { handleConnectOpenAI, handleSendTextOpenAI, realtimeOutputAudio$, sendText, triggerResponse } from "./features/openai-realtime";
+import { handleConnectOpenAI, handleDisconnectOpenAI, handleSendTextOpenAI, realtimeOutputAudio$, sendText, triggerResponse } from "./features/openai-realtime";
 import {
   activeOperatorIndex$,
   createOperatorHandlers,
@@ -37,7 +35,7 @@ async function main() {
 
   const switchboard = new BLEDevice(swMac);
 
-  createUDPServer([handleUserAudioV2()], LAPTOP_UDP_RX_PORT);
+  createUDPServer([handleUserAudio()], LAPTOP_UDP_RX_PORT);
 
   const operatorHttpHandlers = operatorDevices.flatMap((device, index) => createOperatorHandlers(device, index).handlers);
 
@@ -54,7 +52,7 @@ async function main() {
       handleBtnApi(),
 
       handleConnectOpenAI(),
-      handleDisconnectAI(),
+      handleDisconnectOpenAI(),
       handleSendTextOpenAI(),
 
       handleNewGame(switchboard),
@@ -131,17 +129,6 @@ async function main() {
 
   const operatorButtonsMachine = createButtonStateMachine(activeOperatorButtons$.pipe(map(({ btn1, btn2 }) => ({ btn1, btn2 }))));
 
-  aiAudioPart$
-    .pipe(
-      tap((buf) => {
-        const activeOp = getActiveOperator(appState$.value);
-        if (activeOp?.address) {
-          sendPcm16UDP(buf, activeOp.address);
-        }
-      })
-    )
-    .subscribe();
-
   realtimeOutputAudio$
     .pipe(
       tap((buf) => {
@@ -152,8 +139,6 @@ async function main() {
       })
     )
     .subscribe();
-
-  aiResponse$.pipe(tap((text) => console.log("AI Response:", text))).subscribe();
 
   operatorButtonsMachine.leaveIdle$
     .pipe(
@@ -176,16 +161,29 @@ async function main() {
     )
     .subscribe();
 
+  operatorProbeNum$
+    .pipe(
+      filter((update) => update.probeNum !== 7),
+      tap(() => {
+        const activeAddress = getActiveOperator(appState$.value)?.address;
+        if (!activeAddress) return;
+        startPcmStream(activeAddress);
+      })
+    )
+    .subscribe();
+
   silenceStart$
     .pipe(
+      filter(() => phase$.value === "live"),
       tap(() => console.log("Silence detected, committing transcription")),
       tap(() => {
-        transcriber.commit().then((text) =>
+        transcriber.commit().then((text) => {
+          if (!text) return;
           userMessage$.next({
             address: getActiveOperator(appState$.value)?.address!,
             message: text,
-          })
-        );
+          });
+        });
         transcriber.mute();
         saveDebugBuffer();
       }),
@@ -195,6 +193,7 @@ async function main() {
 
   speakStart$
     .pipe(
+      filter(() => phase$.value === "live"),
       tap(() => console.log("Speech detected, clearing transcription buffer")),
       tap(() => transcriber.unmute()),
       filter(() => phase$.value === "live")
