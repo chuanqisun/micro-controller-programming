@@ -2,7 +2,7 @@ import { filter, map, tap } from "rxjs";
 import { HTTP_PORT, LAPTOP_UDP_RX_PORT } from "./config";
 import { BLEDevice, opMacUnit1, opMacUnit2, swMac } from "./features/ble";
 import { createButtonStateMachine } from "./features/buttons";
-import { handleNewGame, startGameLoop } from "./features/game";
+import { handleNewGame, phase$, startGameLoop } from "./features/game";
 import {
   aiAudioPart$,
   aiResponse$,
@@ -153,6 +153,7 @@ async function main() {
 
   operatorButtonsMachine.leaveIdle$
     .pipe(
+      filter(() => phase$.value === "live"),
       tap(() => console.log("leave idle")),
       tap(stopPcmStream)
     )
@@ -160,6 +161,7 @@ async function main() {
 
   operatorButtonsMachine.enterIdle$
     .pipe(
+      filter(() => phase$.value === "live"),
       tap(() => console.log("enter idle")),
       tap(() => {
         const activeOp = getActiveOperator(appState$.value);
@@ -170,8 +172,18 @@ async function main() {
     )
     .subscribe();
 
-  silenceStart$.pipe(tap(handleSpeechStop)).subscribe();
-  speakStart$.pipe(tap(handleSpeechStart)).subscribe();
+  silenceStart$
+    .pipe(
+      filter(() => phase$.value === "live"),
+      tap(handleSpeechStop)
+    )
+    .subscribe();
+  speakStart$
+    .pipe(
+      filter(() => phase$.value === "live"),
+      tap(handleSpeechStart)
+    )
+    .subscribe();
 
   startGameLoop(switchboard);
 }

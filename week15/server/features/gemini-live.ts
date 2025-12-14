@@ -2,7 +2,7 @@ import { GoogleGenAI, LiveServerMessage, Modality, type LiveConnectConfig, type 
 import { Subject } from "rxjs";
 import { audioPlayer } from "./audio";
 import { DebugAudioBuffer } from "./debug-audio";
-import { toolHandlers, tools, type ToolHandler } from "./game";
+import { phase$, toolHandlers, tools, type ToolHandler } from "./game";
 import type { Handler } from "./http";
 import { getDungeonMasterPrompt } from "./prompt";
 import { recordAudioActivity, resetSpeechState, startSilenceDetection, stopSilenceDetection } from "./silence-detection";
@@ -125,6 +125,8 @@ export function handleUserAudio(): UDPHandler {
   return (msg) => {
     if (!sessionReady || !session) return;
     if (msg.data.length === 0) return;
+    // Only stream audio to AI when game is in live phase
+    if (phase$.value !== "live") return;
 
     streamAudioToAI(msg.data);
     recordAudioActivity();
