@@ -1,6 +1,7 @@
 import { combineLatest, debounceTime, filter, map, tap, withLatestFrom } from "rxjs";
 import { HTTP_PORT, LAPTOP_UDP_RX_PORT } from "./config";
 import { audioPlayer } from "./features/audio";
+import { handleSetAudioOutputMode } from "./features/audio-output";
 import { transcriber } from "./features/azure-stt";
 import { BLEDevice, opMacUnit1, opMacUnit2, swMac } from "./features/ble";
 import { createButtonStateMachine } from "./features/buttons";
@@ -52,7 +53,6 @@ import {
   handleLEDAllOff,
   handlePulseOnLED,
 } from "./features/switchboard";
-import { handleSetAudioOutputMode } from "./features/audio-output";
 import { createUDPServer, sendPcm16UDP, startPcmStream, stopPcmStream } from "./features/udp";
 
 async function main() {
@@ -179,11 +179,11 @@ async function main() {
         const state = appState$.value;
         const activeOp = getActiveOperator(state);
         const mode = state.audioOutputMode;
-        
+
         if (activeOp?.address && (mode === "controller" || mode === "both")) {
           sendPcm16UDP(buf, activeOp.address);
         }
-        
+
         if (mode === "laptop" || mode === "both") {
           audioPlayer.push(buf);
         }
