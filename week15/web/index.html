@@ -7,25 +7,19 @@
     <title>web</title>
   </head>
   <body>
-    <h2>Voice agents</h2>
-    <div>
-      <button id="connectBtnSim">Connect</button>
-    </div>
-    <div id="aiTextInput">
-      <input type="text" id="aiText" placeholder="Type a message..." />
-      <button id="aiSend">Send</button>
-    </div>
-
-    <h2>Game</h2>
-    <div>
-      <button id="newGameBtn">New game</button>
-      <button id="resetBtn">Reset</button>
-    </div>
-    <div id="gameState">
-      <div>Phase: <span id="gamePhase">-</span></div>
-    </div>
-
-    <h2>Devices</h2>
+    <fieldset>
+      <legend>Game</legend>
+      <div class="command-bar">
+        <button id="connectBtnSim">Connect</button>
+        <button id="newGameBtn">New game</button>
+        <button id="resetBtn">Reset</button>
+        <span id="gamePhase">-</span>
+      </div>
+      <div class="command-bar">
+        <input type="text" id="aiText" placeholder="Type a message..." />
+        <button id="aiSend">Send</button>
+      </div>
+    </fieldset>
     <fieldset class="operator-panel" data-operator="0">
       <legend>Unit-01</legend>
       <div>

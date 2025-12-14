@@ -6,7 +6,7 @@ export function handleReset(): Handler {
     if (req.method !== "POST" || req.url !== "/api/reset") return false;
 
     console.log("[Reset] Restarting server...");
-    
+
     res.writeHead(200);
     res.end(JSON.stringify({ message: "Restarting server..." }));
 
@@ -18,7 +18,7 @@ export function handleReset(): Handler {
         stdio: "inherit",
         cwd: process.cwd(),
       }).unref();
-      
+
       process.exit(0);
     }, 100);
 
