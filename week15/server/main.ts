@@ -1,18 +1,11 @@
 import { filter, map, tap } from "rxjs";
 import { HTTP_PORT, LAPTOP_UDP_RX_PORT } from "./config";
+import { transcriber } from "./features/azure-stt";
 import { BLEDevice, opMacUnit1, opMacUnit2, swMac } from "./features/ble";
 import { createButtonStateMachine } from "./features/buttons";
-import { handleNewGame, phase$, startGameLoop } from "./features/game";
-import {
-  aiAudioPart$,
-  aiResponse$,
-  handleAISendText,
-  handleConnectAI,
-  handleDisconnectAI,
-  handleSpeechStart,
-  handleSpeechStop,
-  handleUserAudio,
-} from "./features/gemini-live";
+import { handleNewGame, startGameLoop } from "./features/game";
+import { handleUserAudioV2 } from "./features/game-v2";
+import { aiAudioPart$, aiResponse$, handleAISendText, handleConnectAI, handleDisconnectAI, handleUserAudio } from "./features/gemini-live";
 import { createHttpServer } from "./features/http";
 import {
   activeOperatorIndex$,
@@ -26,7 +19,6 @@ import {
   operatorProbeNum$,
 } from "./features/operator";
 import { handlePlayFile, handleStopPlayback } from "./features/play-file";
-import { silenceStart$, speakStart$ } from "./features/silence-detection";
 import { broadcast, handleSSE, newSseClient$ } from "./features/sse";
 import { appState$, createDefaultOperatorState, getActiveOperator, updateOperatorByIndex, updateState } from "./features/state";
 import { handleBlinkOnLED, handleConnectSwitchboard, handleDisconnectSwitchboard, handleLEDAllOff, handlePulseOnLED } from "./features/switchboard";
@@ -43,7 +35,7 @@ async function main() {
 
   const switchboard = new BLEDevice(swMac);
 
-  createUDPServer([handleUserAudio()], LAPTOP_UDP_RX_PORT);
+  createUDPServer([handleUserAudio(), handleUserAudioV2()], LAPTOP_UDP_RX_PORT);
 
   const operatorHttpHandlers = operatorDevices.flatMap((device, index) => createOperatorHandlers(device, index).handlers);
 
@@ -152,7 +144,8 @@ async function main() {
 
   operatorButtonsMachine.leaveIdle$
     .pipe(
-      filter(() => phase$.value === "live"),
+      tap(() => transcriber.resume()),
+      // filter(() => phase$.value === "live"),
       tap(() => console.log("leave idle")),
       tap(stopPcmStream)
     )
@@ -160,8 +153,12 @@ async function main() {
 
   operatorButtonsMachine.enterIdle$
     .pipe(
-      filter(() => phase$.value === "live"),
+      // filter(() => phase$.value === "live"),
       tap(() => console.log("enter idle")),
+      tap(() => {
+        transcriber.commit().then(console.log);
+        transcriber.pause();
+      }),
       tap(() => {
         const activeOp = getActiveOperator(appState$.value);
         if (activeOp?.address) {
@@ -171,18 +168,21 @@ async function main() {
     )
     .subscribe();
 
-  silenceStart$
-    .pipe(
-      filter(() => phase$.value === "live"),
-      tap(handleSpeechStop)
-    )
-    .subscribe();
-  speakStart$
-    .pipe(
-      filter(() => phase$.value === "live"),
-      tap(handleSpeechStart)
-    )
-    .subscribe();
+  // silenceStart$
+  //   .pipe(
+  //     tap(() => console.log("Silence detected, committing transcription"))
+  //     // filter(() => phase$.value === "live")
+  //     // tap(handleSpeechStop)
+  //   )
+  //   .subscribe();
+
+  // speakStart$
+  //   .pipe(
+  //     tap(() => console.log("Speech detected, clearing transcription buffer"))
+  //     // filter(() => phase$.value === "live")
+  //     // tap(handleSpeechStart)
+  //   )
+  //   .subscribe();
 
   startGameLoop(switchboard);
 }
