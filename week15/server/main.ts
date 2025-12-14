@@ -99,22 +99,18 @@ async function main() {
       .subscribe();
   });
 
-  // Update state when probe numbers change (scoped to operator index)
   operatorProbeNum$
     .pipe(tap(({ operatorIndex, probeNum }) => updateState((state) => updateOperatorByIndex(state, operatorIndex, (op) => ({ ...op, probeNum })))))
     .subscribe();
 
-  // Update state when addresses change (scoped to operator index)
   operatorAddress$
     .pipe(tap(({ operatorIndex, address }) => updateState((state) => updateOperatorByIndex(state, operatorIndex, (op) => ({ ...op, address })))))
     .subscribe();
 
-  // Update state when buttons change (scoped to operator index)
   operatorButtons$
     .pipe(tap(({ operatorIndex, btn1, btn2 }) => updateState((state) => updateOperatorByIndex(state, operatorIndex, (op) => ({ ...op, btn1, btn2 })))))
     .subscribe();
 
-  // Track active operator - update state when activity occurs
   activeOperatorIndex$
     .pipe(
       tap((operatorIndex) => {
@@ -123,8 +119,6 @@ async function main() {
     )
     .subscribe();
 
-  // For button state machine, use the active operator's buttons
-  // Filter to only respond to the active operator's buttons
   const activeOperatorButtons$ = operatorButtons$.pipe(filter(({ operatorIndex }) => operatorIndex === appState$.value.activeOperatorIndex));
 
   const operatorButtonsMachine = createButtonStateMachine(activeOperatorButtons$.pipe(map(({ btn1, btn2 }) => ({ btn1, btn2 }))));
@@ -163,11 +157,14 @@ async function main() {
 
   operatorProbeNum$
     .pipe(
-      filter((update) => update.probeNum !== 7),
-      tap(() => {
+      tap((update) => {
         const activeAddress = getActiveOperator(appState$.value)?.address;
         if (!activeAddress) return;
-        startPcmStream(activeAddress);
+        if (update.probeNum === 7) {
+          stopPcmStream();
+        } else {
+          startPcmStream(activeAddress);
+        }
       })
     )
     .subscribe();

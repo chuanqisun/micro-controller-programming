@@ -67,7 +67,8 @@ export class AzureSpeechToText {
 
   async commit(): Promise<string> {
     if (this.audioBuffers.length === 0) {
-      throw new Error("No audio buffers to transcribe. Call appendAudioBuffer() first.");
+      console.warn("No audio data to commit for transcription");
+      return "";
     }
 
     if (!this.requestStarted || !this.requestController || !this.requestPromise) {
