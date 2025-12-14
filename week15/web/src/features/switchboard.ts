@@ -25,10 +25,10 @@ export function initSwitchboardUI() {
       const currentState = blinkOnBtn.classList.contains("pulseon")
         ? "pulseon"
         : blinkOnBtn.classList.contains("blinkon")
-        ? "blinkon"
-        : blinkOnBtn.classList.contains("fadeon")
-        ? "fadeon"
-        : "off";
+          ? "blinkon"
+          : blinkOnBtn.classList.contains("fadeon")
+            ? "fadeon"
+            : "off";
 
       // Cycle to next state
       if (currentState === "off") {
