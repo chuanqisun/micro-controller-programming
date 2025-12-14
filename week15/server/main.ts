@@ -4,6 +4,7 @@ import { downsamplePcm16 } from "./features/audio";
 import { BLEDevice, opMacUnit1, opMacUnit2, swMac } from "./features/ble";
 import { createButtonStateMachine } from "./features/buttons";
 import { handleNewGame, phase$, startGameLoop } from "./features/game";
+import { commitGeneration, generated$, handleUserAudioV2 } from "./features/game-v2";
 import {
   aiAudioPart$,
   aiResponse$,
@@ -28,6 +29,7 @@ import {
 } from "./features/operator";
 import { handlePlayFile, handleStopPlayback } from "./features/play-file";
 import { silenceStart$, speakStart$ } from "./features/silence-detection";
+import { playPcm16Buffer } from "./features/speaker";
 import { broadcast, handleSSE, newSseClient$ } from "./features/sse";
 import { appState$, createDefaultOperatorState, getActiveOperator, updateOperatorByIndex, updateState } from "./features/state";
 import { handleBlinkOnLED, handleConnectSwitchboard, handleDisconnectSwitchboard, handleLEDAllOff, handlePulseOnLED } from "./features/switchboard";
@@ -44,7 +46,7 @@ async function main() {
 
   const switchboard = new BLEDevice(swMac);
 
-  createUDPServer([handleUserAudio()], LAPTOP_UDP_RX_PORT);
+  createUDPServer([handleUserAudio(), handleUserAudioV2()], LAPTOP_UDP_RX_PORT);
 
   const operatorHttpHandlers = operatorDevices.flatMap((device, index) => createOperatorHandlers(device, index).handlers);
 
@@ -188,6 +190,29 @@ async function main() {
     .subscribe();
 
   startGameLoop(switchboard);
+
+  // v2 experiments
+
+  operatorButtonsMachine.enterIdle$
+    .pipe(
+      tap(() => console.log("v2: enter idle")),
+      tap(() => {
+        const activeOp = getActiveOperator(appState$.value);
+        if (!activeOp) return;
+        commitGeneration(activeOp.address, { saveAudio: true });
+      })
+    )
+    .subscribe();
+
+  generated$
+    .pipe(
+      tap((result) => {
+        playPcm16Buffer(result.audioBuffer);
+        startPcmStream(result.address);
+        sendPcm16UDP(result.audioBuffer, result.address);
+      })
+    )
+    .subscribe();
 }
 
 main();
