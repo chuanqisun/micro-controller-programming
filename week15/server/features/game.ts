@@ -192,6 +192,8 @@ export function setSwitchboardForTools(switchboard: BLEDevice) {
 
 export const toolHandlers: Record<string, ToolHandler> = {
   update_leds: async (params) => {
+    console.log(`Update LED called with params:`, params);
+
     if (!_switchboard) {
       return "Switchboard not connected";
     }

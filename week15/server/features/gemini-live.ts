@@ -1,4 +1,4 @@
-import { GoogleGenAI, LiveServerMessage, Modality, type LiveConnectConfig, type Session } from "@google/genai";
+import { Behavior, FunctionResponseScheduling, GoogleGenAI, LiveServerMessage, Modality, type LiveConnectConfig, type Session } from "@google/genai";
 import { Subject } from "rxjs";
 import { audioPlayer } from "./audio";
 import { DebugAudioBuffer } from "./debug-audio";
@@ -9,7 +9,7 @@ import { recordAudioActivity, resetSpeechState, startSilenceDetection, stopSilen
 import { appState$, getActiveOperator, updateState } from "./state";
 import { startPcmStream, stopPcmStream, type UDPHandler } from "./udp";
 
-const MODEL = "gemini-2.5-flash-native-audio-preview-12-2025";
+const MODEL = "gemini-2.5-flash-native-audio-preview-09-2025";
 
 let session: Session | null = null;
 let sessionReady = false;
@@ -152,7 +152,7 @@ async function connectGeminiLive(): Promise<void> {
       },
     },
     tools: tools.map((tool) => ({
-      functionDeclarations: [{ ...tool }],
+      functionDeclarations: [{ ...tool, behavior: Behavior.NON_BLOCKING }],
     })),
   };
 
@@ -240,6 +240,7 @@ async function handleGeminiMessage(message: LiveServerMessage) {
         .then((response) => {
           session?.sendToolResponse({
             functionResponses: {
+              scheduling: FunctionResponseScheduling.SILENT,
               id: fc.id,
               name: fc.name!,
               response,
