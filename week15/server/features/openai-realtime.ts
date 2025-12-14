@@ -210,6 +210,9 @@ ${getDungeonMasterPrompt()},
           },
           turn_detection: null,
         },
+        output: {
+          voice: "sage",
+        },
       },
     },
   };

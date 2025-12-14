@@ -2,6 +2,7 @@ import { spawn } from "child_process";
 import { existsSync, statSync } from "fs";
 import path from "path";
 import { CHANNELS, SAMPLE_RATE } from "../config";
+import { audioPlayer } from "./audio";
 import type { Handler } from "./http";
 import { appState$ } from "./state";
 import { sendPcm16UDP, startPcmStream, stopPcmStream } from "./udp";
@@ -90,7 +91,13 @@ async function streamRawFileUDP(address: string): Promise<void> {
       const end = Math.min(start + UDP_CHUNK_SIZE, fileBuffer.length);
       const chunk = fileBuffer.subarray(start, end);
 
-      sendPcm16UDP(chunk, address);
+      const mode = appState$.value.audioOutputMode;
+      if (mode === "controller" || mode === "both") {
+        sendPcm16UDP(chunk, address);
+      }
+      if (mode === "laptop" || mode === "both") {
+        audioPlayer.push(chunk);
+      }
       chunkIndex++;
 
       setTimeout(sendNextChunk, SEND_INTERVAL_MS);

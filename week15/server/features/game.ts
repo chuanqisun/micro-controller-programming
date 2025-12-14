@@ -552,8 +552,13 @@ export function startGameLoop(switchboard: BLEDevice) {
               // Check if still on the same probe after async wait
               const currentProbe = getActiveOperatorProbeNum();
               if (currentProbe === probeNum) {
-                sendPcm16UDP(audioBuffer, appState$.value.operators[operatorIndex].address!);
-                audioPlayer.push(audioBuffer);
+                const mode = appState$.value.audioOutputMode;
+                if (mode === "controller" || mode === "both") {
+                  sendPcm16UDP(audioBuffer, appState$.value.operators[operatorIndex].address!);
+                }
+                if (mode === "laptop" || mode === "both") {
+                  audioPlayer.push(audioBuffer);
+                }
               }
             } catch (err) {
               console.error("Failed to play character intro:", err);
