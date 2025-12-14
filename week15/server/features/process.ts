@@ -1,4 +1,4 @@
-import { spawn } from "child_process";
+import { readFile, writeFile } from "fs/promises";
 import type { Handler } from "./http";
 
 export function handleReset(): Handler {
@@ -10,15 +10,10 @@ export function handleReset(): Handler {
     res.writeHead(200);
     res.end(JSON.stringify({ message: "Restarting server..." }));
 
-    setTimeout(() => {
-      console.log("[Reset] Killing port and starting new process");
-      spawn("bash", ["-c", "npx kill-port 3000 && npm run dev:server"], {
-        detached: true,
-        stdio: "inherit",
-        cwd: process.cwd(),
-      }).unref();
-
-      process.exit(0);
+    setTimeout(async () => {
+      console.log("[Reset] Triggering tsx watch restart");
+      const content = await readFile(__filename, "utf-8");
+      await writeFile(__filename, content);
     }, 100);
 
     return true;

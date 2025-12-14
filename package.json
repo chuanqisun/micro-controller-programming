@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "npm run build:blue-light && npm run upload:blue-light && concurrently \"npm run monitor\"",
+    "dev": "echo \"cd into a week?\"",
     "serve": "node --env-file .env ./sketches/talkie-only/server.js",
     "build:blue-light": "arduino-cli compile -b esp32:esp32:XIAO_ESP32C3 ./sketches/blue-light",
     "upload:blue-light": "arduino-cli upload -p /dev/ttyACM1 -b esp32:esp32:XIAO_ESP32C3 ./sketches/blue-light",

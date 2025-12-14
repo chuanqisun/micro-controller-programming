@@ -39,6 +39,7 @@ import { handlePlayFile, handleStopPlayback } from "./features/play-file";
 import { handleReset } from "./features/process";
 import { getDungeonMasterPrompt } from "./features/prompt";
 import { silenceStart$, speakStart$ } from "./features/silence-detection";
+import { cancelAllSpeakerPlayback } from "./features/speaker";
 import { broadcast, handleSSE, newSseClient$ } from "./features/sse";
 import { appState$, createDefaultOperatorState, getActiveOperator, updateOperatorByIndex, updateState } from "./features/state";
 import {
@@ -206,6 +207,7 @@ async function main() {
         if (!activeAddress) return;
         if (update.probeNum === 7) {
           stopPcmStream();
+          cancelAllSpeakerPlayback();
         } else {
           startPcmStream(activeAddress);
         }
