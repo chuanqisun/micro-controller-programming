@@ -9,7 +9,7 @@ import { recordAudioActivity, resetSpeechState, startSilenceDetection, stopSilen
 import { appState$, getActiveOperator, updateState } from "./state";
 import { startPcmStream, stopPcmStream, type UDPHandler } from "./udp";
 
-const MODEL = "gemini-2.5-flash-native-audio-preview-09-2025";
+const MODEL = "gemini-2.5-flash-native-audio-preview-12-2025";
 
 let session: Session | null = null;
 let sessionReady = false;
