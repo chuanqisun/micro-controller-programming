@@ -68,6 +68,30 @@ export function findOperatorIndexByMac(state: AppState, mac: string): number {
 }
 
 /**
+ * Helper to check if an operator is active (connected and has a UDP address).
+ */
+export function isOperatorActive(op: OperatorState): boolean {
+  return op.connection === "connected" && op.address !== "";
+}
+
+/**
+ * Helper to get all active operators.
+ */
+export function getActiveOperators(state: AppState): OperatorState[] {
+  return state.operators.filter(isOperatorActive);
+}
+
+/**
+ * Helper to get indices of all active operators.
+ */
+export function getActiveOperatorIndices(state: AppState): number[] {
+  return state.operators
+    .map((op, index) => ({ op, index }))
+    .filter(({ op }) => isOperatorActive(op))
+    .map(({ index }) => index);
+}
+
+/**
  * Helper to update a specific operator by index.
  */
 export function updateOperatorByIndex(state: AppState, index: number, updateFn: (op: OperatorState) => OperatorState): AppState {

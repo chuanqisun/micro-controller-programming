@@ -1,4 +1,4 @@
-import { Behavior, FunctionResponseScheduling, GoogleGenAI, LiveServerMessage, Modality, type LiveConnectConfig, type Session } from "@google/genai";
+import { GoogleGenAI, LiveServerMessage, Modality, type LiveConnectConfig, type Session } from "@google/genai";
 import { Subject } from "rxjs";
 import { audioPlayer } from "./audio";
 import { DebugAudioBuffer } from "./debug-audio";
@@ -9,7 +9,7 @@ import { recordAudioActivity, resetSpeechState, startSilenceDetection, stopSilen
 import { appState$, getActiveOperator, updateState } from "./state";
 import { startPcmStream, stopPcmStream, type UDPHandler } from "./udp";
 
-const MODEL = "gemini-2.5-flash-native-audio-preview-09-2025";
+const MODEL = "gemini-2.5-flash-native-audio-preview-12-2025";
 
 let session: Session | null = null;
 let sessionReady = false;
@@ -143,14 +143,14 @@ async function connectGeminiLive(): Promise<void> {
   const config: LiveConnectConfig = {
     responseModalities: [Modality.AUDIO],
     systemInstruction: getDungeonMasterPrompt(),
-    thinkingConfig: { thinkingBudget: 0 },
+    thinkingConfig: { thinkingBudget: 800 },
     realtimeInputConfig: {
       automaticActivityDetection: {
         disabled: true,
       },
     },
     tools: tools.map((tool) => ({
-      functionDeclarations: [{ ...tool, behavior: Behavior.NON_BLOCKING }],
+      functionDeclarations: [{ ...tool }],
     })),
   };
 
@@ -165,14 +165,17 @@ async function connectGeminiLive(): Promise<void> {
         sessionReady = true;
       },
       onmessage: (message) => {
-        console.log("DEBUG", message.serverContent);
         handleGeminiMessage(message);
       },
       onerror: (error: any) => {
         console.error("❌ Gemini Live API error:", error.message);
+        console.error("   Full error:", JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
       },
       onclose: (event: any) => {
         console.log("🔌 Gemini Live connection closed:", event?.reason);
+        if (event) {
+          console.log("   Close event details:", JSON.stringify(event, null, 2));
+        }
         sessionReady = false;
         session = null;
       },
@@ -185,7 +188,6 @@ async function handleGeminiMessage(message: LiveServerMessage) {
     const audioBuffer = Buffer.from(message.data, "base64");
     audioPlayer.push(audioBuffer);
     aiAudioPart$.next(audioBuffer);
-    console.log(`[DEBUG] Audio data received: ${audioBuffer.length} bytes`);
     return;
   }
 
@@ -236,7 +238,6 @@ async function handleGeminiMessage(message: LiveServerMessage) {
         .then((response) => {
           session?.sendToolResponse({
             functionResponses: {
-              scheduling: FunctionResponseScheduling.SILENT,
               id: fc.id,
               name: fc.name!,
               response,
@@ -262,18 +263,6 @@ export function streamAudioToAI(pcmData: Buffer): void {
       mimeType: "audio/pcm;rate=24000",
     },
   });
-}
-
-/** Only needed with Auto AVD */
-export function sendAudioStreamEnd(): void {
-  if (!session || !sessionReady) {
-    return;
-  }
-
-  // Save debug buffer as WAV file (this also sends audio stream end via debug-audio.ts)
-  debugBuffer.saveAsWav();
-  session.sendRealtimeInput({ audioStreamEnd: true });
-  console.log("📤 Sent audio stream end signal");
 }
 
 export function disconnectAI(): void {

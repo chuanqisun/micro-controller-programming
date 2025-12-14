@@ -9,15 +9,15 @@ import type { Handler } from "./http";
 import { operatorButtons$, operatorProbeNum$ } from "./operator";
 import { cancelAllSpeakerPlayback, playAudioThroughSpeakers } from "./speaker";
 import { broadcast, newSseClient$ } from "./sse";
-import { appState$, getActiveOperator } from "./state";
+import { appState$, getActiveOperator, getActiveOperatorIndices } from "./state";
 import { blinkOnLED, pulseOnLED, turnOffAllLED } from "./switchboard";
 import { GenerateOpenAISpeech, getRandomVoiceGenerator } from "./tts";
 import { startPcmStream } from "./udp";
 
 const characterSchema = z.object({
-  intro: z
-    .string()
-    .describe("In only a few words, introduce yourself with 'I am...', including a trait (adjective) and a profession (noun). Remain anonymous."),
+  trait: z.string().describe("An adjective phrase describing the character's personality or demeanor"),
+  profession: z.string().describe("A single noun describing the character's role or occupation"),
+  intro: z.string().describe("In only a few words, introduce yourself with 'I am...', including the trait and profession. Remain anonymous."),
   voiceActor: z.string().describe("Description of the voice quality and characteristics"),
   archetype: z
     .enum(["hero", "magician", "lover", "jester", "explorer", "sage", "innocent", "creator", "caregiver", "outlaw", "orphan", "seducer"])
@@ -31,6 +31,8 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
 export interface StoryOption {
   probeId: number;
+  trait: string | null;
+  profession: string | null;
   intro: string | null;
   voiceActor: string | null;
   archetype: string | null;
@@ -47,6 +49,7 @@ export function handleNewGame(): Handler {
 
     // Start a new game session
     phase$.next("setup");
+    resetConfirmedOperators();
 
     // Start PCM stream to the active operator
     const activeOp = getActiveOperator(appState$.value);
@@ -70,6 +73,8 @@ async function generateStoryOptions() {
   characterOptions.next(
     allProbes.map((probeId) => ({
       probeId,
+      trait: null,
+      profession: null,
       intro: null,
       voiceActor: null,
       archetype: null,
@@ -87,15 +92,17 @@ async function generateStoryOptions() {
   parser.onValue = (entry) => {
     // Handle array elements: characterOptions[0], characterOptions[1], etc.
     if (typeof entry.key === "number" && typeof entry.value === "object" && entry.value !== null) {
-      const charData = entry.value as { intro?: string; voiceActor?: string; archetype?: string };
+      const charData = entry.value as { trait?: string; profession?: string; intro?: string; voiceActor?: string; archetype?: string };
       const probeId = allProbes[entry.key];
 
-      if (charData.intro && charData.voiceActor && charData.archetype) {
+      if (charData.trait && charData.profession && charData.intro && charData.voiceActor && charData.archetype) {
         const voice = voiceGenerator.next().value as string;
         console.log("Character generated:", { probeId, voice, ...charData });
 
         const option: StoryOption = {
           probeId,
+          trait: charData.trait,
+          profession: charData.profession,
           intro: charData.intro,
           voiceActor: charData.voiceActor,
           archetype: charData.archetype,
@@ -113,7 +120,9 @@ async function generateStoryOptions() {
     model: "gemini-2.5-flash",
     contents: `Generate exactly seven (7) distinct fantasy game characters for a quest. For each character provide:
 - archetype: Choose from hero, magician, lover, jester, explorer, sage, innocent, creator, caregiver, outlaw, orphan, or seducer
-- intro: A compelling one-sentence intro grounded in archetype, starting with "I am..." that captures their essence, including a trait (adjective) and a profession (noun). ONLY a few words.
+- trait: A single adjective describing the character's personality or demeanor (e.g., "cunning", "brave", "mysterious")
+- profession: A single noun describing the character's role or occupation (e.g., "blacksmith", "oracle", "hunter")
+- intro: A compelling one-sentence intro grounded in archetype, starting with "I am..." that captures their essence using the trait and profession. ONLY a few words.
 - voiceActor: A vivid description of their voice quality (e.g., "deep and gravelly", "soft and melodic", "crackling with energy"), grounded in their archetype and intro.
 
 Make sure the characters have synergy with each other and cover diverse archetypes.`,
@@ -130,7 +139,7 @@ Make sure the characters have synergy with each other and cover diverse archetyp
   }
 }
 
-export type Phase = "setup" | "exploration" | "action";
+export type Phase = "setup" | "live";
 
 export interface ToolRegistration {
   name: string;
@@ -140,110 +149,110 @@ export interface ToolRegistration {
 
 export const tools: ToolRegistration[] = [
   {
-    name: "transition_to_exploration",
-    description: "transition the game from action to exploration phase",
+    name: "update_leds",
+    description:
+      "Update the status of all 7 LED lights to communicate game state. Use 'pulsing' for available interactive elements, 'blinking' for intense action moments, and 'off' when nothing is there.",
     parameters: {
       type: "object",
       properties: {
-        scene: {
-          type: "string",
-          description: "a short name for the scene",
-        },
-        elements: {
+        leds: {
           type: "array",
           items: {
-            type: "string",
+            type: "object",
+            properties: {
+              id: {
+                type: "number",
+                description: "LED id from 0 to 6",
+              },
+              status: {
+                type: "string",
+                enum: ["off", "pulsing", "blinking"],
+                description: "off = nothing there, pulsing = available for interaction, blinking = in-action",
+              },
+            },
+            required: ["id", "status"],
           },
-          description: "list exactly three elements that can be investigated by the player, each one is a short name",
-        },
-        previousActionChoice: {
-          type: "string",
-          description: "description of the action option the player took in the previous action phase, if any",
+          minItems: 7,
+          maxItems: 7,
+          description: "Array of exactly 7 LED status objects, one for each LED (id 0-6)",
         },
       },
-      required: ["scene", "elements"],
-    },
-  },
-  {
-    name: "transition_to_action",
-    description: "transition the game from exploration to action phase",
-    parameters: {
-      type: "object",
-      properties: {
-        optionA: {
-          type: "string",
-          description: "description one option to take the action",
-        },
-        optionB: {
-          type: "string",
-          description: "description of the other option to take the action",
-        },
-      },
-      required: ["optionA", "optionB"],
+      required: ["leds"],
     },
   },
 ];
 
 export type ToolHandler = (params?: Record<string, unknown>) => Promise<string>;
 
+let _switchboard: BLEDevice | null = null;
+
+export function setSwitchboardForTools(switchboard: BLEDevice) {
+  _switchboard = switchboard;
+}
+
 export const toolHandlers: Record<string, ToolHandler> = {
-  transition_to_action: async (params) => {
-    phase$.next("action");
-    const optionA = (params?.optionA as string) || "";
-    const optionB = (params?.optionB as string) || "";
-    actionOptions$.next({ a: optionA, b: optionB });
-    return "Transitioned to action phase, ask player to choose an option";
-  },
-  transition_to_exploration: async (params) => {
-    if (phase$.value !== "exploration") {
-      phase$.next("exploration");
+  update_leds: async (params) => {
+    if (!_switchboard) {
+      return "Switchboard not connected";
     }
 
-    const scene = (params?.scene as string) || "";
-    const elements = (params?.elements as string[]) || [];
-    const previousActionChoice = (params?.previousActionChoice as string) || "";
-
-    sceneName$.next(scene);
-    if (previousActionChoice) {
-      lastActionChoice$.next(previousActionChoice);
+    const leds = params?.leds as Array<{ id: number; status: "off" | "pulsing" | "blinking" }> | undefined;
+    if (!leds || leds.length !== 7) {
+      return "Invalid LED configuration: must provide exactly 7 LED statuses";
     }
 
-    setupScene$.next({ elements });
+    // Update current LED state
+    const newState: LedState[] = leds.map((led) => ({
+      id: led.id,
+      status: led.status,
+    }));
+    ledState$.next(newState);
 
-    return "Transitioned to exploration phase, ask player to explore.";
+    // Apply LED changes to switchboard
+    for (const led of leds) {
+      switch (led.status) {
+        case "off":
+          await _switchboard.send(`fadeoff:${led.id}`);
+          break;
+        case "pulsing":
+          await pulseOnLED(_switchboard, led.id);
+          break;
+        case "blinking":
+          await blinkOnLED(_switchboard, led.id);
+          break;
+      }
+    }
+
+    return "LED update success";
   },
 };
+
+export interface LedState {
+  id: number;
+  status: "off" | "pulsing" | "blinking";
+}
+
+export const ledState$ = new BehaviorSubject<LedState[]>([0, 1, 2, 3, 4, 5, 6].map((id) => ({ id, status: "off" as const })));
 
 export const gmHint$ = new Subject<string>();
 export const phase$ = new BehaviorSubject<Phase>("setup");
 
-export const sceneObjects = new BehaviorSubject<number[]>([]);
-export const sceneName$ = new BehaviorSubject<string>("");
-export const lastActionChoice$ = new BehaviorSubject<string>("");
-export const actionOptions$ = new BehaviorSubject<{ a: string; b: string } | null>(null);
-export const setupScene$ = new Subject<{ elements: string[] }>();
+// Tracks which operators have confirmed (both buttons pressed at same time)
+const confirmedOperators = new Set<number>();
 
-export type ElementStatus = "unexplored" | "exploring" | "explored" | "acted";
+// Maps operator index to their selected character (trait + profession)
+const operatorPlayerMap = new Map<number, { trait: string; profession: string }>();
 
-export interface SceneElementState {
-  probeId: number;
-  name: string;
-  status: ElementStatus;
+export function resetConfirmedOperators() {
+  confirmedOperators.clear();
+  operatorPlayerMap.clear();
 }
 
-export const sceneElements$ = new BehaviorSubject<SceneElementState[]>([]);
-
-export const enterExploration$ = phase$.pipe(filter((phase) => phase === "exploration"));
-export const enterAction$ = phase$.pipe(filter((phase) => phase === "action"));
-
-let explorationRound = 0;
-
-/**
- * Gets all probe numbers currently in use by any connected operator.
- * Excludes probe 7 (unplugged).
- */
-function getActiveProbeNums(): number[] {
-  return appState$.value.operators.map((op) => op.probeNum).filter((num) => num !== 7);
+/** Get the player label in "<trait> <profession>" format for an operator */
+function getPlayerLabel(operatorIndex: number): string | null {
+  const player = operatorPlayerMap.get(operatorIndex);
+  if (!player) return null;
+  return `${player.trait} ${player.profession}`;
 }
 
 /**
@@ -255,8 +264,11 @@ function getActiveOperatorProbeNum(): number {
 }
 
 export function startGameLoop(switchboard: BLEDevice) {
+  // Set switchboard reference for tool handlers
+  setSwitchboardForTools(switchboard);
+
   /** Game logic */
-  gmHint$.pipe(tap((hint) => sendAIText(`[GM HINT] ${hint}`))).subscribe();
+  gmHint$.pipe(tap((hint) => sendAIText(`[${hint}]`))).subscribe();
 
   // Accumulate individual story options into the full list
   storyOptionGenerated$
@@ -271,10 +283,10 @@ export function startGameLoop(switchboard: BLEDevice) {
     .subscribe();
 
   // Broadcast game state on change
-  combineLatest([phase$, sceneElements$, sceneName$, lastActionChoice$, actionOptions$, characterOptions])
+  combineLatest([phase$, characterOptions, ledState$])
     .pipe(
-      tap(([phase, elements, sceneName, lastActionChoice, actionOptions, storyOptions]) => {
-        broadcast({ type: "gameState", phase, elements, sceneName, lastActionChoice, actionOptions, storyOptions });
+      tap(([phase, storyOptions, ledState]) => {
+        broadcast({ type: "gameState", phase, storyOptions, ledState });
       })
     )
     .subscribe();
@@ -286,11 +298,8 @@ export function startGameLoop(switchboard: BLEDevice) {
         const state = {
           type: "gameState",
           phase: phase$.value,
-          elements: sceneElements$.value,
-          sceneName: sceneName$.value,
-          lastActionChoice: lastActionChoice$.value,
-          actionOptions: actionOptions$.value,
           storyOptions: characterOptions.value,
+          ledState: ledState$.value,
         };
         client.write(`data: ${JSON.stringify(state)}\n\n`);
       })
@@ -308,74 +317,18 @@ export function startGameLoop(switchboard: BLEDevice) {
     )
     .subscribe();
 
-  setupScene$
-    .pipe(
-      tap(async ({ elements }) => {
-        explorationRound++;
-        await turnOffAllLED(switchboard);
-
-        // Exclude all probes currently in use by any operator
-        const activeProbes = getActiveProbeNums();
-        const availableProbes = [0, 1, 2, 3, 4, 5, 6].filter((p) => !activeProbes.includes(p));
-        const threeRandomProbes = availableProbes.sort(() => 0.5 - Math.random()).slice(0, 3);
-        sceneObjects.next(threeRandomProbes);
-
-        // Check if any active probe is exploring
-        const currentProbe = getActiveOperatorProbeNum();
-        const newSceneElements: SceneElementState[] = [];
-        for (let i = 0; i < Math.min(elements.length, threeRandomProbes.length); i++) {
-          newSceneElements.push({
-            probeId: threeRandomProbes[i],
-            name: elements[i],
-            status: threeRandomProbes[i] === currentProbe ? "exploring" : "unexplored",
-          });
-        }
-        sceneElements$.next(newSceneElements);
-
-        threeRandomProbes.forEach((probe) => setTimeout(() => pulseOnLED(switchboard, probe), 1000 + Math.random() * 2000));
-      })
-    )
-    .subscribe();
-
-  enterAction$
-    .pipe(
-      tap(async () => {
-        await turnOffAllLED(switchboard);
-        const currentProbe = getActiveOperatorProbeNum();
-        blinkOnLED(switchboard, currentProbe); // turn on center LED for action
-
-        const elements = sceneElements$.value;
-        const newElements = elements.map((e) => {
-          if (e.probeId === currentProbe) {
-            return { ...e, status: "acted" as ElementStatus };
-          }
-          return e;
-        });
-        sceneElements$.next(newElements);
-      })
-    )
-    .subscribe();
-
-  // Character selection confirmation: all operators must have both buttons pressed
-  // Track when all operators have both buttons down
   const allOperatorsConfirmed$ = operatorButtons$.pipe(
-    // Map each button event to update an accumulated state of all operators
-    scan((acc, { operatorIndex, btn1, btn2 }) => {
-      const newAcc = new Map(acc);
-      newAcc.set(operatorIndex, btn1 && btn2);
-      return newAcc;
-    }, new Map<number, boolean>()),
-    // Check if all connected operators have both buttons pressed
-    map((buttonStates) => {
-      const operators = appState$.value.operators;
-      if (operators.length === 0) return false;
-
-      // All operators must have both buttons down
-      for (let i = 0; i < operators.length; i++) {
-        const confirmed = buttonStates.get(i) ?? false;
-        if (!confirmed) return false;
+    tap(({ operatorIndex, btn1, btn2 }) => {
+      if (btn1 && btn2) {
+        confirmedOperators.add(operatorIndex);
       }
-      return true;
+    }),
+    map(() => {
+      const activeIndices = getActiveOperatorIndices(appState$.value);
+      if (activeIndices.length === 0) return false;
+
+      // Check if all active operators have confirmed
+      return activeIndices.every((index) => confirmedOperators.has(index));
     }),
     distinctUntilChanged(),
     filter((allConfirmed) => allConfirmed && phase$.value === "setup")
@@ -388,38 +341,43 @@ export function startGameLoop(switchboard: BLEDevice) {
         console.log("All operators confirmed character selection!");
         cancelAllSpeakerPlayback();
 
-        // Collect selected characters for each operator
+        // Collect selected characters for each operator and build player mapping
         const operators = appState$.value.operators;
         const selectedCharacters: string[] = [];
 
-        for (const op of operators) {
+        operators.forEach((op, operatorIndex) => {
           if (op.probeNum !== 7) {
             const option = characterOptions.value.find((opt) => opt.probeId === op.probeNum);
-            if (option && option.intro) {
-              selectedCharacters.push(option.intro);
+            if (option && option.trait && option.profession) {
+              // Store the operator-to-player mapping
+              operatorPlayerMap.set(operatorIndex, { trait: option.trait, profession: option.profession });
+              const playerLabel = `${option.trait} ${option.profession}`;
+              selectedCharacters.push(playerLabel);
             }
           }
-        }
+        });
 
         if (selectedCharacters.length === 0) {
           console.log("No valid character selections found");
           return;
         }
 
-        // Transition to exploration phase
-        phase$.next("exploration");
+        // Transition to live phase
+        phase$.next("live");
         await turnOffAllLED(switchboard);
 
-        // Send GM HINT with selected characters and ask for first scene
-        const characterList = selectedCharacters.map((intro, i) => `Player ${i + 1}: "${intro}"`).join(", ");
-        gmHint$.next(`Players have selected their characters. ${characterList}. Call transition_to_exploration to begin the adventure with the first scene.`);
+        // Send GM HINT with selected characters (labeled as <trait> <profession>) and ask for first scene
+        const characterList = selectedCharacters.map((label) => `"${label}"`).join(", ");
+        gmHint$.next(
+          `Players have selected their characters: ${characterList}. Present the opening scene and use update_leds to pulse the LEDs for available story elements.`
+        );
       })
     )
     .subscribe();
 
   operatorProbeNum$
     .pipe(
-      tap(async ({ operatorIndex: _operatorIndex, probeNum }) => {
+      tap(async ({ operatorIndex, probeNum }) => {
         // Cancel any ongoing playback when user unplugs or changes probe
         cancelAllSpeakerPlayback();
         stopAIAudio();
@@ -444,38 +402,13 @@ export function startGameLoop(switchboard: BLEDevice) {
           } else {
             console.log("Player probed an option that is not ready yet");
           }
-        } else if (phase$.value === "exploration") {
+        } else if (phase$.value === "live") {
           startAIAudio();
-          const elements = sceneElements$.value;
-          const targetElement = elements.find((e) => e.probeId === probeNum);
-
-          let updated = false;
-          const newElements = elements.map((e) => {
-            if (e.probeId === probeNum) {
-              if (e.status === "unexplored" || e.status === "explored") {
-                updated = true;
-                return { ...e, status: "exploring" as ElementStatus };
-              }
-            } else {
-              if (e.status === "exploring") {
-                updated = true;
-                return { ...e, status: "explored" as ElementStatus };
-              }
-            }
-            return e;
-          });
-
-          if (updated) {
-            sceneElements$.next(newElements);
-          }
-
-          if (!sceneObjects.value.includes(probeNum)) {
-            gmHint$.next(`Player investigated the wrong thing. Tell them there is nothing there.`);
+          const playerLabel = getPlayerLabel(operatorIndex);
+          if (playerLabel) {
+            gmHint$.next(`"${playerLabel}" is probing LED ${probeNum}.`);
           } else {
-            const elementName = targetElement ? targetElement.name : `element (id=${explorationRound}-${probeNum})`;
-            gmHint$.next(
-              `Player is investigating "${elementName}". Reveal possible actions to the player. When player revisits the same element, be consistent with what you said before.`
-            );
+            gmHint$.next(`A player is probing LED ${probeNum}.`);
           }
         }
       })
