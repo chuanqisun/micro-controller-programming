@@ -1,12 +1,19 @@
 import { createSSEObservable } from "./sse";
 
 const newGameBtn = document.getElementById("newGameBtn") as HTMLButtonElement;
+const resetBtn = document.getElementById("resetBtn") as HTMLButtonElement;
 const gamePhaseEl = document.getElementById("gamePhase") as HTMLSpanElement;
 const gameSummaryEl = document.getElementById("gameSummary") as HTMLPreElement;
 
 export function initGameUI() {
   newGameBtn.addEventListener("click", async () => {
     await fetch("http://localhost:3000/api/game/new", { method: "POST" });
+  });
+
+  resetBtn.addEventListener("click", async () => {
+    if (confirm("Are you sure you want to restart the server?")) {
+      await fetch("http://localhost:3000/api/reset", { method: "POST" });
+    }
   });
 
   createSSEObservable("http://localhost:3000/api/events").subscribe((msg) => {

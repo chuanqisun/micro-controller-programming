@@ -15,7 +15,6 @@
     "upload:sw": "arduino-cli upload -p /dev/ttyACM0 -b esp32:esp32:XIAO_ESP32C3 ./switchboard",
     "monitor": "arduino-cli monitor -p /dev/ttyACM0 -c baudrate=115200",
     "monitor:b": "arduino-cli monitor -p /dev/ttyACM1 -c baudrate=115200",
-    "serve": "node  --env-file .env server-v0/server.mjs",
     "dev:server": "tsx watch --env-file .env server/main.ts"
   },
   "keywords": [],

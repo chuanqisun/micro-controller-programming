@@ -35,6 +35,7 @@ import {
   operatorProbeNum$,
 } from "./features/operator";
 import { handlePlayFile, handleStopPlayback } from "./features/play-file";
+import { handleReset } from "./features/process";
 import { getDungeonMasterPrompt } from "./features/prompt";
 import { silenceStart$, speakStart$ } from "./features/silence-detection";
 import { broadcast, handleSSE, newSseClient$ } from "./features/sse";
@@ -84,6 +85,7 @@ async function main() {
       handleSendTextOpenAI(),
 
       handleNewGame(switchboard),
+      handleReset(),
 
       handlePlayFile(),
       handleStopPlayback(),
