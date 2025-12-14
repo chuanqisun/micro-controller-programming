@@ -5,7 +5,7 @@ import { BLEDevice, opMacUnit1, opMacUnit2, swMac } from "./features/ble";
 import { createButtonStateMachine } from "./features/buttons";
 import { handleNewGame, phase$, startGameLoop } from "./features/game";
 import { handleUserAudioV2, saveDebugBuffer, userMessage$ } from "./features/game-v2";
-import { aiAudioPart$, aiResponse$, handleDisconnectAI, handleUserAudio } from "./features/gemini-live";
+import { aiAudioPart$, aiResponse$, handleDisconnectAI } from "./features/gemini-live";
 import { createHttpServer } from "./features/http";
 import { handleConnectOpenAI, handleSendTextOpenAI, realtimeOutputAudio$, sendText, triggerResponse } from "./features/openai-realtime";
 import {
@@ -37,7 +37,7 @@ async function main() {
 
   const switchboard = new BLEDevice(swMac);
 
-  createUDPServer([handleUserAudio(), handleUserAudioV2()], LAPTOP_UDP_RX_PORT);
+  createUDPServer([handleUserAudioV2()], LAPTOP_UDP_RX_PORT);
 
   const operatorHttpHandlers = operatorDevices.flatMap((device, index) => createOperatorHandlers(device, index).handlers);
 
@@ -53,15 +53,11 @@ async function main() {
       handleProbeApi(),
       handleBtnApi(),
 
-      // handleConnectAI(),
-      // handleDisconnectAI(),
-      // handleAISendText(),
-
       handleConnectOpenAI(),
       handleDisconnectAI(),
       handleSendTextOpenAI(),
 
-      handleNewGame(),
+      handleNewGame(switchboard),
 
       handlePlayFile(),
       handleStopPlayback(),

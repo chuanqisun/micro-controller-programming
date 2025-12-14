@@ -43,11 +43,14 @@ export interface StoryOption {
 export const storyOptionGenerated$ = new Subject<StoryOption>();
 export const characterOptions = new BehaviorSubject<StoryOption[]>([]);
 
-export function handleNewGame(): Handler {
+let _switchboard: BLEDevice | null = null;
+
+export function handleNewGame(switchboard: BLEDevice): Handler {
   return async (req, res) => {
     if (req.method !== "POST" || req.url !== "/api/game/new") return false;
 
     // Start a new game session
+    _switchboard = switchboard;
     phase$.next("setup");
     resetConfirmedOperators();
 
@@ -57,8 +60,7 @@ export function handleNewGame(): Handler {
       startPcmStream(activeOp.address);
     }
 
-    // Generate story options
-    await generateStoryOptions();
+    await generateCharacters();
 
     res.writeHead(200);
     res.end();
@@ -66,7 +68,7 @@ export function handleNewGame(): Handler {
   };
 }
 
-async function generateStoryOptions() {
+async function generateCharacters() {
   // Initialize story options with all 7 probe IDs
   const allProbes = [0, 1, 2, 3, 4, 5, 6];
 
@@ -139,7 +141,7 @@ Make sure the characters have synergy with each other and cover diverse archetyp
   }
 }
 
-export type Phase = "setup" | "live";
+export type Phase = "idle" | "setup" | "live";
 
 export interface ToolRegistration {
   name: string;
@@ -183,12 +185,6 @@ export const tools: ToolRegistration[] = [
 ];
 
 export type ToolHandler = (params?: Record<string, unknown>) => Promise<string>;
-
-let _switchboard: BLEDevice | null = null;
-
-export function setSwitchboardForTools(switchboard: BLEDevice) {
-  _switchboard = switchboard;
-}
 
 export const toolHandlers: Record<string, ToolHandler> = {
   update_leds: async (params) => {
@@ -237,7 +233,7 @@ export interface LedState {
 export const ledState$ = new BehaviorSubject<LedState[]>([0, 1, 2, 3, 4, 5, 6].map((id) => ({ id, status: "off" as const })));
 
 export const gmHint$ = new Subject<string>();
-export const phase$ = new BehaviorSubject<Phase>("setup");
+export const phase$ = new BehaviorSubject<Phase>("idle");
 
 // Tracks which operators have confirmed (both buttons pressed at same time)
 const confirmedOperators = new Set<number>();
@@ -266,9 +262,6 @@ function getActiveOperatorProbeNum(): number {
 }
 
 export function startGameLoop(switchboard: BLEDevice) {
-  // Set switchboard reference for tool handlers
-  setSwitchboardForTools(switchboard);
-
   /** Game logic */
   gmHint$.pipe(tap((hint) => sendAIText(`[${hint}]`))).subscribe();
 

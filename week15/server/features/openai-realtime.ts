@@ -1,7 +1,9 @@
 import OpenAI from "openai";
 import { Subject } from "rxjs";
 import { WebSocket } from "ws";
+import { openaiTools, openaiToolHandlers, type ToolHandler } from "./game-v2";
 import type { Handler } from "./http";
+import { getDungeonMasterPrompt } from "./prompt";
 import { updateState } from "./state";
 import { withTimeout } from "./timeout";
 
@@ -155,11 +157,17 @@ export function createRealtimeConnection(): Promise<WebSocket> {
 
           case "response.done":
             console.log("✓ Response complete");
+            // Handle function calls from response.done
+            handleFunctionCalls(event, ws);
             break;
 
           case "response.output_audio.delta":
             const audioChunk = Buffer.from(event.delta, "base64");
             realtimeOutputAudio$.next(audioChunk);
+            break;
+
+          case "response.function_call_arguments.delta":
+            // Streaming function call arguments - can be used for progress UI
             break;
 
           case "error":
@@ -190,8 +198,10 @@ function configureSession(ws: WebSocket) {
       model: "gpt-realtime",
       output_modalities: ["audio"],
       instructions: `
-You are an English speaking friend. Your response is always short.
+${getDungeonMasterPrompt()},
       `,
+      tools: openaiTools,
+      tool_choice: "auto",
       audio: {
         input: {
           format: {
@@ -205,6 +215,70 @@ You are an English speaking friend. Your response is always short.
   };
 
   ws.send(JSON.stringify(sessionConfig));
+}
+
+/**
+ * Handle function calls from OpenAI Realtime API response.done event
+ */
+function handleFunctionCalls(event: any, ws: WebSocket) {
+  const outputs = event.response?.output;
+  if (!outputs || !Array.isArray(outputs)) return;
+
+  for (const output of outputs) {
+    if (output.type !== "function_call") continue;
+
+    const functionName = output.name;
+    const callId = output.call_id;
+    let args: Record<string, unknown> = {};
+
+    try {
+      args = JSON.parse(output.arguments || "{}");
+    } catch (e) {
+      console.error(`Failed to parse function arguments for ${functionName}:`, e);
+      continue;
+    }
+
+    const handler = openaiToolHandlers[functionName] as ToolHandler | undefined;
+    if (!handler) {
+      console.warn(`⚠️ No handler for tool: ${functionName}`);
+      sendFunctionCallResult(ws, callId, { error: `Unknown function: ${functionName}` });
+      continue;
+    }
+
+    console.log(`🔧 Executing tool "${functionName}" with args:`, args);
+
+    handler(args)
+      .then((result) => {
+        console.log(`✓ Tool "${functionName}" returned result:`, result);
+        sendFunctionCallResult(ws, callId, { output: result });
+      })
+      .catch((error) => {
+        console.error(`Error executing tool "${functionName}":`, error);
+        sendFunctionCallResult(ws, callId, { error: `Tool execution failed: ${error.message}` });
+      });
+  }
+}
+
+/**
+ * Send function call result back to OpenAI Realtime API and trigger a new response
+ */
+function sendFunctionCallResult(ws: WebSocket, callId: string, result: { output?: string; error?: string }) {
+  if (ws.readyState !== WebSocket.OPEN) return;
+
+  // Create conversation item with function call output
+  const functionOutput = {
+    type: "conversation.item.create",
+    item: {
+      type: "function_call_output",
+      call_id: callId,
+      output: JSON.stringify(result),
+    },
+  };
+
+  ws.send(JSON.stringify(functionOutput));
+
+  // Trigger a new response to continue the conversation
+  ws.send(JSON.stringify({ type: "response.create" }));
 }
 
 const openai = new OpenAI();
