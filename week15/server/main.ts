@@ -67,7 +67,7 @@ async function main() {
 
   const operatorHttpHandlers = operatorDevices.flatMap((device, index) => createOperatorHandlers(device, index).handlers);
 
-  const httpServer = createHttpServer(
+  createHttpServer(
     [
       handleSSE(),
       handleBlinkOnLED(switchboard),
