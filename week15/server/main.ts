@@ -1,5 +1,6 @@
 import { combineLatest, debounceTime, filter, map, tap, withLatestFrom } from "rxjs";
 import { HTTP_PORT, LAPTOP_UDP_RX_PORT } from "./config";
+import { audioPlayer } from "./features/audio";
 import { transcriber } from "./features/azure-stt";
 import { BLEDevice, opMacUnit1, opMacUnit2, swMac } from "./features/ble";
 import { createButtonStateMachine } from "./features/buttons";
@@ -167,6 +168,7 @@ async function main() {
         const activeOp = getActiveOperator(appState$.value);
         if (activeOp?.address) {
           sendPcm16UDP(buf, activeOp.address);
+          audioPlayer.push(buf);
         }
       })
     )

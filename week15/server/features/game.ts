@@ -3,6 +3,7 @@ import { JSONParser } from "@streamparser/json";
 import { BehaviorSubject, combineLatest, distinctUntilChanged, filter, map, scan, Subject, tap } from "rxjs";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
+import { audioPlayer } from "./audio";
 import { AzureSpeechToText, transcriber } from "./azure-stt";
 import { BLEDevice } from "./ble";
 import { DebugAudioBuffer } from "./debug-audio";
@@ -10,7 +11,7 @@ import type { Handler } from "./http";
 import { sendText, triggerResponse } from "./openai-realtime";
 import { operatorButtons$, operatorProbeNum$ } from "./operator";
 import { recordAudioActivity, startSilenceDetection } from "./silence-detection";
-import { cancelAllSpeakerPlayback, playAudioThroughSpeakers } from "./speaker";
+import { cancelAllSpeakerPlayback } from "./speaker";
 import { broadcast, newSseClient$ } from "./sse";
 import { appState$, getActiveOperator, getActiveOperatorIndices, turnOffAllLEDStates, type LEDStatus } from "./state";
 import { blinkOnLED, pulseOnLED, turnOffAllLED, turnOffLED } from "./switchboard";
@@ -552,7 +553,7 @@ export function startGameLoop(switchboard: BLEDevice) {
               const currentProbe = getActiveOperatorProbeNum();
               if (currentProbe === probeNum) {
                 sendPcm16UDP(audioBuffer, appState$.value.operators[operatorIndex].address!);
-                await playAudioThroughSpeakers(audioBuffer);
+                audioPlayer.push(audioBuffer);
               }
             } catch (err) {
               console.error("Failed to play character intro:", err);

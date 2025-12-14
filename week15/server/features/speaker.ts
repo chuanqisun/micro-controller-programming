@@ -1,4 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "child_process";
+import { audioPlayer } from "./audio";
 
 let activePlaybackProcess: ChildProcessWithoutNullStreams[] = [];
 
@@ -39,6 +40,9 @@ export function cancelAllSpeakerPlayback() {
   for (const proc of activePlaybackProcess) {
     proc.kill();
   }
+
+  audioPlayer.stop();
+
   activePlaybackProcess = [];
 }
 
