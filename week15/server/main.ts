@@ -1,10 +1,12 @@
-import { filter, map, tap, withLatestFrom } from "rxjs";
+import http from "http";
+import { combineLatest, debounceTime, filter, map, tap, withLatestFrom } from "rxjs";
 import { HTTP_PORT, LAPTOP_UDP_RX_PORT } from "./config";
 import { transcriber } from "./features/azure-stt";
 import { BLEDevice, opMacUnit1, opMacUnit2, swMac } from "./features/ble";
 import { createButtonStateMachine } from "./features/buttons";
 import {
   formatGameStateSummary,
+  gameLog$,
   gameStateSummary$,
   handleNewGame,
   handleUserAudio,
@@ -66,7 +68,7 @@ async function main() {
 
   const operatorHttpHandlers = operatorDevices.flatMap((device, index) => createOperatorHandlers(device, index).handlers);
 
-  createHttpServer(
+  const httpServer = createHttpServer(
     [
       handleSSE(),
       handleBlinkOnLED(switchboard),
@@ -178,7 +180,12 @@ async function main() {
     )
     .subscribe();
 
-  gameStateSummary$.pipe(tap((summary) => updateSystemInstruction(getDungeonMasterPrompt(formatGameStateSummary(summary))))).subscribe();
+  combineLatest([gameStateSummary$, gameLog$])
+    .pipe(
+      debounceTime(100),
+      tap(([summary, log]) => updateSystemInstruction(getDungeonMasterPrompt({ snapshot: formatGameStateSummary(summary), log })))
+    )
+    .subscribe();
 
   operatorButtonsMachine.enterIdle$
     .pipe(

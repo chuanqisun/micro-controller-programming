@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { JSONParser } from "@streamparser/json";
-import { BehaviorSubject, combineLatest, debounceTime, distinctUntilChanged, filter, map, scan, Subject, tap } from "rxjs";
+import { BehaviorSubject, combineLatest, distinctUntilChanged, filter, map, scan, Subject, tap } from "rxjs";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { AzureSpeechToText, transcriber } from "./azure-stt";
@@ -74,6 +74,7 @@ export const characterOptionGenerated$ = new Subject<StoryOption>();
 export const characterOptions = new BehaviorSubject<StoryOption[]>([]);
 export const gmHint$ = new Subject<string>();
 export const phase$ = new BehaviorSubject<Phase>("idle");
+export const gameLog$ = new BehaviorSubject<string>("");
 
 // Tracks which operators have confirmed (both buttons pressed at same time)
 const confirmedOperators = new Set<number>();
@@ -110,10 +111,7 @@ const gameStateSummaryInternal$ = new BehaviorSubject<GameStateSummary>({
   leds: Array.from({ length: 7 }, (_, i) => ({ id: i, status: "off" as const, probedBy: null })),
 });
 
-export const gameStateSummary$ = gameStateSummaryInternal$.pipe(
-  distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b)),
-  debounceTime(10)
-);
+export const gameStateSummary$ = gameStateSummaryInternal$.pipe(distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b)));
 
 /** Format game state summary as a readable string */
 export function formatGameStateSummary(summary: GameStateSummary): string {
@@ -285,6 +283,22 @@ export const openaiTools: OpenAITool[] = [
       required: ["leds"],
     },
   },
+  {
+    type: "function",
+    name: "append_log",
+    description:
+      "Append notes about the game to a log file. Use this to track important story events, character developments, scene descriptions, discovered objects, or any other details that should be remembered for resuming the game later.",
+    parameters: {
+      type: "object",
+      properties: {
+        log: {
+          type: "string",
+          description: "A note about the current scene, event, character, or object to be logged for future reference",
+        },
+      },
+      required: ["log"],
+    },
+  },
 ];
 export type ToolHandler = (params?: Record<string, unknown>) => Promise<string>;
 
@@ -317,6 +331,20 @@ export const toolHandlers: Record<string, ToolHandler> = {
     }
 
     return "LED update success";
+  },
+  append_log: async (params) => {
+    const log = params?.log as string | undefined;
+    if (!log) {
+      return "No log content provided";
+    }
+
+    const now = new Date();
+    const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
+    const logEntry = `[${timestamp}] ${log}\n`;
+    const currentLog = gameLog$.value;
+    gameLog$.next(currentLog + logEntry);
+    console.log("Game log appended:", log);
+    return "Log entry recorded successfully";
   },
 };
 
@@ -411,10 +439,10 @@ export function startGameLoop(switchboard: BLEDevice) {
     .subscribe();
 
   // Broadcast game state on change
-  combineLatest([phase$, characterOptions, appState$.pipe(map((s) => s.leds))])
+  combineLatest([phase$, characterOptions, appState$.pipe(map((s) => s.leds)), gameLog$])
     .pipe(
-      tap(([phase, storyOptions, ledState]) => {
-        broadcast({ type: "gameState", phase, storyOptions, ledState });
+      tap(([phase, storyOptions, ledState, gameLog]) => {
+        broadcast({ type: "gameState", phase, storyOptions, ledState, gameLog });
       })
     )
     .subscribe();
@@ -428,6 +456,7 @@ export function startGameLoop(switchboard: BLEDevice) {
           phase: phase$.value,
           storyOptions: characterOptions.value,
           ledState: appState$.value.leds,
+          gameLog: gameLog$.value,
         };
         client.write(`data: ${JSON.stringify(state)}\n\n`);
       })

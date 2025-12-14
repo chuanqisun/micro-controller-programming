@@ -26,6 +26,12 @@ sseEvents$.subscribe({
     if (message.state) {
       state$.next(message.state);
     }
+    if (message.gameLog !== undefined) {
+      const gameLogEl = document.getElementById("gameLog");
+      if (gameLogEl) {
+        gameLogEl.textContent = message.gameLog;
+      }
+    }
   },
   error: (error) => {
     appendDiagnosticsError(error);

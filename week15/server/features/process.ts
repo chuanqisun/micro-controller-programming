@@ -10,10 +10,9 @@ export function handleReset(): Handler {
     res.writeHead(200);
     res.end(JSON.stringify({ message: "Restarting server..." }));
 
-    // Spawn npm run dev:server in a detached process, then exit
     setTimeout(() => {
-      console.log("[Reset] Starting new process and exiting current one");
-      spawn("npm", ["run", "dev:server"], {
+      console.log("[Reset] Killing port and starting new process");
+      spawn("bash", ["-c", "npx kill-port 3000 && npm run dev:server"], {
         detached: true,
         stdio: "inherit",
         cwd: process.cwd(),
