@@ -145,7 +145,7 @@ async function connectGeminiLive(): Promise<void> {
   const config: LiveConnectConfig = {
     responseModalities: [Modality.AUDIO],
     systemInstruction: getDungeonMasterPrompt(),
-    thinkingConfig: { thinkingBudget: 800 },
+    thinkingConfig: { thinkingBudget: 400 },
     realtimeInputConfig: {
       automaticActivityDetection: {
         disabled: true,
