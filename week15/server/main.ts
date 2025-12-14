@@ -1,4 +1,3 @@
-import http from "http";
 import { combineLatest, debounceTime, filter, map, tap, withLatestFrom } from "rxjs";
 import { HTTP_PORT, LAPTOP_UDP_RX_PORT } from "./config";
 import { transcriber } from "./features/azure-stt";
