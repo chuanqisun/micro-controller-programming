@@ -42,23 +42,25 @@ export class AzureSpeechToText {
   append(buffer: Buffer): void {
     if (this.streamClosed || this.paused) return;
 
-    this.audioBuffers.push(buffer);
+    const copiedBuffer = Buffer.from(buffer);
+
+    this.audioBuffers.push(copiedBuffer);
 
     if (!this.requestStarted) {
       this.startStreamingRequest();
     } else if (this.requestController) {
       // Stream the new buffer to the ongoing request
-      this.requestController.enqueue(new Uint8Array(buffer));
+      this.requestController.enqueue(new Uint8Array(copiedBuffer));
     }
   }
 
-  pause() {
+  mute() {
     this.audioBuffers = [];
     this.paused = true;
     return this;
   }
 
-  resume() {
+  unmute() {
     this.paused = false;
     return this;
   }
@@ -152,7 +154,7 @@ export class AzureSpeechToText {
   }
 
   private extractFinalTranscriptionText(result: AzureTranscriptionResult): string {
-    return result.combinedPhrases[0]?.text ?? "";
+    return result.combinedPhrases[0]?.text ?? null;
   }
 
   private generateMultipartBoundary(): string {
