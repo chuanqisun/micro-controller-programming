@@ -4,7 +4,7 @@ import { BehaviorSubject, combineLatest, distinctUntilChanged, filter, map, scan
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { BLEDevice } from "./ble";
-import { sendAIText, startAIAudio, stopAIAudio } from "./gemini-live";
+import { resetAIAudio, sendAIText, startAIAudio } from "./gemini-live";
 import type { Handler } from "./http";
 import { operatorButtons$, operatorProbeNum$ } from "./operator";
 import { cancelAllSpeakerPlayback, playAudioThroughSpeakers } from "./speaker";
@@ -12,7 +12,7 @@ import { broadcast, newSseClient$ } from "./sse";
 import { appState$, getActiveOperator, getActiveOperatorIndices } from "./state";
 import { blinkOnLED, pulseOnLED, turnOffAllLED } from "./switchboard";
 import { GenerateOpenAISpeech, getRandomVoiceGenerator } from "./tts";
-import { startPcmStream } from "./udp";
+import { sendPcm16UDP, startPcmStream } from "./udp";
 
 const characterSchema = z.object({
   trait: z.string().describe("An adjective phrase describing the character's personality or demeanor"),
@@ -380,7 +380,7 @@ export function startGameLoop(switchboard: BLEDevice) {
       tap(async ({ operatorIndex, probeNum }) => {
         // Cancel any ongoing playback when user unplugs or changes probe
         cancelAllSpeakerPlayback();
-        stopAIAudio();
+        resetAIAudio();
 
         if (probeNum === 7) return;
 
@@ -394,6 +394,7 @@ export function startGameLoop(switchboard: BLEDevice) {
               // Check if still on the same probe after async wait
               const currentProbe = getActiveOperatorProbeNum();
               if (currentProbe === probeNum) {
+                sendPcm16UDP(audioBuffer, appState$.value.operators[operatorIndex].address!);
                 await playAudioThroughSpeakers(audioBuffer);
               }
             } catch (err) {
