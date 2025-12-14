@@ -262,7 +262,7 @@ export function streamAudioToAI(pcmData: Buffer): void {
   session.sendRealtimeInput({
     audio: {
       data: base64Audio,
-      mimeType: "audio/pcm;rate=24000",
+      mimeType: "audio/pcm;rate=16000",
     },
   });
 }
