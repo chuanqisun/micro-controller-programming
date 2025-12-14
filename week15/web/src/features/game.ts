@@ -2,6 +2,7 @@ import { createSSEObservable } from "./sse";
 
 const newGameBtn = document.getElementById("newGameBtn") as HTMLButtonElement;
 const gamePhaseEl = document.getElementById("gamePhase") as HTMLSpanElement;
+const gameSummaryEl = document.getElementById("gameSummary") as HTMLPreElement;
 
 export function initGameUI() {
   newGameBtn.addEventListener("click", async () => {
@@ -11,6 +12,8 @@ export function initGameUI() {
   createSSEObservable("http://localhost:3000/api/events").subscribe((msg) => {
     if (msg.type === "gameState") {
       renderGameState(msg);
+    } else if (msg.type === "gameStateSummary") {
+      gameSummaryEl.textContent = msg.summary;
     }
   });
 }

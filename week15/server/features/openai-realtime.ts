@@ -281,5 +281,19 @@ function sendFunctionCallResult(ws: WebSocket, callId: string, result: { output?
   ws.send(JSON.stringify({ type: "response.create" }));
 }
 
+export function updateSystemInstruction(newInstruction: string) {
+  if (!realtimeWs || realtimeWs.readyState !== WebSocket.OPEN || !sessionReady) return;
+
+  const sessionUpdate = {
+    type: "session.update",
+    session: {
+      type: "realtime",
+      instructions: newInstruction,
+    },
+  };
+
+  realtimeWs.send(JSON.stringify(sessionUpdate));
+}
+
 const openai = new OpenAI();
 openai.realtime;

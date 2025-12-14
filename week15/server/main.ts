@@ -1,11 +1,28 @@
-import { filter, map, tap } from "rxjs";
+import { filter, map, tap, withLatestFrom } from "rxjs";
 import { HTTP_PORT, LAPTOP_UDP_RX_PORT } from "./config";
 import { transcriber } from "./features/azure-stt";
 import { BLEDevice, opMacUnit1, opMacUnit2, swMac } from "./features/ble";
 import { createButtonStateMachine } from "./features/buttons";
-import { handleNewGame, handleUserAudio, phase$, saveDebugBuffer, startGameLoop, userMessage$ } from "./features/game";
+import {
+  formatGameStateSummary,
+  gameStateSummary$,
+  handleNewGame,
+  handleUserAudio,
+  phase$,
+  saveDebugBuffer,
+  startGameLoop,
+  userMessage$,
+} from "./features/game";
 import { createHttpServer } from "./features/http";
-import { handleConnectOpenAI, handleDisconnectOpenAI, handleSendTextOpenAI, realtimeOutputAudio$, sendText, triggerResponse } from "./features/openai-realtime";
+import {
+  handleConnectOpenAI,
+  handleDisconnectOpenAI,
+  handleSendTextOpenAI,
+  realtimeOutputAudio$,
+  sendText,
+  triggerResponse,
+  updateSystemInstruction,
+} from "./features/openai-realtime";
 import {
   activeOperatorIndex$,
   createOperatorHandlers,
@@ -18,6 +35,7 @@ import {
   operatorProbeNum$,
 } from "./features/operator";
 import { handlePlayFile, handleStopPlayback } from "./features/play-file";
+import { getDungeonMasterPrompt } from "./features/prompt";
 import { silenceStart$, speakStart$ } from "./features/silence-detection";
 import { broadcast, handleSSE, newSseClient$ } from "./features/sse";
 import { appState$, createDefaultOperatorState, getActiveOperator, updateOperatorByIndex, updateState } from "./features/state";
@@ -71,6 +89,12 @@ async function main() {
     .subscribe();
 
   newSseClient$.pipe(tap(() => broadcast({ state: appState$.value }))).subscribe();
+  gameStateSummary$
+    .pipe(
+      map((summary) => formatGameStateSummary(summary)),
+      tap((summary) => broadcast({ type: "gameStateSummary", summary }))
+    )
+    .subscribe();
 
   operatorDevices.forEach((device, index) => {
     const messageHandlers = createOperatorMessageHandlers(index, device.mac);
@@ -142,6 +166,8 @@ async function main() {
     )
     .subscribe();
 
+  gameStateSummary$.pipe(tap((summary) => updateSystemInstruction(getDungeonMasterPrompt(formatGameStateSummary(summary))))).subscribe();
+
   operatorButtonsMachine.enterIdle$
     .pipe(
       filter(() => phase$.value === "live"),
@@ -173,12 +199,16 @@ async function main() {
     .pipe(
       filter(() => phase$.value === "live"),
       tap(() => console.log("Silence detected, committing transcription")),
-      tap(() => {
+      withLatestFrom(appState$),
+      tap(([_, appState]) => {
         transcriber.commit().then((text) => {
           if (!text) return;
           userMessage$.next({
             address: getActiveOperator(appState$.value)?.address!,
-            message: text,
+            message: `
+[Player ${appState.activeOperatorIndex + 1} spoke] 
+${text.trim()}
+            `.trim(),
           });
         });
         transcriber.mute();

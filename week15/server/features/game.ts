@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { JSONParser } from "@streamparser/json";
-import { BehaviorSubject, combineLatest, distinctUntilChanged, filter, map, scan, Subject, tap } from "rxjs";
+import { BehaviorSubject, combineLatest, debounceTime, distinctUntilChanged, filter, map, scan, Subject, tap } from "rxjs";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { AzureSpeechToText, transcriber } from "./azure-stt";
@@ -12,7 +12,7 @@ import { operatorButtons$, operatorProbeNum$ } from "./operator";
 import { recordAudioActivity, startSilenceDetection } from "./silence-detection";
 import { cancelAllSpeakerPlayback, playAudioThroughSpeakers } from "./speaker";
 import { broadcast, newSseClient$ } from "./sse";
-import { appState$, getActiveOperator, getActiveOperatorIndices, turnOffAllLEDStates } from "./state";
+import { appState$, getActiveOperator, getActiveOperatorIndices, turnOffAllLEDStates, type LEDStatus } from "./state";
 import { blinkOnLED, pulseOnLED, turnOffAllLED, turnOffLED } from "./switchboard";
 import { generateOpenAISpeech, getRandomVoiceGenerator } from "./tts";
 import { sendPcm16UDP, type UDPHandler } from "./udp";
@@ -80,6 +80,69 @@ const confirmedOperators = new Set<number>();
 
 // Maps operator index to their selected character (trait + profession)
 const operatorPlayerMap = new Map<number, { trait: string; profession: string }>();
+
+// Tracks previous probe number for each operator
+const previousProbeMap = new Map<number, number>();
+
+export interface PlayerSummary {
+  operatorIndex: number;
+  trait: string | null;
+  profession: string | null;
+  currentProbe: number;
+  previousProbe: number | null;
+}
+
+export interface LEDSummary {
+  id: number;
+  status: LEDStatus;
+  probedBy: number | null; // operator index or null if not probed
+}
+
+export interface GameStateSummary {
+  phase: Phase;
+  players: PlayerSummary[];
+  leds: LEDSummary[];
+}
+
+const gameStateSummaryInternal$ = new BehaviorSubject<GameStateSummary>({
+  phase: "idle",
+  players: [],
+  leds: Array.from({ length: 7 }, (_, i) => ({ id: i, status: "off" as const, probedBy: null })),
+});
+
+export const gameStateSummary$ = gameStateSummaryInternal$.pipe(
+  distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b)),
+  debounceTime(10)
+);
+
+/** Format game state summary as a readable string */
+export function formatGameStateSummary(summary: GameStateSummary): string {
+  const lines: string[] = [];
+
+  // Player summaries
+  summary.players.forEach((player, idx) => {
+    lines.push(`# Player ${idx + 1}`);
+    lines.push(`Role: ${player.profession ?? "Not selected"}`);
+    lines.push(`Trait: ${player.trait ?? "Not selected"}`);
+    lines.push(`Current probe: ${player.currentProbe === 7 ? "None" : `LED ${player.currentProbe}`}`);
+    lines.push(`Previous probe: ${player.previousProbe === null ? "None" : player.previousProbe === 7 ? "None" : `LED ${player.previousProbe}`}`);
+    lines.push("");
+  });
+
+  if (summary.players.length === 0) {
+    lines.push("# No players connected");
+    lines.push("");
+  }
+
+  // Scene / LED states
+  lines.push("# Scene");
+  summary.leds.forEach((led) => {
+    const probedByLabel = led.probedBy !== null ? `Player ${led.probedBy + 1}` : "empty";
+    lines.push(`LED${led.id}: ${led.status}, ${probedByLabel}`);
+  });
+
+  return lines.join("\n");
+}
 
 let _switchboard: BLEDevice | null = null;
 
@@ -162,7 +225,7 @@ async function generateCharacters() {
 - archetype: Choose from hero, magician, lover, jester, explorer, sage, innocent, creator, caregiver, outlaw, orphan, or seducer
 - trait: A single adjective describing the character's personality or demeanor (e.g., "cunning", "brave", "mysterious")
 - profession: A single noun describing the character's role or occupation (e.g., "blacksmith", "oracle", "hunter")
-- intro: A compelling one-sentence intro grounded in archetype, starting with "I am..." that captures their essence using the trait and profession. ONLY a few words.
+- intro: A compelling one short sentence intro, starting with "I am..." that captures their essence using the trait and profession. ONLY a few words. The sound will be played when player previews this character.
 - voiceActor: A vivid description of their voice quality (e.g., "deep and gravelly", "soft and melodic", "crackling with energy"), grounded in their archetype and intro.
 
 Make sure the characters have synergy with each other and cover diverse archetypes.`,
@@ -260,6 +323,7 @@ export const toolHandlers: Record<string, ToolHandler> = {
 export function resetConfirmedOperators() {
   confirmedOperators.clear();
   operatorPlayerMap.clear();
+  previousProbeMap.clear();
 }
 
 /** Get the player label in "<trait> <profession>" format for an operator */
@@ -283,6 +347,54 @@ export function startGameLoop(switchboard: BLEDevice) {
     .pipe(
       tap((hint) => sendText(`[${hint}]`)),
       tap(triggerResponse)
+    )
+    .subscribe();
+
+  // Derive game state summary from combined observables
+  combineLatest([phase$, appState$])
+    .pipe(
+      map(([phase, appState]): GameStateSummary => {
+        // Build player summaries from active operators
+        const players: PlayerSummary[] = appState.operators
+          .map((op, operatorIndex) => {
+            if (!op.address) return null;
+            const playerData = operatorPlayerMap.get(operatorIndex);
+            return {
+              operatorIndex,
+              trait: playerData?.trait ?? null,
+              profession: playerData?.profession ?? null,
+              currentProbe: op.probeNum,
+              previousProbe: previousProbeMap.get(operatorIndex) ?? null,
+            };
+          })
+          .filter((p): p is PlayerSummary => p !== null);
+
+        // Build LED summaries with probe ownership
+        const leds: LEDSummary[] = appState.leds.map((ledState, id) => {
+          // Find which operator (if any) is probing this LED
+          const probingOperator = appState.operators.findIndex((op) => op.address && op.probeNum === id);
+          return {
+            id,
+            status: ledState,
+            probedBy: probingOperator >= 0 ? probingOperator : null,
+          };
+        });
+
+        return { phase, players, leds };
+      }),
+      tap((summary) => gameStateSummaryInternal$.next(summary))
+    )
+    .subscribe();
+
+  // Track previous probe when it changes
+  operatorProbeNum$
+    .pipe(
+      tap(({ operatorIndex, probeNum }) => {
+        const currentProbe = appState$.value.operators[operatorIndex]?.probeNum;
+        if (currentProbe !== undefined && currentProbe !== probeNum) {
+          previousProbeMap.set(operatorIndex, currentProbe);
+        }
+      })
     )
     .subscribe();
 
