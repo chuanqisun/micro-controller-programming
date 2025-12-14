@@ -20,12 +20,12 @@ const playerCountRadios = document.querySelectorAll<HTMLInputElement>('input[nam
 const player2Panel = document.querySelector<HTMLElement>('.operator-panel[data-operator="1"]');
 
 playerCountRadios.forEach((radio) => {
-  radio.addEventListener('change', (e) => {
+  radio.addEventListener("change", (e) => {
     const target = e.target as HTMLInputElement;
-    if (target.value === '1') {
-      player2Panel?.classList.add('hidden');
+    if (target.value === "1") {
+      player2Panel?.classList.add("hidden");
     } else {
-      player2Panel?.classList.remove('hidden');
+      player2Panel?.classList.remove("hidden");
     }
   });
 });
