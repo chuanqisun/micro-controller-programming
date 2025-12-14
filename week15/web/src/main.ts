@@ -15,6 +15,21 @@ initSimulationUI();
 initPlaybackUI();
 initGameUI();
 
+// Player count selection
+const playerCountRadios = document.querySelectorAll<HTMLInputElement>('input[name="playerCount"]');
+const player2Panel = document.querySelector<HTMLElement>('.operator-panel[data-operator="1"]');
+
+playerCountRadios.forEach((radio) => {
+  radio.addEventListener('change', (e) => {
+    const target = e.target as HTMLInputElement;
+    if (target.value === '1') {
+      player2Panel?.classList.add('hidden');
+    } else {
+      player2Panel?.classList.remove('hidden');
+    }
+  });
+});
+
 state$.pipe(tap(updateDiagnosticsState)).subscribe();
 
 stateChange$.pipe(tap(updateSwitchboardUI), tap(updateOperatorUI), tap(updateSimulationUI), tap(updatePlaybackUI)).subscribe();

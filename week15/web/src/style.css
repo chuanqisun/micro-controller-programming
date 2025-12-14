@@ -83,6 +83,17 @@ textarea {
   margin-top: 0.5rem;
 }
 
+/* Game log word wrap */
+#gameLog {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* Player 2 visibility */
+.operator-panel[data-operator="1"].hidden {
+  display: none;
+}
+
 /* Switchboard LED button animations */
 #blinkOnControls button {
   transition: background-color 0.2s ease;
