@@ -132,3 +132,11 @@ textarea {
 #blinkOnControls button.pulseon {
   animation: pulse 2040ms ease-in-out infinite;
 }
+
+/* Active probe and button states */
+.probe.active,
+.btnBtn1.active,
+.btnBtn2.active,
+.btnBoth.active {
+  background-color: #111 !important;
+}

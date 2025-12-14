@@ -107,4 +107,30 @@ function updateOperatorPanel(panel: HTMLDivElement, operator: OperatorState) {
   if (stopPlaybackBtn) {
     stopPlaybackBtn.disabled = !hasOpAddress;
   }
+
+  // Update probe button active states
+  const probeButtons = panel.querySelectorAll<HTMLButtonElement>(".probe");
+  probeButtons.forEach((btn) => {
+    const probeId = parseInt(btn.dataset.probe ?? "-1", 10);
+    if (probeId === operator.probeNum) {
+      btn.classList.add("active");
+    } else {
+      btn.classList.remove("active");
+    }
+  });
+
+  // Update button state active classes
+  const btn1Btn = panel.querySelector<HTMLButtonElement>(".btnBtn1");
+  const btn2Btn = panel.querySelector<HTMLButtonElement>(".btnBtn2");
+  const bothBtn = panel.querySelector<HTMLButtonElement>(".btnBoth");
+
+  if (btn1Btn) {
+    btn1Btn.classList.toggle("active", operator.btn1 && !operator.btn2);
+  }
+  if (btn2Btn) {
+    btn2Btn.classList.toggle("active", operator.btn2 && !operator.btn1);
+  }
+  if (bothBtn) {
+    bothBtn.classList.toggle("active", operator.btn1 && operator.btn2);
+  }
 }
