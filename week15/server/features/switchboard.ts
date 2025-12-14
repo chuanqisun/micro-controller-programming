@@ -1,6 +1,6 @@
 import type { BLEDevice } from "./ble";
 import type { Handler } from "./http";
-import { updateState } from "./state";
+import { turnOffAllLEDStates, updateLEDState, updateState } from "./state";
 import { withTimeout } from "./timeout";
 
 /**
@@ -13,6 +13,7 @@ export function handleBlinkOnLED(switchboard: BLEDevice): Handler {
     if (req.method !== "POST" || url.pathname !== "/api/sw/blinkon") return false;
     const id = url.searchParams.get("id");
     await switchboard.send(`blinkon:${id}`);
+    updateLEDState(Number(id), "blinkon");
     res.writeHead(200);
     res.end(JSON.stringify({ status: "ok" }));
 
@@ -30,6 +31,7 @@ export function handlePulseOnLED(switchboard: BLEDevice): Handler {
     if (req.method !== "POST" || url.pathname !== "/api/sw/pulseon") return false;
     const id = url.searchParams.get("id");
     await switchboard.send(`pulseon:${id}`);
+    updateLEDState(Number(id), "pulseon");
     res.writeHead(200);
     res.end(JSON.stringify({ status: "ok" }));
 
@@ -42,6 +44,7 @@ export function handleLEDAllOff(switchboard: BLEDevice): Handler {
     if (req.method !== "POST" || req.url !== "/api/sw/all-off") return false;
 
     await turnOffAllLED(switchboard);
+    turnOffAllLEDStates();
     res.writeHead(200);
     res.end(JSON.stringify({ status: "ok" }));
 
@@ -51,18 +54,27 @@ export function handleLEDAllOff(switchboard: BLEDevice): Handler {
 
 export async function turnOnLED(switchboard: BLEDevice, id: number) {
   await switchboard.send(`fadeon:${id}`);
+  updateLEDState(id, "fadeon");
+}
+
+export async function turnOffLED(switchboard: BLEDevice, id: number) {
+  await switchboard.send(`fadeoff:${id}`);
+  updateLEDState(id, "off");
 }
 
 export async function blinkOnLED(switchboard: BLEDevice, id: number) {
   await switchboard.send(`blinkon:${id}`);
+  updateLEDState(id, "blinkon");
 }
 
 export async function pulseOnLED(switchboard: BLEDevice, id: number) {
   await switchboard.send(`pulseon:${id}`);
+  updateLEDState(id, "pulseon");
 }
 
 export async function turnOffAllLED(switchboard: BLEDevice) {
   await switchboard.send(`fadeoff:all`);
+  turnOffAllLEDStates();
 }
 
 export function handleConnectSwitchboard(switchboard: BLEDevice): Handler {
@@ -73,6 +85,7 @@ export function handleConnectSwitchboard(switchboard: BLEDevice): Handler {
     try {
       await withTimeout(switchboard.connect(), 15000);
       turnOffAllLED(switchboard);
+      turnOffAllLEDStates();
       updateState((state) => ({ ...state, swConnection: "connected" }));
     } catch (error) {
       updateState((state) => ({ ...state, swConnection: "disconnected" }));

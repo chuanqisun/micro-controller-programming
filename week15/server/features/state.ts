@@ -35,6 +35,8 @@ export function createDefaultOperatorState(mac: string): OperatorState {
   };
 }
 
+export type LEDStatus = "off" | "fadeon" | "blinkon" | "pulseon";
+
 export interface AppState {
   aiConnection: ConnectionStatus;
   swConnection: ConnectionStatus;
@@ -42,6 +44,8 @@ export interface AppState {
   operators: OperatorState[];
   /** Index of the currently active operator for audio I/O (0-based) */
   activeOperatorIndex: number;
+  /** LED states for all 7 LEDs - array index is LED id (0-6) */
+  leds: LEDStatus[];
   // Text adventure state
   storyHistory: string[];
 }
@@ -110,12 +114,18 @@ export function updateOperatorByMac(state: AppState, mac: string, updateFn: (op:
   return updateOperatorByIndex(state, index, updateFn);
 }
 
+// Helper to create default LED states (all off)
+export function createDefaultLEDStates(): LEDStatus[] {
+  return Array(7).fill("off" as LEDStatus);
+}
+
 // Initial state with empty operators array - operators will be registered in main.ts
 export const appState$ = new BehaviorSubject<AppState>({
   aiConnection: "disconnected",
   swConnection: "disconnected",
   operators: [],
   activeOperatorIndex: 0,
+  leds: createDefaultLEDStates(),
   storyHistory: [],
 });
 
@@ -125,4 +135,35 @@ export function updateState(updateFn: (state: AppState) => AppState) {
   if (JSON.stringify(currentState) === JSON.stringify(newState)) return;
 
   appState$.next(newState);
+}
+
+/**
+ * Update a single LED state by ID (array index).
+ */
+export function updateLEDState(ledId: number, status: LEDStatus) {
+  updateState((state) => {
+    const newLeds = [...state.leds];
+    newLeds[ledId] = status;
+    return { ...state, leds: newLeds };
+  });
+}
+
+/**
+ * Update all LED states at once.
+ */
+export function updateAllLEDStates(ledStates: LEDStatus[]) {
+  updateState((state) => ({
+    ...state,
+    leds: ledStates,
+  }));
+}
+
+/**
+ * Turn all LEDs off in state.
+ */
+export function turnOffAllLEDStates() {
+  updateState((state) => ({
+    ...state,
+    leds: Array(7).fill("off" as LEDStatus),
+  }));
 }

@@ -12,8 +12,8 @@ import { operatorButtons$, operatorProbeNum$ } from "./operator";
 import { recordAudioActivity, startSilenceDetection } from "./silence-detection";
 import { cancelAllSpeakerPlayback, playAudioThroughSpeakers } from "./speaker";
 import { broadcast, newSseClient$ } from "./sse";
-import { appState$, getActiveOperator, getActiveOperatorIndices } from "./state";
-import { blinkOnLED, pulseOnLED, turnOffAllLED } from "./switchboard";
+import { appState$, getActiveOperator, getActiveOperatorIndices, turnOffAllLEDStates } from "./state";
+import { blinkOnLED, pulseOnLED, turnOffAllLED, turnOffLED } from "./switchboard";
 import { generateOpenAISpeech, getRandomVoiceGenerator } from "./tts";
 import { sendPcm16UDP, type UDPHandler } from "./udp";
 
@@ -70,14 +70,8 @@ export interface StoryOption {
   audioBuffer: Promise<Buffer> | null;
 }
 
-export const storyOptionGenerated$ = new Subject<StoryOption>();
+export const characterOptionGenerated$ = new Subject<StoryOption>();
 export const characterOptions = new BehaviorSubject<StoryOption[]>([]);
-export interface LedState {
-  id: number;
-  status: "off" | "pulsing" | "blinking";
-}
-
-export const ledState$ = new BehaviorSubject<LedState[]>([0, 1, 2, 3, 4, 5, 6].map((id) => ({ id, status: "off" as const })));
 export const gmHint$ = new Subject<string>();
 export const phase$ = new BehaviorSubject<Phase>("idle");
 
@@ -156,7 +150,7 @@ async function generateCharacters() {
           audioBuffer: generateOpenAISpeech(charData.intro, { voice, instructions: charData.voiceActor }),
         };
 
-        storyOptionGenerated$.next(option);
+        characterOptionGenerated$.next(option);
         characters.push(option);
       }
     }
@@ -244,18 +238,11 @@ export const toolHandlers: Record<string, ToolHandler> = {
       return "Invalid LED configuration: must provide exactly 7 LED statuses";
     }
 
-    // Update current LED state
-    const newState: LedState[] = leds.map((led) => ({
-      id: led.id,
-      status: led.status,
-    }));
-    ledState$.next(newState);
-
-    // Apply LED changes to switchboard
+    // Apply LED changes to switchboard and track state
     for (const led of leds) {
       switch (led.status) {
         case "off":
-          await _switchboard.send(`fadeoff:${led.id}`);
+          await turnOffLED(_switchboard, led.id);
           break;
         case "pulsing":
           await pulseOnLED(_switchboard, led.id);
@@ -300,7 +287,7 @@ export function startGameLoop(switchboard: BLEDevice) {
     .subscribe();
 
   // Accumulate individual story options into the full list
-  storyOptionGenerated$
+  characterOptionGenerated$
     .pipe(
       scan((_acc, option) => {
         const currentOptions = characterOptions.value;
@@ -312,7 +299,7 @@ export function startGameLoop(switchboard: BLEDevice) {
     .subscribe();
 
   // Broadcast game state on change
-  combineLatest([phase$, characterOptions, ledState$])
+  combineLatest([phase$, characterOptions, appState$.pipe(map((s) => s.leds))])
     .pipe(
       tap(([phase, storyOptions, ledState]) => {
         broadcast({ type: "gameState", phase, storyOptions, ledState });
@@ -328,7 +315,7 @@ export function startGameLoop(switchboard: BLEDevice) {
           type: "gameState",
           phase: phase$.value,
           storyOptions: characterOptions.value,
-          ledState: ledState$.value,
+          ledState: appState$.value.leds,
         };
         client.write(`data: ${JSON.stringify(state)}\n\n`);
       })
@@ -336,7 +323,7 @@ export function startGameLoop(switchboard: BLEDevice) {
     .subscribe();
 
   // Light up LED as each story option becomes available
-  storyOptionGenerated$
+  characterOptionGenerated$
     .pipe(
       tap(async (option) => {
         if (phase$.value === "setup" && option.intro !== null) {
@@ -394,6 +381,7 @@ export function startGameLoop(switchboard: BLEDevice) {
         // Transition to live phase
         phase$.next("live");
         await turnOffAllLED(switchboard);
+        turnOffAllLEDStates();
 
         // Send GM HINT with selected characters (labeled as <trait> <profession>) and ask for first scene
         const characterList = selectedCharacters.map((label) => `"${label}"`).join(", ");
