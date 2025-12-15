@@ -3,7 +3,6 @@ import { JSONParser } from "@streamparser/json";
 import { BehaviorSubject, combineLatest, distinctUntilChanged, filter, map, scan, Subject, tap } from "rxjs";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { audioPlayer } from "./audio";
 import { AzureSpeechToText, transcriber } from "./azure-stt";
 import { BLEDevice } from "./ble";
 import { DebugAudioBuffer } from "./debug-audio";
@@ -11,7 +10,7 @@ import type { Handler } from "./http";
 import { sendText, triggerResponse } from "./openai-realtime";
 import { operatorButtons$, operatorProbeNum$ } from "./operator";
 import { recordAudioActivity, startSilenceDetection } from "./silence-detection";
-import { cancelAllSpeakerPlayback } from "./speaker";
+import { cancelAllSpeakerPlayback, playPcm16Buffer } from "./speaker";
 import { broadcast, newSseClient$ } from "./sse";
 import { appState$, getActiveOperator, getActiveOperatorIndices, turnOffAllLEDStates, type LEDStatus } from "./state";
 import { blinkOnLED, pulseOnLED, turnOffAllLED, turnOffLED } from "./switchboard";
@@ -557,7 +556,7 @@ export function startGameLoop(switchboard: BLEDevice) {
                   sendPcm16UDP(audioBuffer, appState$.value.operators[operatorIndex].address!);
                 }
                 if (mode === "laptop" || mode === "both") {
-                  audioPlayer.push(audioBuffer);
+                  playPcm16Buffer(audioBuffer);
                 }
               }
             } catch (err) {
