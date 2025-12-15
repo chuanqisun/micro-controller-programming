@@ -1,5 +1,8 @@
 import { BehaviorSubject } from "rxjs";
 
+/** When true, LED state updates are suppressed (used during dice roll animation) */
+export const ledStateUpdateEnabled$ = new BehaviorSubject<boolean>(true);
+
 export type ConnectionStatus = "connected" | "busy" | "disconnected";
 
 /**
@@ -143,8 +146,10 @@ export function updateState(updateFn: (state: AppState) => AppState) {
 
 /**
  * Update a single LED state by ID (array index).
+ * Respects ledStateUpdateEnabled$ flag - when disabled, updates are ignored.
  */
 export function updateLEDState(ledId: number, status: LEDStatus) {
+  if (!ledStateUpdateEnabled$.value) return;
   updateState((state) => {
     const newLeds = [...state.leds];
     newLeds[ledId] = status;

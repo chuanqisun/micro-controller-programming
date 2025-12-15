@@ -12,7 +12,7 @@ import { operatorButtons$, operatorProbeNum$ } from "./operator";
 import { recordAudioActivity, startSilenceDetection } from "./silence-detection";
 import { cancelAllSpeakerPlayback, playPcm16Buffer } from "./speaker";
 import { broadcast, newSseClient$ } from "./sse";
-import { appState$, getActiveOperator, getActiveOperatorIndices, turnOffAllLEDStates, type LEDStatus } from "./state";
+import { appState$, getActiveOperator, getActiveOperatorIndices, ledStateUpdateEnabled$, turnOffAllLEDStates, type LEDStatus } from "./state";
 import { blinkOnLED, pulseOnLED, turnOffAllLED, turnOffLED } from "./switchboard";
 import { generateOpenAISpeech, getRandomVoiceGenerator } from "./tts";
 import { sendPcm16UDP, type UDPHandler } from "./udp";
@@ -297,6 +297,17 @@ export const openaiTools: OpenAITool[] = [
   },
   {
     type: "function",
+    name: "roll_dice",
+    description:
+      "Roll a six-sided dice to determine the outcome of random events. The device will display a dramatic LED animation during the roll, then show the result with illuminated LEDs. Use this for combat outcomes, skill checks, or any chance-based event.",
+    parameters: {
+      type: "object",
+      properties: {},
+      required: [],
+    },
+  },
+  {
+    type: "function",
     name: "append_log",
     description:
       "Append notes about the game to a log file. Use this to track important story events, character developments, scene descriptions, discovered objects, or any other details that should be remembered for resuming the game later.",
@@ -357,6 +368,78 @@ export const toolHandlers: Record<string, ToolHandler> = {
     gameLog$.next(currentLog + logEntry);
     console.log("Game log appended:", log);
     return "Log entry recorded successfully";
+  },
+  roll_dice: async () => {
+    if (!_switchboard) {
+      return "Switchboard not connected";
+    }
+
+    // Generate the random result (1-6)
+    const result = Math.floor(Math.random() * 6) + 1;
+    console.log(`Rolling dice... result will be: ${result}`);
+
+    // Remember current LED state
+    const savedLedStates = [...appState$.value.leds];
+
+    // Disable LED state updates during animation
+    ledStateUpdateEnabled$.next(false);
+
+    // Turn off all LEDs
+    await turnOffAllLED(_switchboard);
+
+    // Blink sequence: 0 -> 5 -> 1 -> 6 -> 2 -> 4 at 200ms intervals
+    const blinkSequence = [0, 5, 1, 6, 2, 4];
+    const blinkInterval = 200;
+
+    // Start blinking LEDs in sequence
+    for (let i = 0; i < blinkSequence.length; i++) {
+      await new Promise((resolve) => setTimeout(resolve, blinkInterval));
+      await _switchboard.send(`blinkon:${blinkSequence[i]}`);
+    }
+
+    // Wait 3 seconds with all 6 LEDs blinking
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+
+    // Fade off LEDs until remaining count equals result
+    // We have 6 blinking LEDs (indices in blinkSequence), need to turn off (6 - result) of them
+    const ledsToTurnOff = 6 - result;
+    // Shuffle the sequence to randomly select which to turn off
+    const shuffledSequence = [...blinkSequence].sort(() => Math.random() - 0.5);
+
+    for (let i = 0; i < ledsToTurnOff; i++) {
+      await _switchboard.send(`fadeoff:${shuffledSequence[i]}`);
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+
+    // Schedule restoration of LED state after 2 seconds
+    setTimeout(async () => {
+      if (!_switchboard) return;
+
+      // Re-enable LED state updates
+      ledStateUpdateEnabled$.next(true);
+
+      // Restore saved LED states
+      for (let i = 0; i < 7; i++) {
+        const status = savedLedStates[i];
+        switch (status) {
+          case "off":
+            await turnOffLED(_switchboard!, i);
+            break;
+          case "pulseon":
+            await pulseOnLED(_switchboard!, i);
+            break;
+          case "blinkon":
+            await blinkOnLED(_switchboard!, i);
+            break;
+          case "fadeon":
+            await _switchboard!.send(`fadeon:${i}`);
+            break;
+        }
+      }
+      console.log("LED state restored after dice roll");
+    }, 2000);
+
+    return `Dice rolled: ${result}`;
   },
 };
 
