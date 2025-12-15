@@ -24,7 +24,7 @@ bool startSpeaker() {
   // Recreate receive copier for UDP -> speaker
   if (receiveCopier) delete receiveCopier;
   if (udpReceive) {
-    receiveCopier = new StreamCopy(i2sStream, *udpReceive, 1024);
+    receiveCopier = new StreamCopy(i2sStream, *udpReceive, 4096);
   }
   
   Serial.println("I2S started in speaker (TX) mode");

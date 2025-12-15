@@ -24,7 +24,7 @@ bool startMicrophone() {
   // Recreate transmit copier for mic -> UDP
   if (transmitCopier) delete transmitCopier;
   if (udpSend) {
-    transmitCopier = new StreamCopy(*udpSend, i2sStream);
+    transmitCopier = new StreamCopy(*udpSend, i2sStream, 4096);
   }
   
   Serial.println("I2S started in mic (RX) mode");
