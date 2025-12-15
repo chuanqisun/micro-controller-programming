@@ -232,6 +232,8 @@ async function generateCharacters() {
 - intro: A compelling one short sentence intro, starting with "I am..." that captures their essence using the trait and profession. ONLY a few words. The sound will be played when player previews this character.
 - voiceActor: A vivid description of their voice quality (e.g., "deep and gravelly", "soft and melodic", "crackling with energy"), grounded in their archetype and intro.
 
+Make sure one of them has the Knowledge Trait and says "I am Neil, the Grand Architect of bits and atoms"
+
 Make sure the characters have synergy with each other and cover diverse archetypes.`,
     config: {
       responseMimeType: "application/json",
