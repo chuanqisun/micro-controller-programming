@@ -100,10 +100,16 @@ When I was engraving the switchboard, the rapid back and forth motion shifted th
 
 ## Credit
 
-Music prompt
+Music for single player prompt
 
 ```txt
 Medieval tavern fantasy game play background ambient music
 ```
 
 Model: Suno v4.5-all
+
+Music for multi-player prompt
+
+```txt
+ancient folk music inspired by lord of the rings and skyrim, with light percussion and string, good for fantasy games
+```
