@@ -76,11 +76,17 @@ export const gmHint$ = new Subject<string>();
 export const phase$ = new BehaviorSubject<Phase>("idle");
 export const gameLog$ = new BehaviorSubject<string>("");
 
-// Tracks which operators have confirmed (both buttons pressed at same time)
+// Tracks which operators have confirmed their character selection
 const confirmedOperators = new Set<number>();
 
-// Maps operator index to their selected character (trait + profession)
-const operatorPlayerMap = new Map<number, { trait: string; profession: string }>();
+// Maps operator index to their selected character (trait + profession + probeId)
+const operatorPlayerMap = new Map<number, { trait: string; profession: string; probeId: number }>();
+
+// Tracks which probes/characters have been selected (so others can't pick them)
+const selectedProbes = new Set<number>();
+
+// Tracks whose turn it is to select (operator index), -1 means no one is selecting
+const currentSelectorIndex$ = new BehaviorSubject<number>(-1);
 
 // Tracks previous probe number for each operator
 const previousProbeMap = new Map<number, number>();
@@ -352,6 +358,8 @@ export function resetConfirmedOperators() {
   confirmedOperators.clear();
   operatorPlayerMap.clear();
   previousProbeMap.clear();
+  selectedProbes.clear();
+  currentSelectorIndex$.next(-1);
 }
 
 /** Get the player label in "<trait> <profession>" format for an operator */
@@ -359,6 +367,20 @@ function getPlayerLabel(operatorIndex: number): string | null {
   const player = operatorPlayerMap.get(operatorIndex);
   if (!player) return null;
   return `${player.trait} ${player.profession}`;
+}
+
+/** Advance to the next unconfirmed operator for character selection */
+function advanceToNextSelector(): void {
+  const activeIndices = getActiveOperatorIndices(appState$.value);
+  const nextSelector = activeIndices.find((idx) => !confirmedOperators.has(idx));
+  currentSelectorIndex$.next(nextSelector ?? -1);
+}
+
+/** Check if all active operators have confirmed their selection */
+function checkAllConfirmed(): boolean {
+  const activeIndices = getActiveOperatorIndices(appState$.value);
+  if (activeIndices.length === 0) return false;
+  return activeIndices.every((index) => confirmedOperators.has(index));
 }
 
 /**
@@ -439,10 +461,19 @@ export function startGameLoop(switchboard: BLEDevice) {
     .subscribe();
 
   // Broadcast game state on change
-  combineLatest([phase$, characterOptions, appState$.pipe(map((s) => s.leds)), gameLog$])
+  combineLatest([phase$, characterOptions, appState$.pipe(map((s) => s.leds)), gameLog$, currentSelectorIndex$])
     .pipe(
-      tap(([phase, storyOptions, ledState, gameLog]) => {
-        broadcast({ type: "gameState", phase, storyOptions, ledState, gameLog });
+      tap(([phase, storyOptions, ledState, gameLog, currentSelector]) => {
+        broadcast({
+          type: "gameState",
+          phase,
+          storyOptions,
+          ledState,
+          gameLog,
+          currentSelector,
+          confirmedCount: confirmedOperators.size,
+          totalPlayers: getActiveOperatorIndices(appState$.value).length,
+        });
       })
     )
     .subscribe();
@@ -457,6 +488,9 @@ export function startGameLoop(switchboard: BLEDevice) {
           storyOptions: characterOptions.value,
           ledState: appState$.value.leds,
           gameLog: gameLog$.value,
+          currentSelector: currentSelectorIndex$.value,
+          confirmedCount: confirmedOperators.size,
+          totalPlayers: getActiveOperatorIndices(appState$.value).length,
         };
         client.write(`data: ${JSON.stringify(state)}\n\n`);
       })
@@ -474,61 +508,81 @@ export function startGameLoop(switchboard: BLEDevice) {
     )
     .subscribe();
 
-  const allOperatorsConfirmed$ = operatorButtons$.pipe(
-    tap(({ operatorIndex, btn1, btn2 }) => {
-      if (btn1 && btn2) {
-        confirmedOperators.add(operatorIndex);
-      }
-    }),
-    map(() => {
-      const activeIndices = getActiveOperatorIndices(appState$.value);
-      if (activeIndices.length === 0) return false;
-
-      // Check if all active operators have confirmed
-      return activeIndices.every((index) => confirmedOperators.has(index));
-    }),
-    distinctUntilChanged(),
-    filter((allConfirmed) => allConfirmed && phase$.value === "setup")
-  );
-
-  // Handle character selection confirmation
-  allOperatorsConfirmed$
+  // When all characters are generated, start the selection process with the first operator
+  characterOptions
     .pipe(
-      tap(async () => {
-        console.log("All operators confirmed character selection!");
-        cancelAllSpeakerPlayback();
+      filter((options) => phase$.value === "setup" && options.every((opt) => opt.intro !== null)),
+      tap(() => {
+        advanceToNextSelector();
+      })
+    )
+    .subscribe();
 
-        // Collect selected characters for each operator and build player mapping
-        const operators = appState$.value.operators;
-        const selectedCharacters: string[] = [];
+  // Handle individual character selection confirmation
+  operatorButtons$
+    .pipe(
+      filter(({ operatorIndex, btn1, btn2 }) => {
+        // Only process if in setup phase, both buttons pressed, not already confirmed,
+        // and it's this operator's turn to select
+        return phase$.value === "setup" && btn1 && btn2 && !confirmedOperators.has(operatorIndex) && currentSelectorIndex$.value === operatorIndex;
+      }),
+      tap(async ({ operatorIndex }) => {
+        const probeNum = appState$.value.operators[operatorIndex]?.probeNum;
 
-        operators.forEach((op, operatorIndex) => {
-          if (op.probeNum !== 7) {
-            const option = characterOptions.value.find((opt) => opt.probeId === op.probeNum);
-            if (option && option.trait && option.profession) {
-              // Store the operator-to-player mapping
-              operatorPlayerMap.set(operatorIndex, { trait: option.trait, profession: option.profession });
-              const playerLabel = `${option.trait} ${option.profession}`;
-              selectedCharacters.push(playerLabel);
-            }
-          }
-        });
-
-        if (selectedCharacters.length === 0) {
-          console.log("No valid character selections found");
+        // Must be probing a valid, unselected character
+        if (probeNum === undefined || probeNum === 7 || selectedProbes.has(probeNum)) {
+          console.log(`Operator ${operatorIndex} tried to confirm but no valid selection`);
           return;
         }
 
-        // Transition to live phase
-        phase$.next("live");
-        await turnOffAllLED(switchboard);
-        turnOffAllLEDStates();
+        const option = characterOptions.value.find((opt) => opt.probeId === probeNum);
+        if (!option || !option.trait || !option.profession) {
+          console.log(`Operator ${operatorIndex} tried to confirm but character not ready`);
+          return;
+        }
 
-        // Send GM HINT with selected characters (labeled as <trait> <profession>) and ask for first scene
-        const characterList = selectedCharacters.map((label) => `"${label}"`).join(", ");
-        gmHint$.next(
-          `Players have selected their characters: ${characterList}. Present the opening scene and use update_leds to pulse the LEDs for available story elements.`
-        );
+        // Confirm this operator's selection
+        confirmedOperators.add(operatorIndex);
+        selectedProbes.add(probeNum);
+        operatorPlayerMap.set(operatorIndex, {
+          trait: option.trait,
+          profession: option.profession,
+          probeId: probeNum,
+        });
+
+        console.log(`Operator ${operatorIndex} confirmed: ${option.trait} ${option.profession}`);
+
+        // Turn off the LED for the selected character
+        await turnOffLED(switchboard, probeNum);
+
+        // Cancel playback
+        cancelAllSpeakerPlayback();
+
+        // Check if all operators have confirmed
+        if (checkAllConfirmed()) {
+          console.log("All operators confirmed character selection!");
+
+          // Collect selected characters for summary
+          const selectedCharacters: string[] = [];
+          operatorPlayerMap.forEach((player) => {
+            selectedCharacters.push(`${player.trait} ${player.profession}`);
+          });
+
+          // Transition to live phase
+          phase$.next("live");
+          await turnOffAllLED(switchboard);
+          turnOffAllLEDStates();
+          currentSelectorIndex$.next(-1);
+
+          // Send GM HINT with selected characters
+          const characterList = selectedCharacters.map((label) => `"${label}"`).join(", ");
+          gmHint$.next(
+            `Players have selected their characters: ${characterList}. Present the opening scene and use update_leds to pulse the LEDs for available story elements.`
+          );
+        } else {
+          // Move to next operator
+          advanceToNextSelector();
+        }
       })
     )
     .subscribe();
@@ -542,6 +596,18 @@ export function startGameLoop(switchboard: BLEDevice) {
         if (probeNum === 7) return;
 
         if (phase$.value === "setup") {
+          // Only allow the current selector to preview characters
+          if (currentSelectorIndex$.value !== operatorIndex) {
+            console.log(`Operator ${operatorIndex} tried to probe but it's not their turn`);
+            return;
+          }
+
+          // Don't allow probing already-selected characters
+          if (selectedProbes.has(probeNum)) {
+            console.log(`Probe ${probeNum} is already selected by another player`);
+            return;
+          }
+
           // Handle story option probing during setup phase - play pre-generated audio
           const option = characterOptions.value.find((opt) => opt.probeId === probeNum);
 
