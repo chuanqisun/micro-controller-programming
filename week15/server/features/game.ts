@@ -403,12 +403,14 @@ export const toolHandlers: Record<string, ToolHandler> = {
     // Fade off LEDs until remaining count equals result
     // We have 6 blinking LEDs (indices in blinkSequence), need to turn off (6 - result) of them
     const ledsToTurnOff = 6 - result;
-    // Shuffle the sequence to randomly select which to turn off
-    const shuffledSequence = [...blinkSequence].sort(() => Math.random() - 0.5);
 
     for (let i = 0; i < ledsToTurnOff; i++) {
-      await _switchboard.send(`fadeoff:${shuffledSequence[i]}`);
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      await _switchboard.send(`fadeoff:${blinkSequence[i]}`);
+    }
+
+    // fade on the remaining LEDs to indicate the final result
+    for (let i = ledsToTurnOff; i < 6; i++) {
+      await _switchboard.send(`fadeon:${blinkSequence[i]}`);
     }
 
     // Schedule restoration of LED state after 2 seconds

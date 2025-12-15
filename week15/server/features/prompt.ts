@@ -55,7 +55,7 @@ To determine the outcome of random events (combat, skill checks, chance encounte
 - The device will display a dramatic LED animation during the roll.
 - Returns a number from 1 to 6.
 - Use this for any situation where fate or chance should decide the outcome.
-- After announcing the roll, narrate the result based on whether it was high (favorable) or low (unfavorable).
+- After receiving roll result, announce the number dramatically, then narrate the result based on whether it was high (favorable) or low (unfavorable).
 ${
   context?.log
     ? `
