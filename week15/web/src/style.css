@@ -29,7 +29,6 @@ p {
 .log {
   font-family: monospace;
   white-space: pre-wrap;
-  max-height: 50vh;
   overflow-y: auto;
   scrollbar-gutter: stable;
 }
