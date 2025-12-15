@@ -88,6 +88,18 @@ textarea {
   word-wrap: break-word;
 }
 
+/* Operator panels container - side by side on wider screens */
+.operator-panels {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 40rem) {
+  .operator-panels {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 /* Player 2 visibility */
 .operator-panel[data-operator="1"].hidden {
   display: none;

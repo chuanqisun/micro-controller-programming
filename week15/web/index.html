@@ -32,64 +32,90 @@
         <label><input type="radio" name="audioOutput" value="laptop" /> Laptop</label>
         <label><input type="radio" name="audioOutput" value="both" checked /> Both</label>
       </div>
-    </fieldset>
-    <fieldset class="operator-panel" data-operator="0">
-      <legend>Unit-01</legend>
-      <div>
-        <button class="connectBtnOp">Connect</button>
-      </div>
-
-      <div class="command-bar">
-        <button class="probe" data-probe="0">0</button>
-        <button class="probe" data-probe="1">1</button>
-        <button class="probe" data-probe="2">2</button>
-        <button class="probe" data-probe="3">3</button>
-        <button class="probe" data-probe="4">4</button>
-        <button class="probe" data-probe="5">5</button>
-        <button class="probe" data-probe="6">6</button>
-        <button class="probe" data-probe="7">Unplug</button>
-      </div>
-
-      <div class="command-bar">
-        <button class="btnBtn1">Btn 1</button>
-        <button class="btnBtn2">Btn 2</button>
-        <button class="btnBoth">Both</button>
-      </div>
-
-      <div class="command-bar">
-        <button class="playFileBtn">Play File</button>
-        <button class="stopPlaybackBtn">Stop</button>
-      </div>
+      <details>
+        <summary>Background music</summary>
+        <iframe
+          width="320"
+          height="180"
+          src="https://www.youtube.com/embed/_yh410lA9yI?si=_cPTtfrQ-aG7SMAJ"
+          title="YouTube video player"
+          frameborder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          referrerpolicy="strict-origin-when-cross-origin"
+          allowfullscreen
+        ></iframe>
+        <iframe
+          width="320"
+          height="180"
+          src="https://www.youtube.com/embed/IxPANmjPaek?si=4Z6SSnYY99aIYk_L"
+          title="YouTube video player"
+          frameborder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          referrerpolicy="strict-origin-when-cross-origin"
+          allowfullscreen
+        ></iframe>
+      </details>
     </fieldset>
 
-    <fieldset class="operator-panel" data-operator="1">
-      <legend>Unit-02</legend>
-      <div>
-        <button class="connectBtnOp">Connect</button>
-      </div>
+    <div class="operator-panels">
+      <fieldset class="operator-panel" data-operator="0">
+        <legend>Unit-01</legend>
+        <div>
+          <button class="connectBtnOp">Connect</button>
+        </div>
 
-      <div class="command-bar">
-        <button class="probe" data-probe="0">0</button>
-        <button class="probe" data-probe="1">1</button>
-        <button class="probe" data-probe="2">2</button>
-        <button class="probe" data-probe="3">3</button>
-        <button class="probe" data-probe="4">4</button>
-        <button class="probe" data-probe="5">5</button>
-        <button class="probe" data-probe="6">6</button>
-        <button class="probe" data-probe="7">Unplug</button>
-      </div>
+        <div class="command-bar">
+          <button class="probe" data-probe="0">0</button>
+          <button class="probe" data-probe="1">1</button>
+          <button class="probe" data-probe="2">2</button>
+          <button class="probe" data-probe="3">3</button>
+          <button class="probe" data-probe="4">4</button>
+          <button class="probe" data-probe="5">5</button>
+          <button class="probe" data-probe="6">6</button>
+          <button class="probe" data-probe="7">Unplug</button>
+        </div>
 
-      <div class="command-bar">
-        <button class="btnBtn1">Btn 1</button>
-        <button class="btnBtn2">Btn 2</button>
-        <button class="btnBoth">Both</button>
-      </div>
+        <div class="command-bar">
+          <button class="btnBtn1">Btn 1</button>
+          <button class="btnBtn2">Btn 2</button>
+          <button class="btnBoth">Both</button>
+        </div>
 
-      <div class="command-bar">
-        <button class="playFileBtn">Play File</button>
-        <button class="stopPlaybackBtn">Stop</button>
-      </div>
-    </fieldset>
+        <div class="command-bar">
+          <button class="playFileBtn">Play File</button>
+          <button class="stopPlaybackBtn">Stop</button>
+        </div>
+      </fieldset>
+
+      <fieldset class="operator-panel" data-operator="1">
+        <legend>Unit-02</legend>
+        <div>
+          <button class="connectBtnOp">Connect</button>
+        </div>
+
+        <div class="command-bar">
+          <button class="probe" data-probe="0">0</button>
+          <button class="probe" data-probe="1">1</button>
+          <button class="probe" data-probe="2">2</button>
+          <button class="probe" data-probe="3">3</button>
+          <button class="probe" data-probe="4">4</button>
+          <button class="probe" data-probe="5">5</button>
+          <button class="probe" data-probe="6">6</button>
+          <button class="probe" data-probe="7">Unplug</button>
+        </div>
+
+        <div class="command-bar">
+          <button class="btnBtn1">Btn 1</button>
+          <button class="btnBtn2">Btn 2</button>
+          <button class="btnBoth">Both</button>
+        </div>
+
+        <div class="command-bar">
+          <button class="playFileBtn">Play File</button>
+          <button class="stopPlaybackBtn">Stop</button>
+        </div>
+      </fieldset>
+    </div>
 
     <fieldset>
       <legend>Switchboard</legend>
