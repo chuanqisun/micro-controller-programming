@@ -97,3 +97,13 @@ When I was engraving the switchboard, the rapid back and forth motion shifted th
 - AI provides action options
 - One of the players take action
 - AI will force transition to Exploration phase after action is taken
+
+## Credit
+
+Music prompt
+
+```txt
+Medieval tavern fantasy game play background ambient music
+```
+
+Model: Suno v4.5-all
