@@ -52,6 +52,7 @@ To change the LED light status, you must use the update_leds tool.
 - If you want to maintain the current status of an LED, you must specify its current status again.
 
 To determine the outcome of random events (combat, skill checks, chance encounters), use the roll_dice tool.
+- Tell the player you will roll for them
 - The device will display a dramatic LED animation during the roll.
 - Returns a number from 1 to 6.
 - Use this for any situation where fate or chance should decide the outcome.
