@@ -150,6 +150,8 @@ export function formatGameStateSummary(summary: GameStateSummary): string {
 
 let _switchboard: BLEDevice | null = null;
 
+export const announcementAudio$ = new Subject<Buffer>();
+
 export function handleNewGame(switchboard: BLEDevice): Handler {
   return async (req, res) => {
     if (req.method !== "POST" || req.url !== "/api/game/new") return false;
@@ -159,11 +161,13 @@ export function handleNewGame(switchboard: BLEDevice): Handler {
     phase$.next("setup");
     resetConfirmedOperators();
 
-    // // Start PCM stream to the active operator
-    // const activeOp = getActiveOperator(appState$.value);
-    // if (activeOp?.address) {
-    //   startPcmStream(activeOp.address);
-    // }
+    setTimeout(
+      () =>
+        generateOpenAISpeech("Awaken, traveler, choose the vessel for your destiny.", {
+          instructions: "Dungeon master voice, like deep rhythmic drumming, commanding and yet engaging",
+        }).then((buffer) => announcementAudio$.next(buffer)),
+      1000
+    );
 
     await generateCharacters();
 

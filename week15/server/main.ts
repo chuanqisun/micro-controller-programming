@@ -6,6 +6,7 @@ import { transcriber } from "./features/azure-stt";
 import { BLEDevice, opMacUnit1, opMacUnit2, swMac } from "./features/ble";
 import { createButtonStateMachine } from "./features/buttons";
 import {
+  announcementAudio$,
   formatGameStateSummary,
   gameLog$,
   gameStateSummary$,
@@ -41,7 +42,7 @@ import { handlePlayFile, handleStopPlayback } from "./features/play-file";
 import { handleReset } from "./features/process";
 import { getDungeonMasterPrompt } from "./features/prompt";
 import { silenceStart$, speakStart$ } from "./features/silence-detection";
-import { cancelAllSpeakerPlayback } from "./features/speaker";
+import { cancelAllSpeakerPlayback, playPcm16Buffer } from "./features/speaker";
 import { broadcast, handleSSE, newSseClient$ } from "./features/sse";
 import { appState$, createDefaultOperatorState, getActiveOperator, updateOperatorByIndex, updateState } from "./features/state";
 import {
@@ -173,6 +174,8 @@ async function main() {
 
   const operatorButtonsMachine = createButtonStateMachine(activeOperatorButtons$.pipe(map(({ btn1, btn2 }) => ({ btn1, btn2 }))));
 
+  announcementAudio$.pipe(tap((buffer) => playPcm16Buffer(buffer))).subscribe();
+
   realtimeOutputAudio$
     .pipe(
       tap((buf) => {
@@ -227,6 +230,7 @@ async function main() {
         if (update.probeNum === 7) {
           stopPcmStream();
           cancelAllSpeakerPlayback();
+          startPcmStream(activeAddress);
         } else {
           startPcmStream(activeAddress);
         }
