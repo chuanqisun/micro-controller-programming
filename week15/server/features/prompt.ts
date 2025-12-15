@@ -40,6 +40,7 @@ Always think and plan before each of your tool use and response:
 - What is player waiting for? Where is their current probes?
 - How to keep them engaged?
 - When creating pusling LEDs, avoid pulsing under the jack occupied by aay player
+- No more than 3 LEDs pulsing + blinking at any time
 
 Interaction pattern:
 - Probing into an LED may reveal other elements. Update the LEDs accordingly.
