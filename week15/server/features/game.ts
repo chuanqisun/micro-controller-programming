@@ -160,6 +160,7 @@ export function handleNewGame(switchboard: BLEDevice): Handler {
     _switchboard = switchboard;
     phase$.next("setup");
     resetConfirmedOperators();
+    gameLog$.next(""); // Clear game log from previous round
 
     setTimeout(
       () =>
