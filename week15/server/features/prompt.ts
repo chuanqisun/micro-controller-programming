@@ -51,12 +51,17 @@ To change the LED light status, you must use the update_leds tool.
 - The tool requires you to describe the status of all 7 LEDs, not just the ones you want to change.
 - If you want to maintain the current status of an LED, you must specify its current status again.
 
+To track game progress, use the append_log tool.
+- Log major story beats: scene transitions, discoveries, combat outcomes, key decisions.
+- Log character developments: alliances formed, items acquired, wounds taken.
+- Keep entries brief but evocative—enough to reconstruct the narrative later.
+- Log after each significant event, not during rapid back-and-forth dialogue.
+
 To determine the outcome of random events (combat, skill checks, chance encounters), use the roll_dice tool.
-- Tell the player you will roll for them
 - The device will display a dramatic LED animation during the roll.
-- Returns a number from 1 to 6.
 - Use this for any situation where fate or chance should decide the outcome.
-- After receiving roll result, announce the number dramatically, then narrate the result based on whether it was high (favorable) or low (unfavorable).
+- After receiving roll result, must announce the number dramatically, 
+- Narrate the result based on whether it was high (favorable) or low (unfavorable).
 ${
   context?.log
     ? `
