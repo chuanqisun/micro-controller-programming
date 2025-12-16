@@ -1,0 +1,165 @@
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+  font-size: inherit;
+  font-family: inherit;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-block: 0rem;
+}
+
+.log {
+  font-family: monospace;
+  white-space: pre-wrap;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+body {
+  display: grid;
+  gap: 1rem;
+}
+
+button {
+  background: #444;
+  border: 1px solid #666;
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: 2px;
+
+  &:hover,
+  &:focus-visible {
+    background: #666;
+  }
+}
+
+input {
+  padding: 4px 8px;
+  border: 1px solid #666;
+
+  &:hover,
+  &:focus-visible {
+    background-color: #111;
+    border-color: #888;
+    outline: none;
+  }
+}
+
+.data-list {
+  display: grid;
+}
+
+textarea {
+  display: block;
+  width: 100%;
+  field-sizing: content;
+  resize: none;
+}
+
+.command-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+/* Game log word wrap */
+#gameLog {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* Operator panels container - side by side on wider screens */
+.operator-panels {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 40rem) {
+  .operator-panels {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Player 2 visibility */
+.operator-panel[data-operator="1"].hidden {
+  display: none;
+}
+
+/* Switchboard LED button animations */
+#blinkOnControls button {
+  transition: background-color 0.2s ease;
+  will-change: background-color;
+}
+
+/* Blink animation: fast alternating between black and dark red (510ms cycle) */
+@keyframes blink {
+  0%,
+  100% {
+    background-color: #000;
+  }
+  50% {
+    background-color: #8b0000;
+  }
+}
+
+#blinkOnControls button.blinkon {
+  animation: blink 510ms infinite;
+}
+
+/* Fade on animation: fade from black to dark red once and stay (510ms duration) */
+@keyframes fadeon {
+  from {
+    background-color: #000;
+  }
+  to {
+    background-color: #8b0000;
+  }
+}
+
+#blinkOnControls button.fadeon {
+  animation: fadeon 510ms ease-out forwards;
+  background-color: #8b0000;
+}
+
+/* Pulse animation: smooth breathing between black and dark red (2040ms cycle) */
+@keyframes pulse {
+  0%,
+  100% {
+    background-color: #000;
+  }
+  50% {
+    background-color: #8b0000;
+  }
+}
+
+#blinkOnControls button.pulseon {
+  animation: pulse 2040ms ease-in-out infinite;
+}
+
+/* Active probe and button states */
+.probe.active,
+.btnBtn1.active,
+.btnBtn2.active,
+.btnBoth.active {
+  background-color: #111 !important;
+}
