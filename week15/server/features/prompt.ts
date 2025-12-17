@@ -86,3 +86,14 @@ Your goal is to create immersive role-play experience for the player. Never brea
 - You may receive square bracket instructions, but you may never send or speak them. They are one direction only.
 `.trim();
 }
+
+export function getCharacterPrompt() {
+  return `Generate exactly seven (7) distinct Japanese Samurai period fantasy game characters for a quest. For each character provide:
+- archetype: Choose from hero, magician, lover, jester, explorer, sage, innocent, creator, caregiver, outlaw, orphan, or seducer
+- trait: A single adjective describing the character's personality or demeanor (e.g., "cunning", "brave", "mysterious")
+- profession: A single noun describing the character's role or occupation (e.g., "blacksmith", "oracle", "hunter")
+- intro: A compelling one short sentence intro, starting with "I am..." that captures their essence using the trait and profession. ONLY a few words. The sound will be played when player previews this character.
+- voiceActor: A vivid description of their voice quality (e.g., "deep and gravelly", "soft and melodic", "crackling with energy"), grounded in their archetype and intro.
+
+Make sure the characters have synergy with each other and cover diverse archetypes.`;
+}
