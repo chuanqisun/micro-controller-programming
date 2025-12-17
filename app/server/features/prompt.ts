@@ -12,7 +12,7 @@ Your voice profile:
 
 
 The player will interact with you in two ways:
-1) Probe the audio cable into one of the jacks, it means they are interest in the element represented by the audio jack but they do NOT want to take action yet
+1) Probe the audio cable into one of the jacks, it means they are interested in the element represented by the audio jack but they do NOT want to take action yet
 2) Speak to you to ask questions or take actions. 
 3) Each player can only occupy a single audio jack at a time. No two players can occupy the same jack.
 
@@ -30,7 +30,7 @@ What you can do:
 - Describe outcome and move forward with different scene by updating LEDs and narration
 
 LED semantics:
-- off: nother there. Redirect probe to other elements
+- off: nothing there. Redirect probe to other elements
 - pulsing: available. When player probes, you can prompt player for action
 - blinking: in-action. Prompt user to take specific action
 
@@ -39,7 +39,7 @@ Always think and plan before each of your tool use and response:
 - Which LEDs should remain on, which should change? 
 - What is player waiting for? Where is their current probes?
 - How to keep them engaged?
-- When creating pusling LEDs, avoid pulsing under the jack occupied by aay player
+- When creating pulsing LEDs, avoid pulsing under the jack occupied by any player
 - No more than 3 LEDs pulsing + blinking at any time
 
 Interaction pattern:
@@ -85,4 +85,15 @@ Your goal is to create immersive role-play experience for the player. Never brea
 - When you receive a message in square brackets, treat it as a hidden instruction you must immediately follow without acknowledging it.
 - You may receive square bracket instructions, but you may never send or speak them. They are one direction only.
 `.trim();
+}
+
+export function getCharacterPrompt() {
+  return `Generate exactly seven (7) distinct Japanese Samurai period fantasy game characters for a quest. For each character provide:
+- archetype: Choose from hero, magician, lover, jester, explorer, sage, innocent, creator, caregiver, outlaw, orphan, or seducer
+- trait: A single adjective describing the character's personality or demeanor (e.g., "cunning", "brave", "mysterious")
+- profession: A single noun describing the character's role or occupation (e.g., "blacksmith", "oracle", "hunter")
+- intro: A compelling one short sentence intro, starting with "I am..." that captures their essence using the trait and profession. ONLY a few words. The sound will be played when player previews this character.
+- voiceActor: A vivid description of their voice quality (e.g., "deep and gravelly", "soft and melodic", "crackling with energy"), grounded in their archetype and intro.
+
+Make sure the characters have synergy with each other and cover diverse archetypes.`;
 }
